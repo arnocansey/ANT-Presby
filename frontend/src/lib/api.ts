@@ -1,6 +1,11 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = '/api';
+
+const getStoredToken = () => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('access_token');
+};
 
 export const apiClient = axios.create({
   baseURL: API_URL,
@@ -8,6 +13,16 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+apiClient.interceptors.request.use((config) => {
+  const token = getStoredToken();
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
 });
 
 let isRefreshing = false;
@@ -36,6 +51,7 @@ const redirectToLoginIfNeeded = () => {
   if (typeof window === 'undefined') return;
 
   localStorage.removeItem('user');
+  localStorage.removeItem('access_token');
 
   const path = window.location.pathname;
   const isPublicAuthPage = path.startsWith('/login') || path.startsWith('/register');
@@ -60,7 +76,13 @@ apiClient.interceptors.response.use(
     if (!isRefreshing) {
       isRefreshing = true;
       try {
-        await apiClient.post('/auth/refresh');
+        const refreshResponse = await apiClient.post('/auth/refresh');
+        const refreshedToken = refreshResponse.data?.data?.token;
+
+        if (refreshedToken && typeof window !== 'undefined') {
+          localStorage.setItem('access_token', refreshedToken);
+        }
+
         isRefreshing = false;
         notifyRefreshSubscribers(true);
       } catch (refreshError) {

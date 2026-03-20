@@ -10,6 +10,7 @@ export const useLogin = () => {
     },
     onSuccess: (data) => {
       localStorage.setItem('user', JSON.stringify(data.data.user));
+      localStorage.setItem('access_token', data.data.token);
       toast.success('Login successful');
     },
     onError: (error: any) => {
@@ -26,6 +27,7 @@ export const useRegister = () => {
     },
     onSuccess: (data) => {
       localStorage.setItem('user', JSON.stringify(data.data.user));
+      localStorage.setItem('access_token', data.data.token);
       toast.success('Registration successful');
     },
     onError: (error: any) => {
@@ -43,6 +45,7 @@ export const useLogout = () => {
     },
     onSuccess: () => {
       localStorage.removeItem('user');
+      localStorage.removeItem('access_token');
       queryClient.clear();
       toast.success('Logout successful');
     },

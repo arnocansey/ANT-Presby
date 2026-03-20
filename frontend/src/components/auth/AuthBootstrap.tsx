@@ -12,6 +12,20 @@ export default function AuthBootstrap() {
 
     const hydrate = async () => {
       setIsLoading(true);
+      const cachedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+
+      if (cachedUser) {
+        try {
+          const parsedUser = JSON.parse(cachedUser);
+          if (mounted) {
+            setUser(parsedUser);
+            setIsAuthenticated(true);
+          }
+        } catch {
+          localStorage.removeItem('user');
+        }
+      }
+
       try {
         const response = await apiClient.get('/auth/me');
         if (!mounted) return;
@@ -28,6 +42,7 @@ export default function AuthBootstrap() {
         setUser(null);
         setIsAuthenticated(false);
         localStorage.removeItem('user');
+        localStorage.removeItem('access_token');
       } finally {
         if (mounted) {
           setIsLoading(false);

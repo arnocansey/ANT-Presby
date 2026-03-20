@@ -22,7 +22,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginForm() {
   const router = useRouter();
-  const { setUser, setIsAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, hydrate, setUser, setIsAuthenticated } = useAuthStore();
   const loginMutation = useLogin();
   const {
     register,
@@ -32,12 +32,22 @@ export default function LoginForm() {
     resolver: zodResolver(loginSchema),
   });
 
+  React.useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+
+  React.useEffect(() => {
+    if (isAuthenticated && user) {
+      router.replace(user.role === 'admin' ? '/admin/dashboard' : '/dashboard');
+    }
+  }, [isAuthenticated, router, user]);
+
   const onSubmit = async (data: LoginFormData) => {
     try {
       const response = await loginMutation.mutateAsync(data);
       setUser(response.data.user);
       setIsAuthenticated(true);
-      router.push('/dashboard');
+      router.replace(response.data.user?.role === 'admin' ? '/admin/dashboard' : '/dashboard');
     } catch (error) {
       console.error('Login error:', error);
     }

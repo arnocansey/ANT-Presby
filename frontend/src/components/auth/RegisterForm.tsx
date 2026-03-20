@@ -41,7 +41,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterForm() {
   const router = useRouter();
-  const { setUser, setIsAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, hydrate, setUser, setIsAuthenticated } = useAuthStore();
   const registerMutation = useRegister();
   const {
     register,
@@ -50,6 +50,16 @@ export default function RegisterForm() {
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
   });
+
+  React.useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+
+  React.useEffect(() => {
+    if (isAuthenticated && user) {
+      router.replace(user.role === 'admin' ? '/admin/dashboard' : '/dashboard');
+    }
+  }, [isAuthenticated, router, user]);
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
@@ -63,7 +73,7 @@ export default function RegisterForm() {
       });
       setUser(response.data.user);
       setIsAuthenticated(true);
-      router.push('/dashboard');
+      router.replace(response.data.user?.role === 'admin' ? '/admin/dashboard' : '/dashboard');
     } catch (error) {
       console.error('Registration error:', error);
     }

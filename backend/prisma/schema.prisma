@@ -1,0 +1,313 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  member
+  admin
+
+  @@map("user_role")
+}
+
+enum PrayerStatus {
+  pending
+  approved
+  answered
+
+  @@map("prayer_status")
+}
+
+enum DonationStatus {
+  pending
+  completed
+  failed
+  cancelled
+
+  @@map("donation_status")
+}
+
+enum EventStatus {
+  active
+  cancelled
+  completed
+
+  @@map("event_status")
+}
+
+enum NewsStatus {
+  draft
+  review
+  scheduled
+  published
+  archived
+
+  @@map("news_status")
+}
+
+enum PrayerCategory {
+  personal
+  family
+  health
+  work
+  financial
+  other
+
+  @@map("prayer_category")
+}
+
+enum DonationType {
+  tithe
+  offering
+  ministry
+  emergency
+  general
+
+  @@map("donation_type")
+}
+
+enum PaymentMethod {
+  bank_transfer
+  momo
+  card
+  cash
+
+  @@map("payment_method")
+}
+
+model User {
+  id                   Int                 @id @default(autoincrement())
+  email                String              @unique @db.VarChar(255)
+  password             String              @db.VarChar(255)
+  firstName            String              @map("first_name") @db.VarChar(100)
+  lastName             String              @map("last_name") @db.VarChar(100)
+  phone                String?             @db.VarChar(20)
+  profileImageUrl      String?             @map("profile_image_url") @db.VarChar(500)
+  role                 UserRole            @default(member)
+  isActive             Boolean             @default(true) @map("is_active")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+  eventRegistrations   EventRegistration[]
+  prayerRequests       PrayerRequest[]     @relation("PrayerRequestUser")
+  approvedPrayer       PrayerRequest[]     @relation("PrayerRequestApprover")
+  donations            Donation[]
+  notifications        Notification[]
+  newsPosts            NewsPost[]          @relation("NewsPostCreator")
+  updatedSettings      AppSetting[]        @relation("AppSettingUpdater")
+  mediaAssets          MediaAsset[]        @relation("MediaAssetUploader")
+  auditLogs            AuditLog[]          @relation("AuditLogActor")
+
+  @@index([role], map: "idx_users_role")
+  @@index([createdAt], map: "idx_users_created_at")
+  @@map("users")
+}
+
+model AppSetting {
+  id                     Int      @id @default(1)
+  siteTitle              String   @map("site_title") @db.VarChar(255) @default("ANT PRESS")
+  contactEmail           String   @map("contact_email") @db.VarChar(255) @default("")
+  paymentPublicKey       String?  @map("payment_public_key") @db.VarChar(255)
+  donationSuccessMessage String?  @map("donation_success_message") @default("Thank you for your donation.")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+  updatedBy              Int?     @map("updated_by")
+  updater                User?    @relation("AppSettingUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@map("app_settings")
+}
+
+model Ministry {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(255)
+  description String?
+  leaderName  String?  @map("leader_name") @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  sermons     Sermon[]
+
+  @@map("ministries")
+}
+
+model Sermon {
+  id          Int       @id @default(autoincrement())
+  title       String    @db.VarChar(255)
+  speaker     String    @db.VarChar(255)
+  description String
+  videoUrl    String    @map("video_url") @db.VarChar(500)
+  sermonDate  DateTime  @map("sermon_date") @db.Date
+  ministryId  Int?      @map("ministry_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  ministry    Ministry? @relation(fields: [ministryId], references: [id], onDelete: SetNull)
+
+  @@index([ministryId], map: "idx_sermons_ministry")
+  @@index([sermonDate(sort: Desc)], map: "idx_sermons_date")
+  @@index([title], map: "idx_sermons_title")
+  @@map("sermons")
+}
+
+model Event {
+  id               Int                 @id @default(autoincrement())
+  name             String              @db.VarChar(255)
+  description      String
+  eventDate        DateTime            @map("event_date")
+  location         String              @db.VarChar(500)
+  maxRegistrations Int?                @map("max_registrations")
+  status           EventStatus         @default(active)
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+  registrations    EventRegistration[]
+
+  @@index([eventDate(sort: Desc)], map: "idx_events_date")
+  @@index([status], map: "idx_events_status")
+  @@map("events")
+}
+
+model EventRegistration {
+  id           Int      @id @default(autoincrement())
+  eventId      Int      @map("event_id")
+  userId       Int      @map("user_id")
+  registeredAt DateTime @default(now()) @map("registered_at")
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId], map: "idx_event_registrations_user")
+  @@index([eventId], map: "idx_event_registrations_event")
+  @@map("event_registrations")
+}
+
+model PrayerRequest {
+  id          Int            @id @default(autoincrement())
+  userId      Int            @map("user_id")
+  title       String         @db.VarChar(255)
+  description String
+  category    PrayerCategory
+  status      PrayerStatus   @default(pending)
+  isAnonymous Boolean        @default(false) @map("is_anonymous")
+  approvedBy  Int?           @map("approved_by")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  user        User           @relation("PrayerRequestUser", fields: [userId], references: [id], onDelete: Cascade)
+  approver    User?          @relation("PrayerRequestApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+
+  @@index([userId], map: "idx_prayer_requests_user")
+  @@index([status], map: "idx_prayer_requests_status")
+  @@index([category], map: "idx_prayer_requests_category")
+  @@index([createdAt(sort: Desc)], map: "idx_prayer_requests_created_at")
+  @@map("prayer_requests")
+}
+
+model Donation {
+  id            Int            @id @default(autoincrement())
+  userId        Int?           @map("user_id")
+  amount        Decimal        @db.Decimal(10, 2)
+  donationType  DonationType   @map("donation_type")
+  paymentMethod PaymentMethod  @map("payment_method")
+  status        DonationStatus @default(pending)
+  reference     String?        @db.VarChar(255)
+  notes         String?
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId], map: "idx_donations_user")
+  @@index([status], map: "idx_donations_status")
+  @@index([donationType], map: "idx_donations_type")
+  @@index([createdAt(sort: Desc)], map: "idx_donations_created_at")
+  @@map("donations")
+}
+
+model ContactMessage {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(255)
+  email     String   @db.VarChar(255)
+  subject   String   @db.VarChar(255)
+  message   String
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([createdAt(sort: Desc)], map: "idx_contact_messages_created_at")
+  @@index([isRead], map: "idx_contact_messages_is_read")
+  @@map("contact_messages")
+}
+
+model NewsPost {
+  id          Int       @id @default(autoincrement())
+  title       String    @db.VarChar(255)
+  slug        String    @unique @db.VarChar(255)
+  summary     String
+  content     String
+  imageUrl    String?   @map("image_url") @db.VarChar(500)
+  status      NewsStatus @default(draft)
+  isPublished Boolean   @default(true) @map("is_published")
+  publishedAt DateTime? @map("published_at")
+  scheduledFor DateTime? @map("scheduled_for")
+  featured    Boolean   @default(false)
+  createdBy   Int?      @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  creator     User?     @relation("NewsPostCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([publishedAt(sort: Desc)], map: "idx_news_posts_published_at")
+  @@index([isPublished], map: "idx_news_posts_published")
+  @@index([status], map: "idx_news_posts_status")
+  @@index([slug], map: "idx_news_posts_slug")
+  @@map("news_posts")
+}
+
+model MediaAsset {
+  id           Int      @id @default(autoincrement())
+  fileName     String   @map("file_name") @db.VarChar(255)
+  originalName String   @map("original_name") @db.VarChar(255)
+  mimeType     String   @map("mime_type") @db.VarChar(100)
+  fileSize     Int      @map("file_size")
+  url          String   @db.VarChar(500)
+  altText      String?  @map("alt_text")
+  uploadedBy   Int?     @map("uploaded_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  uploader     User?    @relation("MediaAssetUploader", fields: [uploadedBy], references: [id], onDelete: SetNull)
+
+  @@index([uploadedBy], map: "idx_media_assets_uploaded_by")
+  @@index([createdAt(sort: Desc)], map: "idx_media_assets_created_at")
+  @@map("media_assets")
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  actorUserId Int?     @map("actor_user_id")
+  entityType  String   @map("entity_type") @db.VarChar(100)
+  entityId    Int?     @map("entity_id")
+  action      String   @db.VarChar(100)
+  summary     String   @db.VarChar(500)
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  actor       User?    @relation("AuditLogActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId], map: "idx_audit_logs_actor")
+  @@index([entityType, entityId], map: "idx_audit_logs_entity")
+  @@index([createdAt(sort: Desc)], map: "idx_audit_logs_created_at")
+  @@map("audit_logs")
+}
+
+model Notification {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  title      String   @db.VarChar(255)
+  message    String
+  type       String   @db.VarChar(50)
+  entityType String?  @map("entity_type") @db.VarChar(50)
+  entityId   Int?     @map("entity_id")
+  isRead     Boolean  @default(false) @map("is_read")
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)], map: "idx_notifications_user")
+  @@index([userId, isRead], map: "idx_notifications_unread")
+  @@map("notifications")
+}

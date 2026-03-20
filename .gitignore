@@ -1,0 +1,28 @@
+# Dependencies
+**/node_modules/
+
+# Environment files
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Logs
+*.log
+**/*.log
+
+# Coverage and build artifacts
+**/coverage/
+**/dist/
+**/.next/
+**/.expo/
+**/web-build/
+**/*.tsbuildinfo
+
+# Uploads and generated files
+backend/uploads/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+**/.vscode/
+**/.idea/

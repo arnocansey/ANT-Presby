@@ -23,7 +23,8 @@ const copyHeaders = (request: NextRequest) => {
       lowerKey === 'host' ||
       lowerKey === 'connection' ||
       lowerKey === 'content-length' ||
-      lowerKey === 'x-forwarded-host'
+      lowerKey === 'x-forwarded-host' ||
+      lowerKey === 'origin'
     ) {
       return;
     }
@@ -34,41 +35,66 @@ const copyHeaders = (request: NextRequest) => {
   return headers;
 };
 
-const proxyRequest = async (request: NextRequest, path: string[]) => {
-  const targetUrl = buildTargetUrl(request, path);
-  const headers = copyHeaders(request);
-  const requestBody =
-    request.method === 'GET' || request.method === 'HEAD'
-      ? undefined
-      : Buffer.from(await request.arrayBuffer());
+const getSetCookieHeaders = (headers: Headers) => {
+  const maybeHeaders = headers as Headers & { getSetCookie?: () => string[] };
 
-  const backendResponse = await fetch(targetUrl, {
-    method: request.method,
-    headers,
-    body: requestBody,
-    redirect: 'manual',
-  });
-
-  const responseHeaders = new Headers();
-
-  backendResponse.headers.forEach((value, key) => {
-    if (key.toLowerCase() === 'content-encoding') {
-      return;
-    }
-
-    responseHeaders.append(key, value);
-  });
-
-  const setCookie = backendResponse.headers.get('set-cookie');
-  if (setCookie) {
-    responseHeaders.append('set-cookie', setCookie);
+  if (typeof maybeHeaders.getSetCookie === 'function') {
+    return maybeHeaders.getSetCookie().filter(Boolean);
   }
 
-  return new NextResponse(backendResponse.body, {
-    status: backendResponse.status,
-    statusText: backendResponse.statusText,
-    headers: responseHeaders,
-  });
+  const setCookie = headers.get('set-cookie');
+  return setCookie ? [setCookie] : [];
+};
+
+const proxyRequest = async (request: NextRequest, path: string[]) => {
+  try {
+    const targetUrl = buildTargetUrl(request, path);
+    const headers = copyHeaders(request);
+    const requestBody =
+      request.method === 'GET' || request.method === 'HEAD'
+        ? undefined
+        : await request.arrayBuffer();
+
+    const backendResponse = await fetch(targetUrl, {
+      method: request.method,
+      headers,
+      body: requestBody,
+      redirect: 'manual',
+    });
+
+    const responseHeaders = new Headers();
+
+    backendResponse.headers.forEach((value, key) => {
+      const lowerKey = key.toLowerCase();
+
+      if (lowerKey === 'content-encoding' || lowerKey === 'content-length' || lowerKey === 'set-cookie') {
+        return;
+      }
+
+      responseHeaders.append(key, value);
+    });
+
+    for (const setCookie of getSetCookieHeaders(backendResponse.headers)) {
+      responseHeaders.append('set-cookie', setCookie);
+    }
+
+    return new NextResponse(backendResponse.body, {
+      status: backendResponse.status,
+      statusText: backendResponse.statusText,
+      headers: responseHeaders,
+    });
+  } catch (error) {
+    const details = error instanceof Error ? error.message : 'Unknown proxy error';
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Proxy request failed',
+        details,
+      },
+      { status: 502 }
+    );
+  }
 };
 
 export async function GET(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {

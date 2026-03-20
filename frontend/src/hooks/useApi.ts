@@ -21,17 +21,39 @@ const getApiErrorMessage = (error: any, fallback: string) => {
   return fallback;
 };
 
-const getAuthPayload = (responseData: any) => {
-  if (responseData?.data?.user && responseData?.data?.token) {
-    return responseData.data;
+const tryParseJson = (value: unknown) => {
+  if (typeof value !== 'string') return value;
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+};
+
+const findAuthPayload = (value: any, depth = 0): { user: any; token: string } | null => {
+  const parsed = tryParseJson(value);
+
+  if (!parsed || typeof parsed !== 'object' || depth > 4) {
+    return null;
   }
 
-  if (responseData?.user && responseData?.token) {
-    return responseData;
+  if (parsed.user && parsed.token) {
+    return {
+      user: parsed.user,
+      token: parsed.token,
+    };
+  }
+
+  for (const nestedValue of Object.values(parsed)) {
+    const found = findAuthPayload(nestedValue, depth + 1);
+    if (found) return found;
   }
 
   return null;
 };
+
+const getAuthPayload = (responseData: any) => findAuthPayload(responseData);
 
 export const useLogin = () => {
   return useMutation({
@@ -40,15 +62,15 @@ export const useLogin = () => {
       if (response.data?.success === false) {
         throw new Error(response.data?.message || response.data?.error || 'Login failed');
       }
-      if (!getAuthPayload(response.data)) {
+      const payload = getAuthPayload(response.data);
+      if (!payload) {
         throw new Error('Login response is missing user or token data');
       }
-      return response.data;
+      return payload;
     },
     onSuccess: (data) => {
-      const payload = getAuthPayload(data);
-      const user = payload?.user;
-      const token = payload?.token;
+      const user = data.user;
+      const token = data.token;
 
       if (!user || !token) {
         throw new Error('Login response is missing user or token data');
@@ -71,15 +93,15 @@ export const useRegister = () => {
       if (response.data?.success === false) {
         throw new Error(response.data?.message || response.data?.error || 'Registration failed');
       }
-      if (!getAuthPayload(response.data)) {
+      const payload = getAuthPayload(response.data);
+      if (!payload) {
         throw new Error('Registration response is missing user or token data');
       }
-      return response.data;
+      return payload;
     },
     onSuccess: (data) => {
-      const payload = getAuthPayload(data);
-      const user = payload?.user;
-      const token = payload?.token;
+      const user = data.user;
+      const token = data.token;
 
       if (!user || !token) {
         throw new Error('Registration response is missing user or token data');

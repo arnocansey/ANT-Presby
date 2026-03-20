@@ -51,7 +51,7 @@ export default function LoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       const response = await loginMutation.mutateAsync(data);
-      const authenticatedUser = response.data?.user ?? null;
+      const authenticatedUser = response?.user ?? null;
 
       setUser(authenticatedUser);
       setIsAuthenticated(Boolean(authenticatedUser));

@@ -77,7 +77,7 @@ export default function RegisterForm() {
         password: data.password,
         acceptedTerms: data.acceptedTerms,
       });
-      const authenticatedUser = response.data?.user ?? null;
+      const authenticatedUser = response?.user ?? null;
 
       setUser(authenticatedUser);
       setIsAuthenticated(Boolean(authenticatedUser));

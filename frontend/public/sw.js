@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ant-press-pwa-v1';
+const CACHE_NAME = 'ant-press-pwa-v2';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icon?size=192', '/icon?size=512', '/apple-icon'];
 
 self.addEventListener('install', (event) => {
@@ -18,6 +18,17 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+const isStaticAsset = (url) =>
+  url.pathname.startsWith('/_next/static/') ||
+  url.pathname.endsWith('.js') ||
+  url.pathname.endsWith('.css') ||
+  url.pathname.endsWith('.png') ||
+  url.pathname.endsWith('.jpg') ||
+  url.pathname.endsWith('.jpeg') ||
+  url.pathname.endsWith('.svg') ||
+  url.pathname.endsWith('.webp') ||
+  url.pathname.endsWith('.ico');
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
@@ -31,23 +42,51 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+  if (url.pathname.startsWith('/api/')) {
+    return;
+  }
 
-      return fetch(request)
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
         .then((response) => {
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, responseToCache));
           return response;
         })
-        .catch(() => caches.match('/'));
-    }),
+        .catch(() => caches.match(request).then((cached) => cached || caches.match('/'))),
+    );
+    return;
+  }
+
+  if (isStaticAsset(url)) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        const networkFetch = fetch(request)
+          .then((response) => {
+            if (response && response.status === 200 && response.type === 'basic') {
+              const responseToCache = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, responseToCache));
+            }
+            return response;
+          })
+          .catch(() => cachedResponse);
+
+        return cachedResponse || networkFetch;
+      }),
+    );
+    return;
+  }
+
+  event.respondWith(
+    fetch(request)
+      .then((response) => {
+        if (response && response.status === 200 && response.type === 'basic') {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseToCache));
+        }
+        return response;
+      })
+      .catch(() => caches.match(request)),
   );
 });

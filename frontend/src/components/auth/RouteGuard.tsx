@@ -12,29 +12,42 @@ type RouteGuardProps = {
 export default function RouteGuard({ children, requiredRole }: RouteGuardProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, hydrate } = useAuthStore();
+  const { user, isLoading, hydrate } = useAuthStore();
   const [isReady, setIsReady] = React.useState(false);
+  const [hasStoredToken, setHasStoredToken] = React.useState(false);
 
   React.useEffect(() => {
     hydrate();
+    if (typeof window !== 'undefined') {
+      setHasStoredToken(Boolean(localStorage.getItem('access_token')));
+    }
     setIsReady(true);
   }, [hydrate]);
 
   React.useEffect(() => {
     if (!isReady) return;
+    if (isLoading) return;
 
-    if (!user) {
+    const tokenExists =
+      typeof window !== 'undefined' ? Boolean(localStorage.getItem('access_token')) : hasStoredToken;
+
+    if (!user && !tokenExists) {
       const next = pathname ? `?next=${encodeURIComponent(pathname)}` : '';
       router.replace(`/login${next}`);
       return;
     }
 
-    if (requiredRole === 'admin' && user.role !== 'admin') {
+    if (requiredRole === 'admin' && user && user.role !== 'admin') {
       router.replace('/dashboard');
     }
-  }, [isReady, pathname, requiredRole, router, user]);
+  }, [hasStoredToken, isLoading, isReady, pathname, requiredRole, router, user]);
 
-  if (!isReady || !user || (requiredRole === 'admin' && user.role !== 'admin')) {
+  if (
+    !isReady ||
+    isLoading ||
+    !user ||
+    (requiredRole === 'admin' && user.role !== 'admin')
+  ) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center px-6 py-16">
         <div className="text-center">

@@ -57,6 +57,7 @@ export const useAuthStore = create<AuthStore>()(
         state.user = null;
         state.isAuthenticated = false;
         localStorage.removeItem('user');
+        localStorage.removeItem('access_token');
       }),
 
     hydrate: () => {

@@ -21,6 +21,18 @@ const getApiErrorMessage = (error: any, fallback: string) => {
   return fallback;
 };
 
+const getAuthPayload = (responseData: any) => {
+  if (responseData?.data?.user && responseData?.data?.token) {
+    return responseData.data;
+  }
+
+  if (responseData?.user && responseData?.token) {
+    return responseData;
+  }
+
+  return null;
+};
+
 export const useLogin = () => {
   return useMutation({
     mutationFn: async (credentials: { email: string; password: string }) => {
@@ -28,11 +40,22 @@ export const useLogin = () => {
       if (response.data?.success === false) {
         throw new Error(response.data?.message || response.data?.error || 'Login failed');
       }
+      if (!getAuthPayload(response.data)) {
+        throw new Error('Login response is missing user or token data');
+      }
       return response.data;
     },
     onSuccess: (data) => {
-      localStorage.setItem('user', JSON.stringify(data.data.user));
-      localStorage.setItem('access_token', data.data.token);
+      const payload = getAuthPayload(data);
+      const user = payload?.user;
+      const token = payload?.token;
+
+      if (!user || !token) {
+        throw new Error('Login response is missing user or token data');
+      }
+
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('access_token', token);
       toast.success('Login successful');
     },
     onError: (error: any) => {
@@ -48,11 +71,22 @@ export const useRegister = () => {
       if (response.data?.success === false) {
         throw new Error(response.data?.message || response.data?.error || 'Registration failed');
       }
+      if (!getAuthPayload(response.data)) {
+        throw new Error('Registration response is missing user or token data');
+      }
       return response.data;
     },
     onSuccess: (data) => {
-      localStorage.setItem('user', JSON.stringify(data.data.user));
-      localStorage.setItem('access_token', data.data.token);
+      const payload = getAuthPayload(data);
+      const user = payload?.user;
+      const token = payload?.token;
+
+      if (!user || !token) {
+        throw new Error('Registration response is missing user or token data');
+      }
+
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('access_token', token);
       toast.success('Registration successful');
     },
     onError: (error: any) => {

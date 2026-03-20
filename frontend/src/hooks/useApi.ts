@@ -1,11 +1,33 @@
-﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/api';
 import toast from 'react-hot-toast';
+
+const getApiErrorMessage = (error: any, fallback: string) => {
+  const responseData = error?.response?.data;
+
+  if (typeof responseData?.message === 'string' && responseData.message.trim()) {
+    return responseData.message;
+  }
+
+  if (typeof responseData?.error === 'string' && responseData.error.trim()) {
+    return responseData.error;
+  }
+
+  const firstDetail = responseData?.details?.[0];
+  if (typeof firstDetail?.message === 'string' && firstDetail.message.trim()) {
+    return firstDetail.message;
+  }
+
+  return fallback;
+};
 
 export const useLogin = () => {
   return useMutation({
     mutationFn: async (credentials: { email: string; password: string }) => {
       const response = await apiClient.post('/auth/login', credentials);
+      if (response.data?.success === false) {
+        throw new Error(response.data?.message || response.data?.error || 'Login failed');
+      }
       return response.data;
     },
     onSuccess: (data) => {
@@ -14,7 +36,7 @@ export const useLogin = () => {
       toast.success('Login successful');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Login failed');
+      toast.error(getApiErrorMessage(error, 'Login failed'));
     },
   });
 };
@@ -23,6 +45,9 @@ export const useRegister = () => {
   return useMutation({
     mutationFn: async (data: any) => {
       const response = await apiClient.post('/auth/register', data);
+      if (response.data?.success === false) {
+        throw new Error(response.data?.message || response.data?.error || 'Registration failed');
+      }
       return response.data;
     },
     onSuccess: (data) => {
@@ -31,7 +56,7 @@ export const useRegister = () => {
       toast.success('Registration successful');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Registration failed');
+      toast.error(getApiErrorMessage(error, 'Registration failed'));
     },
   });
 };

@@ -24,6 +24,12 @@ export default function LoginForm() {
   const router = useRouter();
   const { user, isAuthenticated, hydrate, setUser, setIsAuthenticated } = useAuthStore();
   const loginMutation = useLogin();
+  const loginErrorMessage =
+    (loginMutation.error as any)?.response?.data?.message ||
+    (loginMutation.error as any)?.response?.data?.error ||
+    (loginMutation.error as any)?.response?.data?.details?.[0]?.message ||
+    (loginMutation.error as Error | null)?.message ||
+    'Could not sign in. Please confirm your credentials.';
   const {
     register,
     handleSubmit,
@@ -98,7 +104,7 @@ export default function LoginForm() {
 
             {loginMutation.isError && (
               <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-                Could not sign in. Please confirm your credentials.
+                {loginErrorMessage}
               </p>
             )}
           </form>

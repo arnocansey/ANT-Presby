@@ -43,6 +43,12 @@ export default function RegisterForm() {
   const router = useRouter();
   const { user, isAuthenticated, hydrate, setUser, setIsAuthenticated } = useAuthStore();
   const registerMutation = useRegister();
+  const registerErrorMessage =
+    (registerMutation.error as any)?.response?.data?.message ||
+    (registerMutation.error as any)?.response?.data?.error ||
+    (registerMutation.error as any)?.response?.data?.details?.[0]?.message ||
+    (registerMutation.error as Error | null)?.message ||
+    'Could not create account. Please check your details and try again.';
   const {
     register,
     handleSubmit,
@@ -187,7 +193,7 @@ export default function RegisterForm() {
 
             {registerMutation.isError && (
               <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-                Could not create account. Please check your details and try again.
+                {registerErrorMessage}
               </p>
             )}
           </form>

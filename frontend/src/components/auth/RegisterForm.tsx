@@ -71,9 +71,11 @@ export default function RegisterForm() {
         password: data.password,
         acceptedTerms: data.acceptedTerms,
       });
-      setUser(response.data.user);
-      setIsAuthenticated(true);
-      router.replace(response.data.user?.role === 'admin' ? '/admin/dashboard' : '/dashboard');
+      const authenticatedUser = response.data?.user ?? null;
+
+      setUser(authenticatedUser);
+      setIsAuthenticated(Boolean(authenticatedUser));
+      router.replace(authenticatedUser?.role === 'admin' ? '/admin/dashboard' : '/dashboard');
     } catch (error) {
       console.error('Registration error:', error);
     }

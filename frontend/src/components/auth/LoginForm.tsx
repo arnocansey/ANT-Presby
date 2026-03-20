@@ -45,9 +45,11 @@ export default function LoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       const response = await loginMutation.mutateAsync(data);
-      setUser(response.data.user);
-      setIsAuthenticated(true);
-      router.replace(response.data.user?.role === 'admin' ? '/admin/dashboard' : '/dashboard');
+      const authenticatedUser = response.data?.user ?? null;
+
+      setUser(authenticatedUser);
+      setIsAuthenticated(Boolean(authenticatedUser));
+      router.replace(authenticatedUser?.role === 'admin' ? '/admin/dashboard' : '/dashboard');
     } catch (error) {
       console.error('Login error:', error);
     }

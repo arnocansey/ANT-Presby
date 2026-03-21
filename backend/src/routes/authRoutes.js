@@ -23,6 +23,9 @@ router.post(
   authController.login
 );
 
+router.post('/google', authController.googleLogin);
+router.get('/google/start', authController.startGoogleOAuth);
+router.get('/google/callback', authController.googleOAuthCallback);
 router.post('/verify-email', authController.verifyEmail);
 router.post('/resend-verification', authController.resendVerificationEmail);
 router.post('/logout', authController.logout);

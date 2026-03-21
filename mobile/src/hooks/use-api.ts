@@ -692,6 +692,32 @@ export const useLogin = () => {
   });
 };
 
+export const useGoogleLogin = () => {
+  const setSession = useAuthStore((state) => state.setSession);
+
+  return useMutation({
+    mutationFn: async (accessToken: string) => {
+      const response = await apiClient.post('/auth/google', { accessToken });
+      const authPayload = findAuthPayload(response.data);
+
+      if (!authPayload) {
+        throw new Error('Google login response is missing user or token data');
+      }
+
+      return authPayload;
+    },
+    onSuccess: async (data) => {
+      await setSession(data.token, data.user as any);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['me', 'profile'] }),
+        queryClient.invalidateQueries({ queryKey: ['me', 'donations'] }),
+        queryClient.invalidateQueries({ queryKey: ['me', 'prayers'] }),
+        queryClient.invalidateQueries({ queryKey: ['me', 'notifications'] }),
+      ]);
+    },
+  });
+};
+
 export const useRegister = () => {
   return useMutation({
     mutationFn: async (payload: RegisterPayload) => {

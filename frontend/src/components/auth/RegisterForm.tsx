@@ -8,7 +8,9 @@ import { z } from 'zod';
 import { Eye, EyeOff, Lock, Mail, Phone, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useRegister } from '@/hooks/useApi';
+import { useGoogleLogin, useRegister } from '@/hooks/useApi';
+import { requestGoogleAccessToken } from '@/lib/google-oauth';
+import { useAuthStore } from '@/lib/store';
 
 const registerSchema = z
   .object({
@@ -38,6 +40,8 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterForm() {
   const registerMutation = useRegister();
+  const googleLoginMutation = useGoogleLogin();
+  const { setUser, setIsAuthenticated } = useAuthStore();
   const [showPassword, setShowPassword] = React.useState(false);
   const [registeredEmail, setRegisteredEmail] = React.useState<string | null>(null);
   const registerErrorMessage =
@@ -68,6 +72,20 @@ export default function RegisterForm() {
       setRegisteredEmail(response?.data?.email || data.email);
     } catch (error) {
       console.error('Registration error:', error);
+    }
+  };
+
+  const handleGoogleRegister = async () => {
+    try {
+      const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+      const accessToken = await requestGoogleAccessToken(googleClientId);
+      const response = await googleLoginMutation.mutateAsync(accessToken);
+      const authenticatedUser = response?.user ?? null;
+      setUser(authenticatedUser);
+      setIsAuthenticated(Boolean(authenticatedUser));
+      window.location.href = authenticatedUser?.role === 'admin' ? '/admin/dashboard' : '/dashboard';
+    } catch (error) {
+      console.error('Google registration error:', error);
     }
   };
 
@@ -224,6 +242,22 @@ export default function RegisterForm() {
               </p>
             )}
           </form>
+
+          <div className="my-5 flex items-center gap-3">
+            <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+            <span className="text-xs uppercase tracking-[0.22em] text-ui-subtle">or use Google</span>
+            <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleGoogleRegister}
+            disabled={googleLoginMutation.isPending}
+            className="h-12 w-full rounded-xl border-slate-300 bg-white text-slate-900 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
+          >
+            {googleLoginMutation.isPending ? 'Connecting to Google...' : 'Continue with Google'}
+          </Button>
 
           <p className="mt-5 text-center text-sm text-ui-subtle">
             Already have an account?{' '}

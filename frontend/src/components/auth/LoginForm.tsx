@@ -9,8 +9,9 @@ import { z } from 'zod';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useLogin } from '@/hooks/useApi';
+import { useGoogleLogin, useLogin } from '@/hooks/useApi';
 import { useAuthStore } from '@/lib/store';
+import { requestGoogleAccessToken } from '@/lib/google-oauth';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -23,6 +24,7 @@ export default function LoginForm() {
   const router = useRouter();
   const { user, isAuthenticated, hydrate, setUser, setIsAuthenticated } = useAuthStore();
   const loginMutation = useLogin();
+  const googleLoginMutation = useGoogleLogin();
   const [showPassword, setShowPassword] = React.useState(false);
   const loginErrorMessage =
     (loginMutation.error as any)?.response?.data?.message ||
@@ -59,6 +61,21 @@ export default function LoginForm() {
       router.replace(authenticatedUser?.role === 'admin' ? '/admin/dashboard' : '/dashboard');
     } catch (error) {
       console.error('Login error:', error);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+      const accessToken = await requestGoogleAccessToken(googleClientId);
+      const response = await googleLoginMutation.mutateAsync(accessToken);
+      const authenticatedUser = response?.user ?? null;
+
+      setUser(authenticatedUser);
+      setIsAuthenticated(Boolean(authenticatedUser));
+      router.replace(authenticatedUser?.role === 'admin' ? '/admin/dashboard' : '/dashboard');
+    } catch (error) {
+      console.error('Google login error:', error);
     }
   };
 
@@ -132,6 +149,16 @@ export default function LoginForm() {
             <span className="text-xs uppercase tracking-[0.22em] text-ui-subtle">Account Access</span>
             <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
           </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleGoogleLogin}
+            disabled={googleLoginMutation.isPending}
+            className="h-12 w-full rounded-xl border-slate-300 bg-white text-slate-900 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
+          >
+            {googleLoginMutation.isPending ? 'Connecting to Google...' : 'Continue with Google'}
+          </Button>
 
           <p className="text-center text-sm text-ui-subtle">
             Don&apos;t have an account?{' '}

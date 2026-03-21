@@ -18,12 +18,32 @@ async function migrateFeatureUpdates() {
       ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS email_verification_token VARCHAR(255),
       ADD COLUMN IF NOT EXISTS email_verification_expires_at TIMESTAMP,
-      ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMP;
+      ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS google_id VARCHAR(255);
     `);
 
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_users_email_verification_token
       ON users(email_verification_token);
+    `);
+
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id_unique
+      ON users(google_id)
+      WHERE google_id IS NOT NULL;
+    `);
+
+    await client.query(`
+      UPDATE users
+      SET
+        email_verified = TRUE,
+        email_verified_at = COALESCE(email_verified_at, CURRENT_TIMESTAMP)
+      WHERE
+        email_verified = FALSE
+        AND email_verification_token IS NULL
+        AND email_verification_expires_at IS NULL
+        AND email_verified_at IS NULL;
     `);
 
     await client.query(`

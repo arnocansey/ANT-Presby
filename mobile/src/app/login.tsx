@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
+import * as Google from 'expo-auth-session/providers/google';
 import { Link, router } from 'expo-router';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -9,7 +10,7 @@ import { z } from 'zod';
 import { BrandScreen } from '@/components/brand-ui';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
-import { getApiErrorMessage, useLogin } from '@/hooks/use-api';
+import { getApiErrorMessage, useGoogleLogin, useLogin } from '@/hooks/use-api';
 import { useTheme } from '@/hooks/use-theme';
 
 const loginSchema = z.object({
@@ -22,9 +23,19 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginScreen() {
   const theme = useTheme();
   const loginMutation = useLogin();
+  const googleLoginMutation = useGoogleLogin();
   const [showPassword, setShowPassword] = React.useState(false);
+  const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    scopes: ['openid', 'profile', 'email'],
+    responseType: 'token',
+  });
   const loginErrorMessage = loginMutation.isError
     ? getApiErrorMessage(loginMutation.error, 'Could not sign in. Please confirm your email and password.')
+    : '';
+  const googleErrorMessage = googleLoginMutation.isError
+    ? getApiErrorMessage(googleLoginMutation.error, 'Google sign-in failed.')
     : '';
   const {
     control,
@@ -46,6 +57,33 @@ export default function LoginScreen() {
       // Inline error panel handles feedback.
     }
   };
+
+  React.useEffect(() => {
+    const handleGoogleResponse = async () => {
+      if (googleResponse?.type !== 'success') {
+        return;
+      }
+
+      const accessToken =
+        googleResponse.authentication?.accessToken ||
+        (typeof googleResponse.params?.access_token === 'string'
+          ? googleResponse.params.access_token
+          : '');
+
+      if (!accessToken) {
+        return;
+      }
+
+      try {
+        const session = await googleLoginMutation.mutateAsync(accessToken);
+        router.replace(session.user?.role === 'admin' ? '/admin' : '/account');
+      } catch {
+        // Inline error panel handles feedback.
+      }
+    };
+
+    handleGoogleResponse();
+  }, [googleLoginMutation, googleResponse]);
 
   return (
     <BrandScreen>
@@ -144,15 +182,33 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.socialRow}>
-          <Pressable style={[styles.socialButton, { backgroundColor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)' }]}>
+          <Pressable
+            onPress={() => googlePromptAsync()}
+            disabled={!googleRequest || googleLoginMutation.isPending}
+            style={[
+              styles.socialButton,
+              {
+                backgroundColor: 'rgba(255,255,255,0.06)',
+                borderColor: 'rgba(255,255,255,0.12)',
+                opacity: !googleRequest || googleLoginMutation.isPending ? 0.55 : 1,
+              },
+            ]}>
             <Ionicons name="logo-google" size={16} color="#FFFFFF" />
-            <ThemedText type="defaultSemiBold">Google</ThemedText>
+            <ThemedText type="defaultSemiBold">
+              {googleLoginMutation.isPending ? 'Connecting...' : 'Google'}
+            </ThemedText>
           </Pressable>
           <Pressable style={[styles.socialButton, { backgroundColor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)' }]}>
             <Ionicons name="logo-apple" size={16} color="#FFFFFF" />
             <ThemedText type="defaultSemiBold">Apple</ThemedText>
           </Pressable>
         </View>
+
+        {googleLoginMutation.isError ? (
+          <View style={[styles.errorPanel, { borderColor: '#7F1D1D', backgroundColor: '#2A0E12' }]}>
+            <ThemedText style={styles.errorText}>{googleErrorMessage}</ThemedText>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.footer}>

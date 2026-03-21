@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
+import * as Google from 'expo-auth-session/providers/google';
 import { router } from 'expo-router';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -9,7 +10,7 @@ import { z } from 'zod';
 import { BrandScreen } from '@/components/brand-ui';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
-import { getApiErrorMessage, useRegister } from '@/hooks/use-api';
+import { getApiErrorMessage, useGoogleLogin, useRegister } from '@/hooks/use-api';
 import { useTheme } from '@/hooks/use-theme';
 
 const registerSchema = z.object({
@@ -28,10 +29,20 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function RegisterScreen() {
   const theme = useTheme();
   const registerMutation = useRegister();
+  const googleLoginMutation = useGoogleLogin();
   const [showPassword, setShowPassword] = React.useState(false);
   const [registeredEmail, setRegisteredEmail] = React.useState('');
+  const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    scopes: ['openid', 'profile', 'email'],
+    responseType: 'token',
+  });
   const registerErrorMessage = registerMutation.isError
     ? getApiErrorMessage(registerMutation.error, 'Could not create your account right now.')
+    : '';
+  const googleErrorMessage = googleLoginMutation.isError
+    ? getApiErrorMessage(googleLoginMutation.error, 'Google sign-in failed.')
     : '';
 
   const {
@@ -58,6 +69,33 @@ export default function RegisterScreen() {
       // Inline error panel handles feedback.
     }
   };
+
+  React.useEffect(() => {
+    const handleGoogleResponse = async () => {
+      if (googleResponse?.type !== 'success') {
+        return;
+      }
+
+      const accessToken =
+        googleResponse.authentication?.accessToken ||
+        (typeof googleResponse.params?.access_token === 'string'
+          ? googleResponse.params.access_token
+          : '');
+
+      if (!accessToken) {
+        return;
+      }
+
+      try {
+        const session = await googleLoginMutation.mutateAsync(accessToken);
+        router.replace(session.user?.role === 'admin' ? '/admin' : '/account');
+      } catch {
+        // Inline error panel handles feedback.
+      }
+    };
+
+    handleGoogleResponse();
+  }, [googleLoginMutation, googleResponse]);
 
   return (
     <BrandScreen scroll={false}>
@@ -175,6 +213,29 @@ export default function RegisterScreen() {
           {registerMutation.isError ? (
             <View style={[styles.errorPanel, { borderColor: '#7F1D1D', backgroundColor: '#2A0E12' }]}>
               <ThemedText style={styles.errorText}>{registerErrorMessage}</ThemedText>
+            </View>
+          ) : null}
+
+          <Pressable
+            onPress={() => googlePromptAsync()}
+            disabled={!googleRequest || googleLoginMutation.isPending}
+            style={[
+              styles.googleButton,
+              {
+                backgroundColor: 'rgba(255,255,255,0.06)',
+                borderColor: 'rgba(255,255,255,0.12)',
+                opacity: !googleRequest || googleLoginMutation.isPending ? 0.55 : 1,
+              },
+            ]}>
+            <Ionicons name="logo-google" size={18} color="#FFFFFF" />
+            <ThemedText type="defaultSemiBold">
+              {googleLoginMutation.isPending ? 'Connecting to Google...' : 'Continue with Google'}
+            </ThemedText>
+          </Pressable>
+
+          {googleLoginMutation.isError ? (
+            <View style={[styles.errorPanel, { borderColor: '#7F1D1D', backgroundColor: '#2A0E12' }]}>
+              <ThemedText style={styles.errorText}>{googleErrorMessage}</ThemedText>
             </View>
           ) : null}
 
@@ -361,6 +422,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+  },
+  googleButton: {
+    minHeight: 54,
+    borderRadius: Radius.medium,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
   },
   primaryButtonText: {
     fontSize: 16,

@@ -86,6 +86,37 @@ export const useLogin = () => {
   });
 };
 
+export const useGoogleLogin = () => {
+  return useMutation({
+    mutationFn: async (accessToken: string) => {
+      const response = await apiClient.post('/auth/google', { accessToken });
+      if (response.data?.success === false) {
+        throw new Error(response.data?.message || response.data?.error || 'Google sign-in failed');
+      }
+      const payload = getAuthPayload(response.data);
+      if (!payload) {
+        throw new Error('Google login response is missing user or token data');
+      }
+      return payload;
+    },
+    onSuccess: (data) => {
+      const user = data.user;
+      const token = data.token;
+
+      if (!user || !token) {
+        throw new Error('Google login response is missing user or token data');
+      }
+
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('access_token', token);
+      toast.success('Signed in with Google');
+    },
+    onError: (error: any) => {
+      toast.error(getApiErrorMessage(error, 'Google sign-in failed'));
+    },
+  });
+};
+
 export const useRegister = () => {
   return useMutation({
     mutationFn: async (data: any) => {

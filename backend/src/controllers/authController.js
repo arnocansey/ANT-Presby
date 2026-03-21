@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const axios = require('axios');
 const { comparePassword, hashPassword, sanitizeUser, apiResponse } = require('../utils/helpers');
 const {
   generateAccessToken,
@@ -11,6 +12,8 @@ const userModel = require('../models/userModel');
 const { sendEmailVerification } = require('../services/emailService');
 
 const VERIFICATION_WINDOW_MS = 24 * 60 * 60 * 1000;
+const GOOGLE_STATE_WINDOW_MS = 10 * 60 * 1000;
+const DEFAULT_MOBILE_SCHEME = process.env.MOBILE_APP_SCHEME || 'antpressmobile';
 
 const getCookieBaseOptions = () => ({
   httpOnly: true,
@@ -21,10 +24,48 @@ const getCookieBaseOptions = () => ({
 const getVerificationAppBaseUrl = () =>
   process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
 
+const getGoogleCallbackBaseUrl = () =>
+  process.env.BACKEND_PUBLIC_URL || process.env.API_BASE_URL || 'http://localhost:5000';
+
+const getGoogleCallbackUrl = () =>
+  `${getGoogleCallbackBaseUrl().replace(/\/$/, '')}/api/auth/google/callback`;
+
 const buildVerificationUrl = (token) =>
   `${getVerificationAppBaseUrl().replace(/\/$/, '')}/verify-email?token=${encodeURIComponent(token)}`;
 
+const buildFrontendGoogleCallbackUrl = () =>
+  `${getVerificationAppBaseUrl().replace(/\/$/, '')}/oauth/google/callback`;
+
 const createVerificationToken = () => crypto.randomBytes(32).toString('hex');
+
+const createGoogleStateToken = (payload) => {
+  const data = {
+    ...payload,
+    nonce: crypto.randomBytes(12).toString('hex'),
+    exp: Date.now() + GOOGLE_STATE_WINDOW_MS,
+  };
+
+  return Buffer.from(JSON.stringify(data)).toString('base64url');
+};
+
+const parseGoogleStateToken = (state) => {
+  const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf8'));
+
+  if (!decoded?.exp || Number(decoded.exp) < Date.now()) {
+    throw new Error('State expired');
+  }
+
+  return decoded;
+};
+
+const getAllowedGoogleClientIds = () =>
+  [process.env.GOOGLE_WEB_CLIENT_ID, process.env.GOOGLE_ANDROID_CLIENT_ID, process.env.GOOGLE_CLIENT_ID]
+    .concat(String(process.env.GOOGLE_ALLOWED_CLIENT_IDS || '').split(','))
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+
+const isAllowedMobileRedirectUri = (redirectUri) =>
+  redirectUri.startsWith(`${DEFAULT_MOBILE_SCHEME}://`);
 
 const setAuthCookies = (res, accessToken, refreshToken) => {
   const base = getCookieBaseOptions();
@@ -72,12 +113,124 @@ const buildTokensForUser = (user) => {
   return { accessToken, refreshToken };
 };
 
+const isLegacyUnverifiedAccount = (user) =>
+  !user.email_verified &&
+  !user.email_verification_token &&
+  !user.email_verification_expires_at &&
+  !user.email_verified_at;
+
 const sendVerificationForUser = async (user, token) => {
   await sendEmailVerification({
     email: user.email,
     firstName: user.first_name || user.firstName || 'there',
     verificationUrl: buildVerificationUrl(token),
   });
+};
+
+const buildAuthSuccessPayload = (user) => {
+  const { accessToken, refreshToken } = buildTokensForUser(user);
+
+  return {
+    user: sanitizeUser(user),
+    accessToken,
+    refreshToken,
+  };
+};
+
+const buildGoogleSuccessRedirectUrl = (redirectUri, payload) => {
+  const target = new URL(redirectUri);
+  target.searchParams.set('token', payload.accessToken);
+  target.searchParams.set('user', Buffer.from(JSON.stringify(payload.user)).toString('base64url'));
+  return target.toString();
+};
+
+const buildGoogleErrorRedirectUrl = (redirectUri, message) => {
+  const target = new URL(redirectUri);
+  target.searchParams.set('error', message);
+  return target.toString();
+};
+
+const normalizeGoogleUserInfo = (userInfo) => ({
+  email: userInfo.email,
+  firstName: userInfo.given_name || userInfo.name?.split(' ')?.[0] || 'Google',
+  lastName:
+    userInfo.family_name ||
+    userInfo.name?.split(' ')?.slice(1).join(' ') ||
+    'User',
+  googleId: userInfo.sub,
+});
+
+const createOAuthPassword = async () => hashPassword(crypto.randomBytes(32).toString('hex'));
+
+const findOrCreateGoogleUser = async (googleUser) => {
+  let user = await userModel.findUserByGoogleId(googleUser.googleId);
+
+  if (!user) {
+    user = await userModel.findUserByEmail(googleUser.email);
+  }
+
+  if (!user) {
+    const generatedPassword = await createOAuthPassword();
+    return userModel.createUser(
+      googleUser.email,
+      generatedPassword,
+      googleUser.firstName,
+      googleUser.lastName,
+      null,
+      {
+        emailVerified: true,
+        token: null,
+        expiresAt: null,
+        verifiedAt: new Date(),
+      },
+      {
+        provider: 'google',
+        googleId: googleUser.googleId,
+      }
+    );
+  }
+
+  return userModel.updateUser(user.id, {
+    authProvider: user.auth_provider || 'google',
+    googleId: user.google_id || googleUser.googleId,
+    emailVerified: true,
+    emailVerificationToken: null,
+    emailVerificationExpiresAt: null,
+    emailVerifiedAt: user.email_verified_at || new Date(),
+    firstName: user.first_name || googleUser.firstName,
+    lastName: user.last_name || googleUser.lastName,
+  });
+};
+
+const validateGoogleAccessToken = async (accessToken) => {
+  const tokenInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v3/tokeninfo', {
+    params: { access_token: accessToken },
+  });
+
+  const allowedClientIds = getAllowedGoogleClientIds();
+  const audience = tokenInfoResponse.data?.aud;
+
+  if (allowedClientIds.length > 0 && audience && !allowedClientIds.includes(audience)) {
+    throw new Error('Google token audience is not allowed');
+  }
+
+  const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!userInfoResponse.data?.email || userInfoResponse.data?.email_verified !== true) {
+    throw new Error('Google account email is not verified');
+  }
+
+  return normalizeGoogleUserInfo(userInfoResponse.data);
+};
+
+const handleGoogleAuthWithAccessToken = async (accessToken) => {
+  const googleUser = await validateGoogleAccessToken(accessToken);
+  const user = await findOrCreateGoogleUser(googleUser);
+  return buildAuthSuccessPayload(user);
 };
 
 const register = async (req, res, next) => {
@@ -97,12 +250,19 @@ const register = async (req, res, next) => {
     const verificationToken = createVerificationToken();
     const verificationExpiresAt = new Date(Date.now() + VERIFICATION_WINDOW_MS);
 
-    const user = await userModel.createUser(email, hashedPassword, firstName, lastName, phone, {
-      emailVerified: false,
-      token: verificationToken,
-      expiresAt: verificationExpiresAt,
-      verifiedAt: null,
-    });
+    const user = await userModel.createUser(
+      email,
+      hashedPassword,
+      firstName,
+      lastName,
+      phone,
+      {
+        emailVerified: false,
+        token: verificationToken,
+        expiresAt: verificationExpiresAt,
+        verifiedAt: null,
+      }
+    );
 
     await sendVerificationForUser(user, verificationToken);
 
@@ -135,20 +295,26 @@ const login = async (req, res, next) => {
       return res.status(401).json(apiResponse(false, null, 'Invalid credentials'));
     }
 
-    if (!user.email_verified) {
+    let authenticatedUser = user;
+
+    if (isLegacyUnverifiedAccount(user)) {
+      authenticatedUser = await userModel.markEmailVerified(user.id);
+    }
+
+    if (!authenticatedUser.email_verified) {
       return res
         .status(403)
         .json(apiResponse(false, null, 'Please verify your email before signing in.'));
     }
 
-    const { accessToken, refreshToken } = buildTokensForUser(user);
+    const { accessToken, refreshToken } = buildTokensForUser(authenticatedUser);
     setAuthCookies(res, accessToken, refreshToken);
 
     res.json(
       apiResponse(
         true,
         {
-          user: sanitizeUser(user),
+          user: sanitizeUser(authenticatedUser),
           token: accessToken,
         },
         'Login successful'
@@ -156,6 +322,103 @@ const login = async (req, res, next) => {
     );
   } catch (error) {
     next(error);
+  }
+};
+
+const googleLogin = async (req, res, next) => {
+  try {
+    const { accessToken } = req.body;
+
+    if (!accessToken) {
+      return res.status(400).json(apiResponse(false, null, 'Google access token is required'));
+    }
+
+    const payload = await handleGoogleAuthWithAccessToken(accessToken);
+    setAuthCookies(res, payload.accessToken, payload.refreshToken);
+
+    res.json(
+      apiResponse(
+        true,
+        {
+          user: payload.user,
+          token: payload.accessToken,
+        },
+        'Google login successful'
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+const startGoogleOAuth = async (req, res) => {
+  const mode = req.query.mode === 'mobile' ? 'mobile' : 'web';
+  const requestedRedirectUri =
+    typeof req.query.redirectUri === 'string' ? req.query.redirectUri : undefined;
+
+  const redirectUri =
+    mode === 'mobile'
+      ? requestedRedirectUri && isAllowedMobileRedirectUri(requestedRedirectUri)
+        ? requestedRedirectUri
+        : `${DEFAULT_MOBILE_SCHEME}://oauth/google`
+      : requestedRedirectUri || buildFrontendGoogleCallbackUrl();
+
+  const state = createGoogleStateToken({ mode, redirectUri });
+  const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+  authUrl.searchParams.set('client_id', process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_WEB_CLIENT_ID || '');
+  authUrl.searchParams.set('redirect_uri', getGoogleCallbackUrl());
+  authUrl.searchParams.set('response_type', 'code');
+  authUrl.searchParams.set('scope', 'openid email profile');
+  authUrl.searchParams.set('prompt', 'select_account');
+  authUrl.searchParams.set('state', state);
+
+  res.redirect(authUrl.toString());
+};
+
+const googleOAuthCallback = async (req, res) => {
+  let redirectUri = buildFrontendGoogleCallbackUrl();
+
+  try {
+    const { code, state } = req.query;
+
+    if (!code || !state) {
+      return res.redirect(buildGoogleErrorRedirectUrl(redirectUri, 'Google sign-in was cancelled.'));
+    }
+
+    const parsedState = parseGoogleStateToken(String(state));
+    redirectUri = parsedState.redirectUri || redirectUri;
+
+    const tokenResponse = await axios.post(
+      'https://oauth2.googleapis.com/token',
+      new URLSearchParams({
+        code: String(code),
+        client_id: process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_WEB_CLIENT_ID || '',
+        client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+        redirect_uri: getGoogleCallbackUrl(),
+        grant_type: 'authorization_code',
+      }).toString(),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }
+    );
+
+    const accessToken = tokenResponse.data?.access_token;
+
+    if (!accessToken) {
+      return res.redirect(buildGoogleErrorRedirectUrl(redirectUri, 'Google sign-in failed.'));
+    }
+
+    const payload = await handleGoogleAuthWithAccessToken(accessToken);
+    return res.redirect(buildGoogleSuccessRedirectUrl(redirectUri, payload));
+  } catch (error) {
+    const message =
+      error?.response?.data?.error_description ||
+      error?.response?.data?.error ||
+      error.message ||
+      'Google sign-in failed.';
+    return res.redirect(buildGoogleErrorRedirectUrl(redirectUri, message));
   }
 };
 
@@ -293,6 +556,9 @@ const refreshToken = async (req, res) => {
 module.exports = {
   register,
   login,
+  googleLogin,
+  startGoogleOAuth,
+  googleOAuthCallback,
   verifyEmail,
   resendVerificationEmail,
   logout,

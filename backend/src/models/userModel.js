@@ -12,7 +12,8 @@ const createUser = async (
   firstName,
   lastName,
   phone = null,
-  verification = {}
+  verification = {},
+  auth = {}
 ) => {
   const user = await prisma.user.create({
     data: {
@@ -27,10 +28,14 @@ const createUser = async (
       emailVerificationToken: verification.token ?? null,
       emailVerificationExpiresAt: verification.expiresAt ?? null,
       emailVerifiedAt: verification.verifiedAt ?? null,
+      authProvider: auth.provider ?? null,
+      googleId: auth.googleId ?? null,
     },
     select: {
       id: true,
       email: true,
+      authProvider: true,
+      googleId: true,
       firstName: true,
       lastName: true,
       phone: true,
@@ -68,6 +73,14 @@ const findUserById = async (userId) => {
 const findUserByVerificationToken = async (token) => {
   const user = await prisma.user.findFirst({
     where: { emailVerificationToken: token },
+  });
+
+  return toSnakeCaseObject(user);
+};
+
+const findUserByGoogleId = async (googleId) => {
+  const user = await prisma.user.findFirst({
+    where: { googleId },
   });
 
   return toSnakeCaseObject(user);
@@ -129,6 +142,8 @@ const buildUserUpdateData = (updates) => {
     data.emailVerificationExpiresAt = updates.emailVerificationExpiresAt;
   }
   if (updates.emailVerifiedAt !== undefined) data.emailVerifiedAt = updates.emailVerifiedAt;
+  if (updates.authProvider !== undefined) data.authProvider = updates.authProvider;
+  if (updates.googleId !== undefined) data.googleId = updates.googleId;
 
   return data;
 };
@@ -156,6 +171,8 @@ const updateUser = async (userId, updates) => {
     select: {
       id: true,
       email: true,
+      authProvider: true,
+      googleId: true,
       firstName: true,
       lastName: true,
       phone: true,
@@ -189,6 +206,8 @@ const updateUserProfileImage = async (userId, profileImageUrl) => {
     select: {
       id: true,
       email: true,
+      authProvider: true,
+      googleId: true,
       firstName: true,
       lastName: true,
       phone: true,
@@ -236,6 +255,8 @@ const updateUserRole = async (userId, role) => {
     select: {
       id: true,
       email: true,
+      authProvider: true,
+      googleId: true,
       firstName: true,
       lastName: true,
       phone: true,
@@ -259,6 +280,8 @@ const getUserProfile = async (userId) => {
     select: {
       id: true,
       email: true,
+      authProvider: true,
+      googleId: true,
       firstName: true,
       lastName: true,
       phone: true,
@@ -306,6 +329,7 @@ module.exports = {
   findUserByEmail,
   findUserById,
   findUserByVerificationToken,
+  findUserByGoogleId,
   getAllUsers,
   getAllUserIds,
   countUsers,

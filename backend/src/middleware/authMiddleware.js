@@ -34,6 +34,22 @@ const verifyToken = (req, res, next) => {
 
 const isAuthenticated = verifyToken;
 
+const optionalAuth = (req, res, next) => {
+  try {
+    const token = extractAccessToken(req);
+
+    if (!token) {
+      return next();
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    return next();
+  } catch (error) {
+    return next();
+  }
+};
+
 const requireRole = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
@@ -82,6 +98,7 @@ module.exports = {
   verifyToken,
   requireRole,
   isAuthenticated,
+  optionalAuth,
   generateToken: generateAccessToken,
   generateAccessToken,
   generateRefreshToken,

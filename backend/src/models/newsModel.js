@@ -21,8 +21,9 @@ const createUniqueSlug = async (title, excludeId = null) => {
   const baseSlug = normalizeSlug(title) || 'post';
   let slug = baseSlug;
   let counter = 1;
+  let isUnique = false;
 
-  while (true) {
+  while (!isUnique) {
     const existing = await prisma.newsPost.findFirst({
       where: {
         slug,
@@ -32,12 +33,15 @@ const createUniqueSlug = async (title, excludeId = null) => {
     });
 
     if (!existing) {
-      return slug;
+      isUnique = true;
+      continue;
     }
 
     counter += 1;
     slug = `${baseSlug}-${counter}`;
   }
+
+  return slug;
 };
 
 const resolveWorkflowFields = (payload, existing = null) => {

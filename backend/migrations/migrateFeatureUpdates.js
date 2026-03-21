@@ -224,6 +224,74 @@ async function migrateFeatureUpdates() {
       ON audit_logs(created_at DESC);
     `);
 
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS community_posts (
+        id SERIAL PRIMARY KEY,
+        author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        image_url VARCHAR(500),
+        is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_community_posts_author
+      ON community_posts(author_id);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_community_posts_created_at
+      ON community_posts(created_at DESC);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_community_posts_pinned
+      ON community_posts(is_pinned);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS community_comments (
+        id SERIAL PRIMARY KEY,
+        post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+        author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_community_comments_post
+      ON community_comments(post_id);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_community_comments_author
+      ON community_comments(author_id);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_community_comments_created_at
+      ON community_comments(created_at DESC);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS community_likes (
+        id SERIAL PRIMARY KEY,
+        post_id INTEGER NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT community_likes_post_user_unique UNIQUE (post_id, user_id)
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_community_likes_user
+      ON community_likes(user_id);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_community_likes_post
+      ON community_likes(post_id);
+    `);
+
     await client.query('COMMIT');
     console.log('Feature update migration completed successfully.');
     process.exit(0);

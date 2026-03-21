@@ -100,6 +100,9 @@ model User {
   updatedSettings      AppSetting[]        @relation("AppSettingUpdater")
   mediaAssets          MediaAsset[]        @relation("MediaAssetUploader")
   auditLogs            AuditLog[]          @relation("AuditLogActor")
+  communityPosts       CommunityPost[]     @relation("CommunityPostAuthor")
+  communityComments    CommunityComment[]  @relation("CommunityCommentAuthor")
+  communityLikes       CommunityLike[]
 
   @@index([role], map: "idx_users_role")
   @@index([createdAt], map: "idx_users_created_at")
@@ -310,4 +313,52 @@ model Notification {
   @@index([userId, createdAt(sort: Desc)], map: "idx_notifications_user")
   @@index([userId, isRead], map: "idx_notifications_unread")
   @@map("notifications")
+}
+
+model CommunityPost {
+  id         Int                @id @default(autoincrement())
+  authorId   Int                @map("author_id")
+  content    String
+  imageUrl   String?            @map("image_url") @db.VarChar(500)
+  isPinned   Boolean            @default(false) @map("is_pinned")
+  createdAt  DateTime           @default(now()) @map("created_at")
+  updatedAt  DateTime           @updatedAt @map("updated_at")
+  author     User               @relation("CommunityPostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  comments   CommunityComment[]
+  likes      CommunityLike[]
+
+  @@index([authorId], map: "idx_community_posts_author")
+  @@index([createdAt(sort: Desc)], map: "idx_community_posts_created_at")
+  @@index([isPinned], map: "idx_community_posts_pinned")
+  @@map("community_posts")
+}
+
+model CommunityComment {
+  id         Int           @id @default(autoincrement())
+  postId     Int           @map("post_id")
+  authorId   Int           @map("author_id")
+  content    String
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  post       CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author     User          @relation("CommunityCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId], map: "idx_community_comments_post")
+  @@index([authorId], map: "idx_community_comments_author")
+  @@index([createdAt(sort: Desc)], map: "idx_community_comments_created_at")
+  @@map("community_comments")
+}
+
+model CommunityLike {
+  id         Int           @id @default(autoincrement())
+  postId     Int           @map("post_id")
+  userId     Int           @map("user_id")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  post       CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId], map: "idx_community_likes_user")
+  @@index([postId], map: "idx_community_likes_post")
+  @@map("community_likes")
 }

@@ -71,6 +71,11 @@ type AdminSettingsPayload = {
   donationSuccessMessage: string;
 };
 
+type CommunityPostPayload = {
+  content: string;
+  imageUrl?: string | null;
+};
+
 const getApiErrorMessage = (error: any, fallback: string) => {
   const responseData = error?.response?.data;
 
@@ -146,6 +151,73 @@ export const useNews = () =>
     queryFn: async () => {
       const response = await apiClient.get('/news', { params: { page: 1, limit: 10 } });
       return response.data?.data || [];
+    },
+  });
+
+export const useCommunityFeed = (page = 1, limit = 20, enabled = true) =>
+  useQuery({
+    queryKey: ['community-feed', page, limit],
+    enabled,
+    queryFn: async () => {
+      const response = await apiClient.get('/community', {
+        params: { page, limit },
+      });
+      return response.data?.data || [];
+    },
+  });
+
+export const useCreateCommunityPost = () =>
+  useMutation({
+    mutationFn: async (payload: CommunityPostPayload) => {
+      const response = await apiClient.post('/community', payload);
+      return response.data?.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['community-feed'] });
+    },
+  });
+
+export const useToggleCommunityLike = () =>
+  useMutation({
+    mutationFn: async (postId: number) => {
+      const response = await apiClient.post(`/community/${postId}/like`);
+      return response.data?.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['community-feed'] });
+    },
+  });
+
+export const useCreateCommunityComment = () =>
+  useMutation({
+    mutationFn: async ({ postId, content }: { postId: number; content: string }) => {
+      const response = await apiClient.post(`/community/${postId}/comments`, { content });
+      return response.data?.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['community-feed'] });
+    },
+  });
+
+export const useDeleteCommunityPost = () =>
+  useMutation({
+    mutationFn: async (postId: number) => {
+      const response = await apiClient.delete(`/community/${postId}`);
+      return response.data?.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['community-feed'] });
+    },
+  });
+
+export const useDeleteCommunityComment = () =>
+  useMutation({
+    mutationFn: async ({ postId, commentId }: { postId: number; commentId: number }) => {
+      const response = await apiClient.delete(`/community/${postId}/comments/${commentId}`);
+      return response.data?.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['community-feed'] });
     },
   });
 

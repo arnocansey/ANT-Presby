@@ -54,6 +54,7 @@ export default function Header() {
   const logoutMutation = useLogout();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [searchExpanded, setSearchExpanded] = React.useState(false);
 
   React.useEffect(() => {
     setMobileMenuOpen(false);
@@ -95,7 +96,10 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-950/95">
-      <nav aria-label="Main navigation" className="container-max flex items-center justify-between gap-4 py-4">
+      <nav
+        aria-label="Main navigation"
+        className="flex w-full items-center gap-4 px-3 py-4 sm:px-4 lg:px-6"
+      >
         <Link href="/" className="flex shrink-0 items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-orange-600 text-white shadow-lg shadow-amber-500/20">
             <Bell className="h-5 w-5" />
@@ -110,33 +114,54 @@ export default function Header() {
           </div>
         </Link>
 
-        <div className="hidden items-center gap-1 lg:flex">
-          {navLinks.map((link) => {
-            const Icon = link.icon;
-            return (
-              <Link key={link.href} href={link.href} className={linkClass(link.href)}>
-                {Icon ? <Icon className="h-4 w-4" /> : null}
-                {link.label}
-              </Link>
-            );
-          })}
+        <div className="hidden min-w-0 flex-1 items-center gap-3 overflow-hidden lg:flex xl:gap-4">
+          <div className="flex min-w-0 shrink items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {navLinks.map((link) => {
+              const Icon = link.icon;
+              return (
+                <Link key={link.href} href={link.href} className={linkClass(link.href)}>
+                  {Icon ? <Icon className="h-4 w-4" /> : null}
+                  {link.label}
+                </Link>
+              );
+            })}
+          </div>
+
+          <form
+            onSubmit={handleSearchSubmit}
+            className={cn(
+              'flex min-w-0 shrink-0 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 shadow-sm transition-[width,max-width,border-color,box-shadow] duration-300 ease-out dark:border-slate-800 dark:bg-slate-900',
+              searchExpanded || searchQuery.trim()
+                ? 'w-[14rem] border-sky-300 shadow-md shadow-sky-100/70 xl:w-[18rem] 2xl:w-[22rem] dark:border-cyan-500/40 dark:shadow-none'
+                : 'w-[11rem] xl:w-[13rem] 2xl:w-[15rem]'
+            )}
+          >
+            <Search className="h-4 w-4 text-ui-subtle" />
+            <input
+              aria-label="Search sermons and events"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setSearchExpanded(true)}
+              onBlur={() => {
+                if (!searchQuery.trim()) {
+                  setSearchExpanded(false);
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.currentTarget.blur();
+                  if (!searchQuery.trim()) {
+                    setSearchExpanded(false);
+                  }
+                }
+              }}
+              placeholder="Search sermons, events, news..."
+              className="h-11 w-full bg-transparent px-2 text-sm text-slate-900 outline-none placeholder:text-ui-subtle dark:text-slate-50"
+            />
+          </form>
         </div>
 
-        <form
-          onSubmit={handleSearchSubmit}
-          className="hidden max-w-xs flex-1 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:flex"
-        >
-          <Search className="h-4 w-4 text-ui-subtle" />
-          <input
-            aria-label="Search sermons and events"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search sermons, events, news..."
-            className="h-11 w-full bg-transparent px-2 text-sm text-slate-900 outline-none placeholder:text-ui-subtle dark:text-slate-50"
-          />
-        </form>
-
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="relative z-10 hidden shrink-0 items-center gap-2 lg:flex">
           {!isAuthenticated && (
             <Button
               asChild
@@ -220,7 +245,7 @@ export default function Header() {
 
         <button
           type="button"
-          className="rounded-xl p-2 text-slate-700 hover:bg-slate-100 hover:text-slate-950 md:hidden dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white"
+          className="ml-auto rounded-xl p-2 text-slate-700 hover:bg-slate-100 hover:text-slate-950 lg:hidden dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={mobileMenuOpen}
@@ -233,7 +258,7 @@ export default function Header() {
       {mobileMenuOpen && (
         <div
           id="mobile-nav-panel"
-          className="border-t border-slate-200 bg-white px-4 py-4 md:hidden dark:border-slate-800 dark:bg-slate-950"
+          className="border-t border-slate-200 bg-white px-4 py-4 lg:hidden dark:border-slate-800 dark:bg-slate-950"
         >
           <div className="space-y-4">
             <form

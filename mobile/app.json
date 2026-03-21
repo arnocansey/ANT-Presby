@@ -17,7 +17,7 @@
       "fallbackToCacheTimeout": 0
     },
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.antpress.mobile"
     },
     "android": {
@@ -40,10 +40,16 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#0f172a",
+          "image": "./assets/images/android-icon-foreground.png",
+          "imageWidth": 180,
           "android": {
-            "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
+            "image": "./assets/images/android-icon-foreground.png",
+            "imageWidth": 180
+          },
+          "ios": {
+            "image": "./assets/images/android-icon-foreground.png",
+            "imageWidth": 180
           }
         }
       ]

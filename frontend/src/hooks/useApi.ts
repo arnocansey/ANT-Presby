@@ -151,7 +151,10 @@ export const useUpdateProfile = () => {
       const response = await apiClient.put('/users/profile', data);
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
+      if (response?.data) {
+        queryClient.setQueryData(['profile'], response.data);
+      }
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       toast.success('Profile updated');
     },
@@ -732,7 +735,10 @@ export const useUploadProfilePhoto = () => {
       });
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
+      if (response?.data) {
+        qc.setQueryData(['profile'], response.data);
+      }
       qc.invalidateQueries({ queryKey: ['profile'] });
       toast.success('Profile photo updated');
     },

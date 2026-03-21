@@ -4,10 +4,13 @@ import Link from 'next/link';
 import { Heart, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useMinistries } from '@/hooks/useApi';
+import { useAuthStore } from '@/lib/store';
 
 export default function MinistriesPage() {
   const { data, isLoading, error } = useMinistries();
+  const { user } = useAuthStore();
   const ministries = (data ?? []) as any[];
+  const isAdmin = user?.role === 'admin';
 
   return (
     <div className="container-max py-10">
@@ -23,9 +26,16 @@ export default function MinistriesPage() {
             Explore the real ministry list and open each one to see related sermon content and connected activity.
           </p>
         </div>
-        <Button asChild variant="outline" className="rounded-full">
-          <Link href="/contact">Contact a Ministry</Link>
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          {isAdmin && (
+            <Button asChild className="rounded-full bg-amber-500 text-slate-950 hover:bg-amber-400">
+              <Link href="/admin/ministries">Manage Ministries</Link>
+            </Button>
+          )}
+          <Button asChild variant="outline" className="rounded-full">
+            <Link href="/contact">Contact a Ministry</Link>
+          </Button>
+        </div>
       </div>
 
       {isLoading && <MinistryState text="Loading ministries..." />}

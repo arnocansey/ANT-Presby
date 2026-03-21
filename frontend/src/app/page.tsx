@@ -57,38 +57,31 @@ export default function HomePage() {
                 <span className="mr-2 inline-block h-2 w-2 rounded-full bg-emerald-400" />
                 {featuredEvent ? 'NEXT EVENT LIVE' : 'ANT PRESS LIVE'}
               </div>
-              <h1 className="text-4xl font-black leading-tight tracking-tight text-white md:text-6xl">
+              <h1 className="text-3xl font-black leading-tight tracking-tight text-white sm:text-4xl md:text-6xl">
                 Where stories,
                 <br />
                 sermons, and
                 <br />
                 community meet
               </h1>
-              <p className="mt-5 max-w-xl text-lg leading-relaxed text-amber-50">
+              <p className="mt-5 max-w-xl text-base leading-relaxed text-amber-50 sm:text-lg">
                 Explore real sermons, upcoming events, live announcements, and giving tools from one connected frontend.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
-                <Button
-                  asChild
-                  size="lg"
-                  className="rounded-full bg-white text-amber-700 hover:bg-amber-50"
+                <Link
+                  href="/sermons"
+                  className="inline-flex h-12 items-center justify-center rounded-full bg-white px-8 text-base font-semibold !text-amber-700 shadow-sm transition-colors hover:bg-amber-50 hover:!text-amber-800"
                 >
-                  <Link href="/sermons">
-                    <Play className="mr-2 h-4 w-4 fill-current" />
-                    Watch Sermons
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="rounded-full border-white/50 bg-transparent text-white hover:bg-white/10"
+                  <Play className="mr-2 h-4 w-4 fill-current text-amber-700" />
+                  Watch Sermons
+                </Link>
+                <Link
+                  href="/events"
+                  className="inline-flex h-12 items-center justify-center rounded-full border border-white/50 bg-transparent px-8 text-base font-semibold !text-white transition-colors hover:bg-white/10 hover:!text-white"
                 >
-                  <Link href="/events">
-                    View Events
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
+                  View Events
+                  <ArrowRight className="ml-2 h-4 w-4 text-white" />
+                </Link>
               </div>
             </div>
           </div>
@@ -186,9 +179,9 @@ export default function HomePage() {
                       {event.location || 'Location to be announced'}
                     </p>
                   </div>
-                  <Button asChild variant="outline" className="rounded-full">
-                    <span>Details</span>
-                  </Button>
+                  <span className="inline-flex h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 transition-colors group-hover:border-sky-300 group-hover:text-sky-700 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:group-hover:border-cyan-500/40 dark:group-hover:text-cyan-300">
+                    Details
+                  </span>
                 </div>
               </Link>
             );
@@ -281,16 +274,19 @@ export default function HomePage() {
       </section>
 
       <section className="container-max">
-        <div className="gradient-primary rounded-[2rem] px-6 py-14 text-center text-white shadow-xl sm:px-12">
+        <div className="gradient-primary rounded-[2rem] px-5 py-12 text-center text-white shadow-xl sm:px-12 sm:py-14">
           <h2 className="text-3xl font-black tracking-tight sm:text-4xl">
             Ready to join the community?
           </h2>
           <p className="mt-4 text-lg text-cyan-50">
             Create an account to track giving, manage your profile, and stay connected.
           </p>
-          <Button asChild size="lg" className="mt-8 rounded-full bg-white text-sky-800 hover:bg-slate-100">
-            <Link href="/register">Get Started</Link>
-          </Button>
+          <Link
+            href="/register"
+            className="mt-8 inline-flex h-12 items-center justify-center rounded-full bg-white px-8 text-base font-semibold !text-sky-800 shadow-sm transition-colors hover:bg-slate-100 hover:!text-sky-900"
+          >
+            Get Started
+          </Link>
         </div>
       </section>
     </div>

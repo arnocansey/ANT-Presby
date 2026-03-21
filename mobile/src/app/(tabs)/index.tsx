@@ -122,6 +122,12 @@ export default function HomeScreen() {
           color="#B0206D"
           onPress={() => router.push('/small-groups' as never)}
         />
+        <QuickAction
+          label="Community"
+          icon="sparkles-outline"
+          color="#0F766E"
+          onPress={() => router.push('/community' as never)}
+        />
       </View>
 
       <View style={styles.sectionRow}>
@@ -329,11 +335,12 @@ const styles = StyleSheet.create({
   },
   quickActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: Spacing.two,
   },
   quickActionItem: {
-    flex: 1,
+    width: '18%',
+    minWidth: 62,
     alignItems: 'center',
     gap: Spacing.two,
   },

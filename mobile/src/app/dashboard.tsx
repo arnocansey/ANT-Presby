@@ -82,6 +82,7 @@ export default function MemberDashboardScreen() {
           <BrandButton label="Prayer Requests" onPress={() => router.push('/prayers')} variant="outline" />
           <BrandButton label="Donation History" onPress={() => router.push('/donations')} variant="outline" />
           <BrandButton label="News & Updates" onPress={() => router.push('/news' as never)} variant="outline" />
+          <BrandButton label="Community Feed" onPress={() => router.push('/community' as never)} variant="outline" />
           <BrandButton label="Browse Sermons" onPress={() => router.push('/sermons' as never)} variant="outline" />
           <BrandButton label="Small Groups" onPress={() => router.push('/small-groups' as never)} variant="outline" />
           <BrandButton label="Explore Ministries" onPress={() => router.push('/ministries' as never)} variant="outline" />

@@ -70,7 +70,22 @@ export const getApiOrigin = (): string => {
 
 export const resolveAssetUrl = (pathOrUrl?: string | null): string => {
   if (!pathOrUrl) return '';
+
+  if (pathOrUrl.startsWith('/uploads/')) {
+    return pathOrUrl;
+  }
+
   if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
+    try {
+      const parsedUrl = new URL(pathOrUrl);
+
+      if (parsedUrl.pathname.startsWith('/uploads/')) {
+        return parsedUrl.pathname;
+      }
+    } catch {
+      return pathOrUrl;
+    }
+
     return pathOrUrl;
   }
   return `${getApiOrigin()}${pathOrUrl}`;

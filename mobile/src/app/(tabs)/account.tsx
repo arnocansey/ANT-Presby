@@ -200,6 +200,7 @@ export default function AccountScreen() {
         <UtilityButton label={`Prayer History (${prayersQuery.data?.length ?? 0})`} onPress={() => router.push('/prayers')} />
         <UtilityButton label="Donation History" onPress={() => router.push('/donations')} />
         <UtilityButton label="Small Groups" onPress={() => router.push('/small-groups' as never)} />
+        <UtilityButton label="Community Feed" onPress={() => router.push('/community' as never)} />
         <UtilityButton label="Prayer Wall" onPress={() => router.push('/prayer-wall' as never)} />
         <UtilityButton label="Daily Devotional" onPress={() => router.push('/daily-devotional' as never)} />
         <UtilityButton label="News & Updates" onPress={() => router.push('/news' as never)} />

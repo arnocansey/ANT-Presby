@@ -46,7 +46,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             Skip to content
           </a>
           <Header />
-          <main id="main-content" tabIndex={-1} className="min-h-screen">
+          <main id="main-content" tabIndex={-1} className="min-h-screen overflow-x-clip">
             {children}
           </main>
           <Footer />

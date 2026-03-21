@@ -35,6 +35,18 @@
         "EXPO_PUBLIC_APP_NAME": "ANT PRESS Mobile"
       }
     },
+    "ios-preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://ant-presby-backend.onrender.com/api",
+        "EXPO_PUBLIC_API_URL_WEB": "https://ant-presby-backend.onrender.com/api",
+        "EXPO_PUBLIC_APP_NAME": "ANT PRESS Mobile"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production",
@@ -42,6 +54,18 @@
         "EXPO_PUBLIC_API_URL": "https://ant-presby-backend.onrender.com/api",
         "EXPO_PUBLIC_API_URL_WEB": "https://ant-presby-backend.onrender.com/api",
         "EXPO_PUBLIC_APP_NAME": "ANT PRESS Mobile"
+      }
+    },
+    "ios-production": {
+      "autoIncrement": true,
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://ant-presby-backend.onrender.com/api",
+        "EXPO_PUBLIC_API_URL_WEB": "https://ant-presby-backend.onrender.com/api",
+        "EXPO_PUBLIC_APP_NAME": "ANT PRESS Mobile"
+      },
+      "ios": {
+        "simulator": false
       }
     }
   },

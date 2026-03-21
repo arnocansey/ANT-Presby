@@ -693,27 +693,13 @@ export const useLogin = () => {
 };
 
 export const useRegister = () => {
-  const setSession = useAuthStore((state) => state.setSession);
-
   return useMutation({
     mutationFn: async (payload: RegisterPayload) => {
       const response = await apiClient.post('/auth/register', payload);
-      const authPayload = findAuthPayload(response.data);
-
-      if (!authPayload) {
-        throw new Error('Registration response is missing user or token data');
+      if (response.data?.success === false) {
+        throw new Error(response.data?.message || response.data?.error || 'Registration failed');
       }
-
-      return authPayload;
-    },
-    onSuccess: async (data) => {
-      await setSession(data.token, data.user as any);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['me', 'profile'] }),
-        queryClient.invalidateQueries({ queryKey: ['me', 'donations'] }),
-        queryClient.invalidateQueries({ queryKey: ['me', 'prayers'] }),
-        queryClient.invalidateQueries({ queryKey: ['me', 'notifications'] }),
-      ]);
+      return response.data;
     },
   });
 };

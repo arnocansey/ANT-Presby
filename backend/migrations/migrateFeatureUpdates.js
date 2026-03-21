@@ -14,6 +14,19 @@ async function migrateFeatureUpdates() {
     `);
 
     await client.query(`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS email_verification_token VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS email_verification_expires_at TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMP;
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_users_email_verification_token
+      ON users(email_verification_token);
+    `);
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS contact_messages (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,

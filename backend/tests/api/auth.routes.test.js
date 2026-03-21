@@ -9,6 +9,9 @@ jest.mock('../../src/models/userModel', () => ({
   findUserByEmail: jest.fn(),
   createUser: jest.fn(),
   findUserById: jest.fn(),
+  findUserByVerificationToken: jest.fn(),
+  markEmailVerified: jest.fn(),
+  updateUser: jest.fn(),
 }));
 
 jest.mock('../../src/utils/helpers', () => ({
@@ -41,7 +44,7 @@ describe('Auth API', () => {
     jest.clearAllMocks();
   });
 
-  test('POST /api/auth/register sets access and refresh cookies', async () => {
+  test('POST /api/auth/register requires email verification instead of logging the user in', async () => {
     userModel.findUserByEmail.mockResolvedValue(null);
     helpers.hashPassword.mockResolvedValue('hashed_password');
     userModel.createUser.mockResolvedValue({
@@ -66,10 +69,15 @@ describe('Auth API', () => {
 
     expect(response.status).toBe(201);
     expect(response.body.success).toBe(true);
+    expect(response.body.data).toEqual({
+      email: 'user@test.com',
+      verification_required: true,
+    });
+    expect(response.body.message).toMatch(/check your email/i);
 
     const cookies = response.headers['set-cookie'] || [];
-    expect(cookies.some((cookie) => cookie.includes('access_token='))).toBe(true);
-    expect(cookies.some((cookie) => cookie.includes('refresh_token='))).toBe(true);
+    expect(cookies.some((cookie) => cookie.includes('access_token='))).toBe(false);
+    expect(cookies.some((cookie) => cookie.includes('refresh_token='))).toBe(false);
   });
 
   test('POST /api/auth/refresh fails without refresh cookie', async () => {

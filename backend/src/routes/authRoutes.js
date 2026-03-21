@@ -23,6 +23,8 @@ router.post(
   authController.login
 );
 
+router.post('/verify-email', authController.verifyEmail);
+router.post('/resend-verification', authController.resendVerificationEmail);
 router.post('/logout', authController.logout);
 router.get('/me', verifyToken, authController.getCurrentUser);
 router.post('/refresh', authController.refreshToken);

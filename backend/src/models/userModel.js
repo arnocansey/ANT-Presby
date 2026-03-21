@@ -6,7 +6,14 @@ const { toSnakeCaseObject, decimalToString } = require('../utils/prismaHelpers')
  */
 
 // Create user
-const createUser = async (email, password, firstName, lastName, phone = null) => {
+const createUser = async (
+  email,
+  password,
+  firstName,
+  lastName,
+  phone = null,
+  verification = {}
+) => {
   const user = await prisma.user.create({
     data: {
       email,
@@ -16,6 +23,10 @@ const createUser = async (email, password, firstName, lastName, phone = null) =>
       phone,
       profileImageUrl: null,
       role: 'member',
+      emailVerified: verification.emailVerified ?? false,
+      emailVerificationToken: verification.token ?? null,
+      emailVerificationExpiresAt: verification.expiresAt ?? null,
+      emailVerifiedAt: verification.verifiedAt ?? null,
     },
     select: {
       id: true,
@@ -25,6 +36,10 @@ const createUser = async (email, password, firstName, lastName, phone = null) =>
       phone: true,
       profileImageUrl: true,
       role: true,
+      emailVerified: true,
+      emailVerificationToken: true,
+      emailVerificationExpiresAt: true,
+      emailVerifiedAt: true,
       createdAt: true,
     },
   });
@@ -45,6 +60,14 @@ const findUserByEmail = async (email) => {
 const findUserById = async (userId) => {
   const user = await prisma.user.findUnique({
     where: { id: Number(userId) },
+  });
+
+  return toSnakeCaseObject(user);
+};
+
+const findUserByVerificationToken = async (token) => {
+  const user = await prisma.user.findFirst({
+    where: { emailVerificationToken: token },
   });
 
   return toSnakeCaseObject(user);
@@ -98,6 +121,14 @@ const buildUserUpdateData = (updates) => {
   if (updates.profileImageUrl !== undefined) data.profileImageUrl = updates.profileImageUrl;
   if (updates.role !== undefined) data.role = updates.role;
   if (updates.isActive !== undefined) data.isActive = updates.isActive;
+  if (updates.emailVerified !== undefined) data.emailVerified = updates.emailVerified;
+  if (updates.emailVerificationToken !== undefined) {
+    data.emailVerificationToken = updates.emailVerificationToken;
+  }
+  if (updates.emailVerificationExpiresAt !== undefined) {
+    data.emailVerificationExpiresAt = updates.emailVerificationExpiresAt;
+  }
+  if (updates.emailVerifiedAt !== undefined) data.emailVerifiedAt = updates.emailVerifiedAt;
 
   return data;
 };
@@ -130,6 +161,10 @@ const updateUser = async (userId, updates) => {
       phone: true,
       profileImageUrl: true,
       role: true,
+      emailVerified: true,
+      emailVerificationToken: true,
+      emailVerificationExpiresAt: true,
+      emailVerifiedAt: true,
       createdAt: true,
     },
   });
@@ -159,6 +194,10 @@ const updateUserProfileImage = async (userId, profileImageUrl) => {
       phone: true,
       profileImageUrl: true,
       role: true,
+      emailVerified: true,
+      emailVerificationToken: true,
+      emailVerificationExpiresAt: true,
+      emailVerifiedAt: true,
       createdAt: true,
     },
   });
@@ -202,6 +241,10 @@ const updateUserRole = async (userId, role) => {
       phone: true,
       profileImageUrl: true,
       role: true,
+      emailVerified: true,
+      emailVerificationToken: true,
+      emailVerificationExpiresAt: true,
+      emailVerifiedAt: true,
     },
   });
 
@@ -250,10 +293,19 @@ const getUserProfile = async (userId) => {
   };
 };
 
+const markEmailVerified = async (userId) =>
+  updateUser(userId, {
+    emailVerified: true,
+    emailVerificationToken: null,
+    emailVerificationExpiresAt: null,
+    emailVerifiedAt: new Date(),
+  });
+
 module.exports = {
   createUser,
   findUserByEmail,
   findUserById,
+  findUserByVerificationToken,
   getAllUsers,
   getAllUserIds,
   countUsers,
@@ -262,4 +314,5 @@ module.exports = {
   deleteUser,
   updateUserRole,
   getUserProfile,
+  markEmailVerified,
 };

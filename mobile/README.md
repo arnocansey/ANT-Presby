@@ -115,6 +115,26 @@ npx eas build --platform android --profile apk
 
 That profile is configured in `eas.json` with `android.buildType = "apk"`.
 
+### iOS build profiles
+
+For iPhone testing with a cleaner dedicated profile:
+
+```bash
+npx eas build --platform ios --profile ios-preview
+```
+
+For the App Store / production release line:
+
+```bash
+npx eas build --platform ios --profile ios-production
+```
+
+Recommended usage:
+
+- `development`: dev client for active development
+- `ios-preview`: internal iPhone testing / TestFlight-style preview flow
+- `ios-production`: production iPhone release build
+
 ## OTA updates
 
 The app is now configured for Expo over-the-air updates through EAS Update.
@@ -124,6 +144,11 @@ Channels:
 - `development` for dev-client builds
 - `preview` for internal testing
 - `production` for the installed APK / release line
+
+Dedicated iOS profiles:
+
+- `ios-preview` also uses the `preview` channel
+- `ios-production` also uses the `production` channel
 
 What updates automatically:
 

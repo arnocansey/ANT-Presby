@@ -2,7 +2,6 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,7 +9,6 @@ import { Eye, EyeOff, Lock, Mail, Phone, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRegister } from '@/hooks/useApi';
-import { useAuthStore } from '@/lib/store';
 
 const registerSchema = z
   .object({
@@ -39,10 +37,9 @@ const registerSchema = z
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterForm() {
-  const router = useRouter();
-  const { user, isAuthenticated, hydrate, setUser, setIsAuthenticated } = useAuthStore();
   const registerMutation = useRegister();
   const [showPassword, setShowPassword] = React.useState(false);
+  const [registeredEmail, setRegisteredEmail] = React.useState<string | null>(null);
   const registerErrorMessage =
     (registerMutation.error as any)?.response?.data?.message ||
     (registerMutation.error as any)?.response?.data?.error ||
@@ -58,16 +55,6 @@ export default function RegisterForm() {
     resolver: zodResolver(registerSchema),
   });
 
-  React.useEffect(() => {
-    hydrate();
-  }, [hydrate]);
-
-  React.useEffect(() => {
-    if (isAuthenticated && user) {
-      router.replace(user.role === 'admin' ? '/admin/dashboard' : '/dashboard');
-    }
-  }, [isAuthenticated, router, user]);
-
   const onSubmit = async (data: RegisterFormData) => {
     try {
       const response = await registerMutation.mutateAsync({
@@ -78,11 +65,7 @@ export default function RegisterForm() {
         password: data.password,
         acceptedTerms: data.acceptedTerms,
       });
-      const authenticatedUser = response?.user ?? null;
-
-      setUser(authenticatedUser);
-      setIsAuthenticated(Boolean(authenticatedUser));
-      router.replace(authenticatedUser?.role === 'admin' ? '/admin/dashboard' : '/dashboard');
+      setRegisteredEmail(response?.data?.email || data.email);
     } catch (error) {
       console.error('Registration error:', error);
     }
@@ -102,6 +85,39 @@ export default function RegisterForm() {
         </div>
 
         <div className="rounded-[1.6rem] border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-950">
+          {registeredEmail ? (
+            <div className="space-y-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-6 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                <Mail className="h-6 w-6" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">
+                  Check your email
+                </h2>
+                <p className="text-sm leading-6 text-ui-muted">
+                  We sent a verification link to{' '}
+                  <span className="font-semibold text-slate-950 dark:text-white">{registeredEmail}</span>.
+                  Open that message and click the link before signing in.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Link
+                  href="/login"
+                  className="inline-flex h-12 items-center justify-center rounded-xl bg-sky-700 px-5 text-sm font-semibold text-white transition hover:bg-sky-600"
+                >
+                  Go to Sign In
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setRegisteredEmail(null)}
+                  className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-300 px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
+                >
+                  Register another account
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="relative">
@@ -215,6 +231,8 @@ export default function RegisterForm() {
               Sign in
             </Link>
           </p>
+            </>
+          )}
         </div>
       </div>
     </div>

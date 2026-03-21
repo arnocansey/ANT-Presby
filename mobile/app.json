@@ -18,7 +18,10 @@
     },
     "ios": {
       "icon": "./assets/images/icon.png",
-      "bundleIdentifier": "com.antpress.mobile"
+      "bundleIdentifier": "com.antpress.mobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.antpress.mobile",

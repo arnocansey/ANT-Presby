@@ -29,6 +29,7 @@ export default function RegisterScreen() {
   const theme = useTheme();
   const registerMutation = useRegister();
   const [showPassword, setShowPassword] = React.useState(false);
+  const [registeredEmail, setRegisteredEmail] = React.useState('');
   const registerErrorMessage = registerMutation.isError
     ? getApiErrorMessage(registerMutation.error, 'Could not create your account right now.')
     : '';
@@ -51,8 +52,8 @@ export default function RegisterScreen() {
 
   const onSubmit = async (values: RegisterFormValues) => {
     try {
-      const session = await registerMutation.mutateAsync(values);
-      router.replace(session.user?.role === 'admin' ? '/admin' : '/account');
+      const response = await registerMutation.mutateAsync(values);
+      setRegisteredEmail(response?.data?.email || values.email);
     } catch {
       // Inline error panel handles feedback.
     }
@@ -91,6 +92,32 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.form}>
+          {registeredEmail ? (
+            <View style={[styles.successPanel, { borderColor: 'rgba(52,211,153,0.35)', backgroundColor: 'rgba(16,185,129,0.12)' }]}>
+              <View style={[styles.successIconWrap, { backgroundColor: 'rgba(52,211,153,0.18)' }]}>
+                <Ionicons name="mail-open-outline" size={22} color="#6EE7B7" />
+              </View>
+              <ThemedText type="subtitle">Check your email</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
+                We sent a verification link to {registeredEmail}. Open that message and verify your
+                account before signing in.
+              </ThemedText>
+              <Pressable onPress={() => router.replace('/login')}>
+                {({ pressed }) => (
+                  <View style={[styles.primaryButton, { backgroundColor: theme.tint, opacity: pressed ? 0.88 : 1 }]}>
+                    <ThemedText style={[styles.primaryButtonText, { color: theme.white }]}>Go To Sign In</ThemedText>
+                    <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+                  </View>
+                )}
+              </Pressable>
+              <Pressable onPress={() => setRegisteredEmail('')}>
+                <ThemedText type="smallBold" style={[styles.centerText, { color: theme.tint }]}>
+                  Create another account
+                </ThemedText>
+              </Pressable>
+            </View>
+          ) : (
+            <>
           <View style={styles.twoCol}>
             <Field control={control} name="firstName" label="First Name" placeholder="John" icon="person-outline" error={errors.firstName?.message} />
             <Field control={control} name="lastName" label="Last Name" placeholder="Doe" icon="person-outline" error={errors.lastName?.message} />
@@ -161,6 +188,8 @@ export default function RegisterScreen() {
               </ThemedText>
             </Pressable>
           </View>
+            </>
+          )}
         </View>
       </ScrollView>
     </BrandScreen>
@@ -268,6 +297,20 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: Spacing.three,
+  },
+  successPanel: {
+    gap: Spacing.three,
+    borderWidth: 1,
+    borderRadius: Radius.large,
+    padding: Spacing.four,
+    alignItems: 'center',
+  },
+  successIconWrap: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   twoCol: {
     gap: Spacing.three,

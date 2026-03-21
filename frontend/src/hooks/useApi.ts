@@ -93,26 +93,43 @@ export const useRegister = () => {
       if (response.data?.success === false) {
         throw new Error(response.data?.message || response.data?.error || 'Registration failed');
       }
-      const payload = getAuthPayload(response.data);
-      if (!payload) {
-        throw new Error('Registration response is missing user or token data');
-      }
-      return payload;
+      return response.data;
     },
     onSuccess: (data) => {
-      const user = data.user;
-      const token = data.token;
-
-      if (!user || !token) {
-        throw new Error('Registration response is missing user or token data');
-      }
-
-      localStorage.setItem('user', JSON.stringify(user));
-      localStorage.setItem('access_token', token);
-      toast.success('Registration successful');
+      toast.success(data?.message || 'Account created. Check your email to verify your account.');
     },
     onError: (error: any) => {
       toast.error(getApiErrorMessage(error, 'Registration failed'));
+    },
+  });
+};
+
+export const useVerifyEmail = () => {
+  return useMutation({
+    mutationFn: async (token: string) => {
+      const response = await apiClient.post('/auth/verify-email', { token });
+      if (response.data?.success === false) {
+        throw new Error(response.data?.message || response.data?.error || 'Verification failed');
+      }
+      return response.data;
+    },
+  });
+};
+
+export const useResendVerificationEmail = () => {
+  return useMutation({
+    mutationFn: async (email: string) => {
+      const response = await apiClient.post('/auth/resend-verification', { email });
+      if (response.data?.success === false) {
+        throw new Error(response.data?.message || response.data?.error || 'Resend failed');
+      }
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data?.message || 'Verification email sent successfully');
+    },
+    onError: (error: any) => {
+      toast.error(getApiErrorMessage(error, 'Failed to resend verification email'));
     },
   });
 };

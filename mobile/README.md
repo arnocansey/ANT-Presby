@@ -1,6 +1,18 @@
 # ANT PRESS Mobile
 
-Expo + React Native mobile app for ANT PRESS, powered by the existing backend in `../backend`.
+Expo + React Native mobile app for ANT PRESS, powered by the shared backend in `../backend`.
+
+## Responsibilities
+
+The mobile app provides:
+
+- public browsing flows
+- member flows
+- community feed
+- donation and event flows
+- mobile admin surfaces
+- Android APK delivery
+- OTA updates for JS/UI changes
 
 ## Stack
 
@@ -14,8 +26,10 @@ Expo + React Native mobile app for ANT PRESS, powered by the existing backend in
 - React Hook Form
 - Zod
 - Expo Dev Client
+- Expo Auth Session
+- Expo Updates
 
-## Local setup
+## Local Setup
 
 1. Install dependencies
 
@@ -43,152 +57,99 @@ cd ../mobile
 npx expo start
 ```
 
-## API URLs
+## Environment
 
-The app talks to the existing ANT PRESS backend.
+Use [`.env.example`](./.env.example) as the source of truth.
 
-- Production default: `https://ant-presby-backend.onrender.com/api`
-- Local Android emulator option: `http://10.0.2.2:5000/api`
-- Local Expo web option: `http://localhost:5000/api`
+Typical production-oriented values:
 
-Set these in `.env` when needed:
-
-```bash
+```env
 EXPO_PUBLIC_APP_NAME=ANT PRESS Mobile
 EXPO_PUBLIC_API_URL=https://ant-presby-backend.onrender.com/api
 EXPO_PUBLIC_API_URL_WEB=https://ant-presby-backend.onrender.com/api
+EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=
 ```
 
-Important:
+Important notes:
 
-- Production APK builds now default to the hosted backend on Render.
+- Production APK builds should point to the hosted backend.
 - `10.0.2.2` only works inside the Android emulator.
-- If you intentionally switch back to a local backend for native testing, rebuild the APK so the new value is included.
+- If you intentionally switch native builds back to a local backend, rebuild the APK.
 
-## Development build
+## Auth Notes
 
-This project is configured for Expo development builds through `expo-dev-client` and `eas.json`.
+- Native devices use Secure Store for auth persistence.
+- Expo web fallback uses localStorage.
+- Email/password registration requires email verification before first login.
+- Google sign-in uses Expo Auth Session and exchanges identity with the backend.
 
-### One-time setup
+## Build Profiles
 
-1. Log in to Expo
-
-```bash
-npx eas login
-```
-
-2. Configure the project if prompted
-
-```bash
-npx eas init
-```
-
-### Build a development client
-
-Android:
+### Development client
 
 ```bash
 npx eas build --platform android --profile development
 ```
 
-iOS:
-
-```bash
-npx eas build --platform ios --profile development
-```
-
-Install the generated build on your device, then start Metro with:
-
-```bash
-npm run start:dev-client
-```
-
-After that, open the installed ANT PRESS dev client app on your phone and connect to the Metro server.
-
-### Build a direct Android APK
-
-If you want a normal installable Android APK first:
+### Android APK
 
 ```bash
 npx eas build --platform android --profile apk
 ```
 
-That profile is configured in `eas.json` with `android.buildType = "apk"`.
-
-### iOS build profiles
-
-For iPhone testing with a cleaner dedicated profile:
+### iOS preview
 
 ```bash
 npx eas build --platform ios --profile ios-preview
 ```
 
-For the App Store / production release line:
+### iOS production
 
 ```bash
 npx eas build --platform ios --profile ios-production
 ```
 
-Recommended usage:
+## OTA Updates
 
-- `development`: dev client for active development
-- `ios-preview`: internal iPhone testing / TestFlight-style preview flow
-- `ios-production`: production iPhone release build
-
-## OTA updates
-
-The app is now configured for Expo over-the-air updates through EAS Update.
+The app is configured for EAS Update.
 
 Channels:
 
-- `development` for dev-client builds
-- `preview` for internal testing
-- `production` for the installed APK / release line
+- `development`
+- `preview`
+- `production`
 
-Dedicated iOS profiles:
-
-- `ios-preview` also uses the `preview` channel
-- `ios-production` also uses the `production` channel
-
-What updates automatically:
-
-- screen changes
-- styling updates
-- JavaScript or TypeScript logic
-- most Expo Router changes
-
-What still needs a new APK/build:
-
-- native package changes
-- app icons
-- splash screen config
-- permissions
-- anything that changes native Android or iOS code
-
-### Publish an OTA update
-
-Preview channel:
+Publish preview update:
 
 ```bash
 npx eas update --channel preview --message "Describe the update"
 ```
 
-Production channel:
+Publish production update:
 
 ```bash
 npx eas update --channel production --message "Describe the update"
 ```
 
-Installed builds on the matching channel will fetch the update on app launch.
+### OTA vs Rebuild
 
-### Important
+OTA can deliver:
 
-- The installed APK must have been built from a profile that uses the same channel.
-- `apk` and `production` builds use the `production` channel.
-- If you change native config, publish will not be enough. Build a new APK instead.
+- UI changes
+- logic changes
+- route changes
+- most JS/TS updates
+
+Fresh native build required for:
+
+- app icon changes
+- splash changes
+- native package changes
+- permissions
+- native OAuth config changes
 
 ## Notes
 
-- Web uses `localStorage` as the auth token fallback because `expo-secure-store` is not available the same way in browsers.
-- Native uses `expo-secure-store`.
-- The backend must be running before login, news, donations, events, or notifications can work.
+- The mobile app is designed to share live backend data with the website.
+- Android is currently the practical release path while Apple Developer setup is pending.

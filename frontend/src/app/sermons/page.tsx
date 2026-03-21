@@ -2,98 +2,118 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Mic, PlayCircle } from 'lucide-react';
+import { BookOpen, Clock, Play, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { useSermons } from '@/hooks/useApi';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 
-type SermonItem = {
-  id: number;
-  title: string;
-  speaker?: string;
-  description?: string;
-  created_at?: string;
-};
+const sermonGradients = [
+  'from-indigo-600 to-purple-600',
+  'from-teal-600 to-cyan-600',
+  'from-rose-600 to-pink-600',
+  'from-orange-600 to-amber-600',
+];
 
 export default function SermonsPage() {
-  const { data, isLoading, error } = useSermons(1, 12);
-  const sermons = (data?.data ?? []) as SermonItem[];
+  const { data, isLoading, error } = useSermons(1, 24);
+  const [search, setSearch] = React.useState('');
+  const sermons = (data?.data ?? []) as any[];
+
+  const speakers = React.useMemo(() => {
+    const values = Array.from(
+      new Set(sermons.map((sermon) => sermon?.speaker).filter(Boolean))
+    ) as string[];
+    return ['All Speakers', ...values];
+  }, [sermons]);
+
+  const [selectedSpeaker, setSelectedSpeaker] = React.useState('All Speakers');
+
+  const filtered = sermons.filter((sermon) => {
+    const q = search.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
+      String(sermon?.title || '').toLowerCase().includes(q) ||
+      String(sermon?.speaker || '').toLowerCase().includes(q) ||
+      String(sermon?.description || '').toLowerCase().includes(q);
+    const matchesSpeaker =
+      selectedSpeaker === 'All Speakers' || sermon?.speaker === selectedSpeaker;
+    return matchesSearch && matchesSpeaker;
+  });
 
   return (
-    <div className="container-max py-12 sm:py-16">
-      <div className="mb-8 sm:mb-10">
-        <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Sermons</h1>
-        <p className="mt-3 max-w-2xl text-ui-subtle">
-          Watch and revisit messages that strengthen your faith journey.
+    <div className="container-max py-10">
+      <div className="mb-8">
+        <h1 className="text-3xl font-black text-slate-950 dark:text-white">Sermon Library</h1>
+        <p className="mt-2 text-ui-subtle">
+          Watch and revisit messages from the real ANT PRESS sermon collection.
         </p>
       </div>
 
-      {isLoading && (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i} className="p-6">
-              <div className="h-5 w-2/3 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-              <div className="mt-4 h-14 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-              <div className="mt-6 h-9 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-            </Card>
-          ))}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ui-subtle" />
+          <Input
+            className="h-12 rounded-xl border-slate-200 bg-white pl-10 dark:border-slate-800 dark:bg-slate-950"
+            placeholder="Search sermons, speakers, and descriptions..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
+        <select
+          className="h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+          value={selectedSpeaker}
+          onChange={(e) => setSelectedSpeaker(e.target.value)}
+        >
+          {speakers.map((speaker) => (
+            <option key={speaker} value={speaker}>
+              {speaker}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {isLoading && <StatusState text="Loading sermons..." />}
+      {!isLoading && error && <StatusState text="Failed to load sermons." />}
+      {!isLoading && !error && filtered.length === 0 && (
+        <StatusState text="No sermons match your search right now." />
       )}
 
-      {!isLoading && error && (
-        <Card className="border-red-200 bg-red-50/70 dark:border-red-900 dark:bg-red-950/30">
-          <CardContent className="p-6 text-sm font-medium text-red-700 dark:text-red-300">
-            Failed to load sermons.
-          </CardContent>
-        </Card>
-      )}
-
-      {!isLoading && !error && sermons.length === 0 && (
-        <Card className="border-dashed">
-          <CardContent className="p-8 text-center text-ui-subtle">
-            No sermons available yet.
-          </CardContent>
-        </Card>
-      )}
-
-      {!isLoading && !error && sermons.length > 0 && (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {sermons.map((sermon) => (
-            <Card
-              key={sermon.id}
-              className="group h-full transition-all hover:-translate-y-0.5 hover:shadow-lg"
-            >
-              <CardHeader className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-sky-700 dark:text-cyan-300">
-                  <PlayCircle className="h-4 w-4" />
-                  Sermon
+      {!isLoading && !error && filtered.length > 0 && (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {filtered.map((sermon, index) => (
+            <Link key={sermon.id} href={`/sermons/${sermon.id}`}>
+              <div className="group cursor-pointer overflow-hidden rounded-[1.4rem] border border-slate-200 bg-white transition-colors hover:border-sky-300 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-cyan-500/40">
+                <div className={`relative flex h-40 items-center justify-center bg-gradient-to-br ${sermonGradients[index % sermonGradients.length]}`}>
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 transition-transform group-hover:scale-110">
+                    <Play className="ml-1 h-7 w-7 fill-white text-white" />
+                  </div>
+                  <div className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/35 px-2 py-1 text-xs text-white">
+                    <Clock className="h-3 w-3" />
+                    Message
+                  </div>
                 </div>
-                <CardTitle className="text-xl tracking-tight">{sermon.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {sermon.description && (
-                  <p className="text-sm leading-relaxed text-ui-muted">{sermon.description}</p>
-                )}
-                {sermon.speaker && (
-                  <p className="flex items-center gap-2 text-sm text-ui-subtle">
-                    <Mic className="h-4 w-4" />
-                    {sermon.speaker}
+                <div className="space-y-2 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700 dark:text-cyan-300">
+                    Sermon
                   </p>
-                )}
-                <Button
-                  asChild
-                  variant="outline"
-                  className="group-hover:border-cyan-400 group-hover:text-sky-700 dark:group-hover:text-cyan-300"
-                >
-                  <Link href={`/sermons/${sermon.id}`}>
-                    Watch <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+                  <h3 className="line-clamp-2 text-lg font-bold text-slate-950 dark:text-white">
+                    {sermon.title}
+                  </h3>
+                  <p className="text-sm text-ui-subtle">{sermon.speaker || 'ANT PRESS'}</p>
+                </div>
+              </div>
+            </Link>
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function StatusState({ text }: { text: string }) {
+  return (
+    <div className="rounded-[1.4rem] border border-dashed border-slate-300 bg-white p-10 text-center text-ui-subtle dark:border-slate-700 dark:bg-slate-950">
+      <BookOpen className="mx-auto mb-4 h-10 w-10 opacity-30" />
+      <p>{text}</p>
     </div>
   );
 }

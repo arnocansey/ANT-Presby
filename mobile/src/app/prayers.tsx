@@ -5,7 +5,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { z } from 'zod';
 
-import { BrandButton, BrandCard, BrandHero, BrandPill, BrandScreen } from '@/components/brand-ui';
+import { BrandButton, BrandCard, BrandHero, BrandMetric, BrandPill, BrandScreen } from '@/components/brand-ui';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useCreatePrayerRequest, useMyPrayerRequests } from '@/hooks/use-api';
@@ -84,11 +84,17 @@ export default function PrayerScreen() {
     <BrandScreen>
       <BrandHero
         eyebrow="Prayer Requests"
-        title="Share what matters"
+        title="Connect in prayer"
         description="Submit a prayer request and track your recent requests from the same ANT PRESS member space."
       />
 
+      <View style={styles.metrics}>
+        <BrandMetric label="Requests" value={requests.length} />
+        <BrandMetric label="Mode" value="Private" />
+      </View>
+
       <BrandCard>
+        <BrandPill>Prayer</BrandPill>
         <ThemedText type="defaultSemiBold">New request</ThemedText>
 
         <Field control={control} name="title" label="Title" placeholder="Prayer request title" error={errors.title?.message} />
@@ -248,6 +254,11 @@ function Field({
 }
 
 const styles = StyleSheet.create({
+  metrics: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
   field: {
     gap: Spacing.one,
   },

@@ -13,8 +13,6 @@ import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
-
 export default function AppTabs() {
   return (
     <Tabs>
@@ -24,14 +22,17 @@ export default function AppTabs() {
           <TabTrigger name="index" href="/" asChild>
             <TabButton>Home</TabButton>
           </TabTrigger>
-          <TabTrigger name="news" href="/news" asChild>
-            <TabButton>News</TabButton>
+          <TabTrigger name="sermons" href={'/sermons' as never} asChild>
+            <TabButton>Sermons</TabButton>
           </TabTrigger>
           <TabTrigger name="events" href="/events" asChild>
             <TabButton>Events</TabButton>
           </TabTrigger>
+          <TabTrigger name="give" href={'/give' as never} asChild>
+            <TabButton>Give</TabButton>
+          </TabTrigger>
           <TabTrigger name="account" href="/account" asChild>
-            <TabButton>Account</TabButton>
+            <TabButton>Profile</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -54,8 +55,6 @@ function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
 }
 
 function CustomTabList(props: TabListProps) {
-  const theme = useTheme();
-
   return (
     <View {...props} style={styles.tabListContainer}>
       <ThemedView
@@ -63,13 +62,10 @@ function CustomTabList(props: TabListProps) {
         style={[
           styles.innerContainer,
           {
-            borderColor: theme.border,
-            backgroundColor: theme.background,
+            borderColor: '#252A3D',
+            backgroundColor: '#111424',
           },
         ]}>
-        <ThemedText type="smallBold" style={styles.brandText}>
-          ANT PRESS Mobile
-        </ThemedText>
         {props.children}
       </ThemedView>
     </View>
@@ -90,28 +86,24 @@ const styles = StyleSheet.create({
   },
   innerContainer: {
     paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.five,
-    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.two,
+    borderRadius: 0,
     flexDirection: 'row',
     alignItems: 'center',
     flexGrow: 1,
-    gap: Spacing.two,
+    gap: Spacing.one,
     maxWidth: MaxContentWidth,
-    borderWidth: 1,
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 2,
-  },
-  brandText: {
-    marginRight: 'auto',
+    borderTopWidth: 1,
   },
   pressed: {
     opacity: 0.7,
   },
   tabButtonView: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.one,
+    borderRadius: Radius.small,
   },
 });

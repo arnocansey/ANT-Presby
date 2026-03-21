@@ -7,6 +7,15 @@
     "icon": "./assets/images/icon.png",
     "scheme": "antpressmobile",
     "userInterfaceStyle": "light",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a998533d-88d7-40fa-bfa7-e9c98f42bf0e",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "ios": {
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.antpress.mobile"

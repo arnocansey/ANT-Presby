@@ -47,24 +47,23 @@ npx expo start
 
 The app talks to the existing ANT PRESS backend.
 
-- Android emulator default: `http://10.0.2.2:5000/api`
-- Expo web default: `http://localhost:5000/api`
-- Physical device: replace with your computer LAN IP, for example `http://192.168.1.25:5000/api`
+- Production default: `https://ant-presby-backend.onrender.com/api`
+- Local Android emulator option: `http://10.0.2.2:5000/api`
+- Local Expo web option: `http://localhost:5000/api`
 
 Set these in `.env` when needed:
 
 ```bash
 EXPO_PUBLIC_APP_NAME=ANT PRESS Mobile
-EXPO_PUBLIC_API_URL=http://192.168.1.25:5000/api
-EXPO_PUBLIC_API_URL_WEB=http://localhost:5000/api
+EXPO_PUBLIC_API_URL=https://ant-presby-backend.onrender.com/api
+EXPO_PUBLIC_API_URL_WEB=https://ant-presby-backend.onrender.com/api
 ```
 
 Important:
 
+- Production APK builds now default to the hosted backend on Render.
 - `10.0.2.2` only works inside the Android emulator.
-- A real APK installed on a phone cannot use `10.0.2.2`.
-- For a physical device, either host the backend publicly or point `EXPO_PUBLIC_API_URL` to your computer's LAN IP and keep the phone and computer on the same Wi-Fi.
-- If you change the API URL for a native build, rebuild the APK so the new value is included.
+- If you intentionally switch back to a local backend for native testing, rebuild the APK so the new value is included.
 
 ## Development build
 
@@ -115,6 +114,53 @@ npx eas build --platform android --profile apk
 ```
 
 That profile is configured in `eas.json` with `android.buildType = "apk"`.
+
+## OTA updates
+
+The app is now configured for Expo over-the-air updates through EAS Update.
+
+Channels:
+
+- `development` for dev-client builds
+- `preview` for internal testing
+- `production` for the installed APK / release line
+
+What updates automatically:
+
+- screen changes
+- styling updates
+- JavaScript or TypeScript logic
+- most Expo Router changes
+
+What still needs a new APK/build:
+
+- native package changes
+- app icons
+- splash screen config
+- permissions
+- anything that changes native Android or iOS code
+
+### Publish an OTA update
+
+Preview channel:
+
+```bash
+npx eas update --channel preview --message "Describe the update"
+```
+
+Production channel:
+
+```bash
+npx eas update --channel production --message "Describe the update"
+```
+
+Installed builds on the matching channel will fetch the update on app launch.
+
+### Important
+
+- The installed APK must have been built from a profile that uses the same channel.
+- `apk` and `production` builds use the `production` channel.
+- If you change native config, publish will not be enough. Build a new APK instead.
 
 ## Notes
 

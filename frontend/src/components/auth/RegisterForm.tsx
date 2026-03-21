@@ -6,10 +6,9 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Eye, EyeOff, Lock, Mail, Phone, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRegister } from '@/hooks/useApi';
 import { useAuthStore } from '@/lib/store';
 
@@ -43,12 +42,14 @@ export default function RegisterForm() {
   const router = useRouter();
   const { user, isAuthenticated, hydrate, setUser, setIsAuthenticated } = useAuthStore();
   const registerMutation = useRegister();
+  const [showPassword, setShowPassword] = React.useState(false);
   const registerErrorMessage =
     (registerMutation.error as any)?.response?.data?.message ||
     (registerMutation.error as any)?.response?.data?.error ||
     (registerMutation.error as any)?.response?.data?.details?.[0]?.message ||
     (registerMutation.error as Error | null)?.message ||
     'Could not create account. Please check your details and try again.';
+
   const {
     register,
     handleSubmit,
@@ -88,126 +89,134 @@ export default function RegisterForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10 dark:bg-slate-950">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl tracking-tight">Create Account</CardTitle>
-          <CardDescription className="text-ui-subtle">
-            Join ANT PRESS and create your account
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="flex min-h-screen items-center justify-center px-4 py-12">
+      <div className="w-full max-w-xl">
+        <div className="mb-8 flex flex-col items-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/30">
+            <User className="h-8 w-8" />
+          </div>
+          <h1 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white">
+            Join ANT PRESS
+          </h1>
+          <p className="mt-2 text-sm text-ui-subtle">Create your account and stay connected</p>
+        </div>
+
+        <div className="rounded-[1.6rem] border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-950">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
-                <Input id="firstName" placeholder="First name" {...register('firstName')} />
-                {errors.firstName && (
-                  <p className="text-xs text-red-600">{errors.firstName.message}</p>
-                )}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ui-subtle" />
+                <Input
+                  placeholder="First name"
+                  className="h-12 rounded-xl border-slate-200 bg-slate-50 pl-10 dark:border-slate-800 dark:bg-slate-900"
+                  {...register('firstName')}
+                />
+                {errors.firstName && <p className="mt-2 text-sm text-red-600">{errors.firstName.message}</p>}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input id="lastName" placeholder="Last name" {...register('lastName')} />
-                {errors.lastName && (
-                  <p className="text-xs text-red-600">{errors.lastName.message}</p>
-                )}
+
+              <div className="relative">
+                <Input
+                  placeholder="Last name"
+                  className="h-12 rounded-xl border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
+                  {...register('lastName')}
+                />
+                {errors.lastName && <p className="mt-2 text-sm text-red-600">{errors.lastName.message}</p>}
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ui-subtle" />
               <Input
-                id="email"
                 type="email"
                 placeholder="Email address"
+                className="h-12 rounded-xl border-slate-200 bg-slate-50 pl-10 dark:border-slate-800 dark:bg-slate-900"
                 {...register('email')}
               />
-              {errors.email && (
-                <p className="text-xs text-red-600">{errors.email.message}</p>
-              )}
+              {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email.message}</p>}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ui-subtle" />
               <Input
-                id="phone"
                 type="tel"
                 placeholder="Phone number"
+                className="h-12 rounded-xl border-slate-200 bg-slate-50 pl-10 dark:border-slate-800 dark:bg-slate-900"
                 {...register('phone')}
               />
-              {errors.phone && (
-                <p className="text-xs text-red-600">{errors.phone.message}</p>
-              )}
+              {errors.phone && <p className="mt-2 text-sm text-red-600">{errors.phone.message}</p>}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ui-subtle" />
               <Input
-                id="password"
-                type="password"
-                placeholder="Create a password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Create password"
+                className="h-12 rounded-xl border-slate-200 bg-slate-50 pl-10 pr-10 dark:border-slate-800 dark:bg-slate-900"
                 {...register('password')}
               />
-              {errors.password && (
-                <p className="text-xs text-red-600">{errors.password.message}</p>
-              )}
+              <button
+                type="button"
+                onClick={() => setShowPassword((current) => !current)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ui-subtle hover:text-slate-950 dark:hover:text-white"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+              {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password.message}</p>}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <div>
               <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Confirm your password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Confirm password"
+                className="h-12 rounded-xl border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
                 {...register('confirmPassword')}
               />
               {errors.confirmPassword && (
-                <p className="text-xs text-red-600">{errors.confirmPassword.message}</p>
+                <p className="mt-2 text-sm text-red-600">{errors.confirmPassword.message}</p>
               )}
             </div>
 
-            <div className="space-y-1">
-              <label htmlFor="acceptedTerms" className="inline-flex items-start gap-2 text-sm text-ui-muted">
-                <input
-                  id="acceptedTerms"
-                  type="checkbox"
-                  {...register('acceptedTerms')}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-400 text-sky-700 focus-visible:ring-cyan-500 dark:border-slate-600 dark:bg-slate-900"
-                />
-                <span>
-                  I agree to the{' '}
-                  <Link href="/terms" className="font-semibold text-sky-700 hover:underline dark:text-cyan-300">
-                    Terms and Agreement
-                  </Link>.
-                </span>
-              </label>
-              {errors.acceptedTerms && (
-                <p className="text-xs text-red-600">{errors.acceptedTerms.message}</p>
-              )}
-            </div>
+            <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ui-muted dark:border-slate-800 dark:bg-slate-900">
+              <input
+                type="checkbox"
+                {...register('acceptedTerms')}
+                className="mt-1 h-4 w-4 rounded border-slate-400 text-sky-700"
+              />
+              <span>
+                I agree to the{' '}
+                <Link href="/terms" className="font-semibold text-sky-700 hover:underline dark:text-cyan-300">
+                  Terms and Agreement
+                </Link>
+                .
+              </span>
+            </label>
+            {errors.acceptedTerms && (
+              <p className="text-sm text-red-600">{errors.acceptedTerms.message}</p>
+            )}
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="h-12 w-full rounded-xl bg-amber-500 text-slate-950 hover:bg-amber-400"
+            >
               {isSubmitting ? 'Creating account...' : 'Create Account'}
             </Button>
 
             {registerMutation.isError && (
-              <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+              <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
                 {registerErrorMessage}
               </p>
             )}
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-ui-subtle">
-              Already have an account?{' '}
-              <Link href="/login" className="font-semibold text-sky-700 hover:underline dark:text-cyan-300">
-                Sign in
-              </Link>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+          <p className="mt-5 text-center text-sm text-ui-subtle">
+            Already have an account?{' '}
+            <Link href="/login" className="font-semibold text-sky-700 hover:underline dark:text-cyan-300">
+              Sign in
+            </Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

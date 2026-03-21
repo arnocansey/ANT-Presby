@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tabs, TabList, TabSlot, TabTrigger, TabTriggerSlotProps } from 'expo-router/ui';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
@@ -12,19 +13,28 @@ import { useTheme } from '@/hooks/use-theme';
 type TabIconName = React.ComponentProps<typeof Ionicons>['name'];
 
 export default function AppTabs() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs>
       <TabSlot style={styles.slot} />
       <TabList asChild>
-        <View style={styles.tabListContainer}>
+        <View
+          style={[
+            styles.tabListContainer,
+            {
+              bottom: Math.max(insets.bottom, Spacing.two),
+              paddingBottom: Spacing.one,
+            },
+          ]}>
           <TabTrigger name="index" href="/" asChild>
             <TabButton icon="home-outline" selectedIcon="home">
               Home
             </TabButton>
           </TabTrigger>
-          <TabTrigger name="news" href="/news" asChild>
-            <TabButton icon="newspaper-outline" selectedIcon="newspaper">
-              News
+          <TabTrigger name="sermons" href={'/sermons' as never} asChild>
+            <TabButton icon="play-circle-outline" selectedIcon="play-circle">
+              Sermons
             </TabButton>
           </TabTrigger>
           <TabTrigger name="events" href="/events" asChild>
@@ -32,9 +42,14 @@ export default function AppTabs() {
               Events
             </TabButton>
           </TabTrigger>
+          <TabTrigger name="give" href={'/give' as never} asChild>
+            <TabButton icon="gift-outline" selectedIcon="gift">
+              Give
+            </TabButton>
+          </TabTrigger>
           <TabTrigger name="account" href="/account" asChild>
             <TabButton icon="person-circle-outline" selectedIcon="person-circle">
-              Account
+              Profile
             </TabButton>
           </TabTrigger>
         </View>
@@ -65,6 +80,7 @@ function TabButton({
           styles.tabButtonView,
           {
             borderColor: active ? theme.tint : theme.border,
+            backgroundColor: active ? theme.backgroundSelected : theme.backgroundElement,
           },
         ]}>
         <Ionicons
@@ -89,32 +105,37 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.four,
+    paddingHorizontal: Spacing.two,
+    paddingTop: Spacing.one,
+    paddingBottom: Spacing.two,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
-    gap: Spacing.two,
+    gap: Spacing.one,
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
+    backgroundColor: '#111424',
+    borderTopWidth: 1,
+    borderTopColor: '#252A3D',
+    borderRadius: Radius.large,
+    marginHorizontal: Spacing.two,
   },
   tabButton: {
     flex: 1,
   },
   tabButtonView: {
-    minHeight: 60,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.two,
-    borderRadius: Radius.medium,
+    minHeight: 50,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.one,
+    borderRadius: Radius.small,
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.one,
-    borderWidth: 1,
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 1,
+    borderWidth: 0,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
   },
   pressed: {
     opacity: 0.8,

@@ -1,23 +1,51 @@
 {
   "cli": {
-    "version": ">= 16.24.1"
+    "version": ">= 16.24.1",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
+      "channel": "development",
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://ant-presby-backend.onrender.com/api",
+        "EXPO_PUBLIC_API_URL_WEB": "https://ant-presby-backend.onrender.com/api",
+        "EXPO_PUBLIC_APP_NAME": "ANT PRESS Mobile"
+      }
     },
     "apk": {
       "distribution": "internal",
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://ant-presby-backend.onrender.com/api",
+        "EXPO_PUBLIC_API_URL_WEB": "https://ant-presby-backend.onrender.com/api",
+        "EXPO_PUBLIC_APP_NAME": "ANT PRESS Mobile"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://ant-presby-backend.onrender.com/api",
+        "EXPO_PUBLIC_API_URL_WEB": "https://ant-presby-backend.onrender.com/api",
+        "EXPO_PUBLIC_APP_NAME": "ANT PRESS Mobile"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://ant-presby-backend.onrender.com/api",
+        "EXPO_PUBLIC_API_URL_WEB": "https://ant-presby-backend.onrender.com/api",
+        "EXPO_PUBLIC_APP_NAME": "ANT PRESS Mobile"
+      }
     }
+  },
+  "submit": {
+    "production": {}
   }
 }

@@ -24,6 +24,8 @@ export function BrandScreen({
 
   const content = (
     <ThemedView style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.screenGlowTop, { backgroundColor: theme.tint }]} />
+      <View style={[styles.screenGlowBottom, { backgroundColor: theme.accent }]} />
       <ThemedView style={styles.content}>{children}</ThemedView>
     </ThemedView>
   );
@@ -33,7 +35,11 @@ export function BrandScreen({
   }
 
   return (
-    <ScrollView style={[styles.screen, { backgroundColor: theme.background }]}>
+    <ScrollView
+      style={[styles.screen, { backgroundColor: theme.background }]}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled">
       <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
         {content}
       </SafeAreaView>
@@ -59,12 +65,13 @@ export function BrandHero({
       style={[
         styles.hero,
         {
-          backgroundColor: theme.heroMid,
-          borderColor: 'rgba(255,255,255,0.08)',
+          backgroundColor: theme.backgroundElement,
+          borderColor: theme.border,
         },
       ]}>
-      <View style={[styles.heroGlow, { backgroundColor: theme.accent }]} />
-      <View style={[styles.heroGlowAlt, { backgroundColor: theme.tint }]} />
+      <View style={[styles.heroGlow, { backgroundColor: theme.tint }]} />
+      <View style={[styles.heroGlowAlt, { backgroundColor: theme.accent }]} />
+      <View style={[styles.heroStripe, { backgroundColor: theme.heroEnd }]} />
       <View style={styles.heroContent}>
         {eyebrow ? (
           <ThemedText type="smallBold" style={styles.eyebrow}>
@@ -138,18 +145,18 @@ export function BrandButton({
   const palette =
     variant === 'primary'
       ? {
-          backgroundColor: theme.white,
-          color: theme.tint,
-          borderColor: theme.white,
+          backgroundColor: theme.tint,
+          color: '#111827',
+          borderColor: theme.tint,
         }
       : variant === 'secondary'
         ? {
-            backgroundColor: theme.tint,
+            backgroundColor: theme.accent,
             color: theme.white,
-            borderColor: theme.tint,
+            borderColor: theme.accent,
           }
         : {
-            backgroundColor: theme.background,
+            backgroundColor: theme.backgroundSelected,
             color: theme.text,
             borderColor: theme.border,
           };
@@ -216,11 +223,15 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   safeArea: {
     flex: 1,
   },
   container: {
     flex: 1,
+    overflow: 'hidden',
   },
   content: {
     width: '100%',
@@ -236,7 +247,7 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     position: 'relative',
     borderWidth: 1,
-    minHeight: 208,
+    minHeight: 220,
   },
   heroContent: {
     gap: Spacing.two,
@@ -244,24 +255,29 @@ const styles = StyleSheet.create({
   },
   heroGlow: {
     position: 'absolute',
-    width: 180,
-    height: 180,
+    width: 220,
+    height: 220,
     borderRadius: Radius.pill,
-    opacity: 0.14,
-    top: -30,
-    right: -20,
+    opacity: 0.22,
+    top: -55,
+    right: -30,
   },
   heroGlowAlt: {
     position: 'absolute',
-    width: 160,
-    height: 160,
+    width: 180,
+    height: 180,
     borderRadius: Radius.pill,
-    opacity: 0.12,
-    bottom: -50,
-    left: -30,
+    opacity: 0.18,
+    bottom: -60,
+    left: -40,
+  },
+  heroStripe: {
+    position: 'absolute',
+    inset: 0,
+    opacity: 0.08,
   },
   eyebrow: {
-    color: '#CFFAFE',
+    color: '#FACC15',
     textTransform: 'uppercase',
     letterSpacing: 2.5,
   },
@@ -270,7 +286,7 @@ const styles = StyleSheet.create({
     maxWidth: 460,
   },
   heroDescription: {
-    color: '#E0F2FE',
+    color: '#D6DCFF',
     maxWidth: 540,
   },
   card: {
@@ -278,10 +294,10 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     gap: Spacing.two,
     borderWidth: 1,
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 2,
+    shadowOpacity: 0.18,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 4,
   },
   sectionHeader: {
     gap: Spacing.two,
@@ -308,5 +324,23 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
+  },
+  screenGlowTop: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: Radius.pill,
+    opacity: 0.08,
+    top: -140,
+    right: -90,
+  },
+  screenGlowBottom: {
+    position: 'absolute',
+    width: 240,
+    height: 240,
+    borderRadius: Radius.pill,
+    opacity: 0.06,
+    bottom: -100,
+    left: -80,
   },
 });

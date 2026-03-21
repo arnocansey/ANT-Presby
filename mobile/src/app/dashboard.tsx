@@ -7,6 +7,7 @@ import {
   BrandCard,
   BrandHero,
   BrandMetric,
+  BrandPill,
   BrandScreen,
   BrandSectionHeader,
 } from '@/components/brand-ui';
@@ -58,6 +59,7 @@ export default function MemberDashboardScreen() {
         description="Track your profile, giving, prayer requests, notifications, and registrations in one place."
       >
         <View style={styles.heroActions}>
+          <BrandPill>Profile active</BrandPill>
           <BrandButton label="Edit Profile" onPress={() => router.push('/profile')} />
           <BrandButton label="Give Now" onPress={() => router.push('/donate')} variant="outline" />
         </View>
@@ -73,12 +75,19 @@ export default function MemberDashboardScreen() {
       <BrandCard>
         <BrandSectionHeader
           title="Quick actions"
-          description="The same key paths from the website, optimized for mobile."
+          description="Your most-used member tools, grouped like a mobile command center."
         />
         <View style={styles.actions}>
           <BrandButton label="Open Notifications" onPress={() => router.push('/notifications')} variant="secondary" />
           <BrandButton label="Prayer Requests" onPress={() => router.push('/prayers')} variant="outline" />
           <BrandButton label="Donation History" onPress={() => router.push('/donations')} variant="outline" />
+          <BrandButton label="News & Updates" onPress={() => router.push('/news' as never)} variant="outline" />
+          <BrandButton label="Browse Sermons" onPress={() => router.push('/sermons' as never)} variant="outline" />
+          <BrandButton label="Small Groups" onPress={() => router.push('/small-groups' as never)} variant="outline" />
+          <BrandButton label="Explore Ministries" onPress={() => router.push('/ministries' as never)} variant="outline" />
+          <BrandButton label="Prayer Wall" onPress={() => router.push('/prayer-wall' as never)} variant="outline" />
+          <BrandButton label="Daily Devotional" onPress={() => router.push('/daily-devotional' as never)} variant="outline" />
+          <BrandButton label="Search Content" onPress={() => router.push('/search' as never)} variant="outline" />
         </View>
       </BrandCard>
 
@@ -87,6 +96,21 @@ export default function MemberDashboardScreen() {
         <ThemedText type="defaultSemiBold">{displayName || 'Member account'}</ThemedText>
         <ThemedText type="small">{profileQuery.data?.email || user.email}</ThemedText>
         <ThemedText type="small">{profileQuery.data?.phone || 'No phone number saved yet.'}</ThemedText>
+        <BrandPill>{user.role === 'admin' ? 'Admin-enabled account' : 'Faithful member'}</BrandPill>
+      </BrandCard>
+
+      <BrandCard>
+        <BrandSectionHeader
+          title="Public resources"
+          description="Everything else you can reach on the website, now grouped for mobile."
+        />
+        <View style={styles.actions}>
+          <BrandButton label="About ANT PRESS" onPress={() => router.push('/about' as never)} variant="outline" />
+          <BrandButton label="FAQ" onPress={() => router.push('/faq' as never)} variant="outline" />
+          <BrandButton label="Contact Team" onPress={() => router.push('/contact' as never)} variant="outline" />
+          <BrandButton label="Privacy" onPress={() => router.push('/privacy' as never)} variant="outline" />
+          <BrandButton label="Terms" onPress={() => router.push('/terms' as never)} variant="outline" />
+        </View>
       </BrandCard>
     </BrandScreen>
   );

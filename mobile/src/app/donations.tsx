@@ -1,15 +1,18 @@
 import React from 'react';
 import { router } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
-import { BrandButton, BrandCard, BrandHero, BrandPill, BrandScreen } from '@/components/brand-ui';
+import { BrandButton, BrandCard, BrandHero, BrandMetric, BrandPill, BrandScreen } from '@/components/brand-ui';
 import { ThemedText } from '@/components/themed-text';
 import { useMyDonations } from '@/hooks/use-api';
 import { useAuthStore } from '@/store/auth';
+import { Spacing } from '@/constants/theme';
 
 export default function DonationsScreen() {
   const user = useAuthStore((state) => state.user);
   const { data, isLoading } = useMyDonations(Boolean(user));
   const donations = Array.isArray(data) ? data : [];
+  const completed = donations.filter((item: any) => String(item.status || '').toLowerCase() === 'completed').length;
 
   if (!user) {
     return (
@@ -34,6 +37,11 @@ export default function DonationsScreen() {
       >
         <BrandButton label="Make A Donation" onPress={() => router.push('/donate')} />
       </BrandHero>
+
+      <View style={styles.metrics}>
+        <BrandMetric label="Total" value={donations.length} />
+        <BrandMetric label="Completed" value={completed} />
+      </View>
 
       {isLoading ? (
         <BrandCard>
@@ -60,3 +68,11 @@ export default function DonationsScreen() {
     </BrandScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  metrics: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+});

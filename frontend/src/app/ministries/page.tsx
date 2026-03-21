@@ -1,96 +1,76 @@
 'use client';
 
-import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Heart } from 'lucide-react';
-import { useMinistries } from '@/hooks/useApi';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Heart, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-type Ministry = {
-  id: number;
-  name: string;
-  description?: string;
-};
+import { useMinistries } from '@/hooks/useApi';
 
 export default function MinistriesPage() {
   const { data, isLoading, error } = useMinistries();
-  const ministries = (data ?? []) as Ministry[];
+  const ministries = (data ?? []) as any[];
 
   return (
-    <div className="container-max py-12 sm:py-16">
-      <div className="mb-8 flex flex-col gap-4 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Our Ministries</h1>
-          <p className="mt-3 max-w-2xl text-ui-subtle">
-            Discover teams and communities where you can serve, grow, and connect.
+    <div className="container-max py-10">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-3xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-600 dark:text-amber-300">
+            Ministries
+          </p>
+          <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950 dark:text-white">
+            Discover teams and communities where you can grow
+          </h1>
+          <p className="mt-3 text-ui-subtle">
+            Explore the real ministry list and open each one to see related sermon content and connected activity.
           </p>
         </div>
-        <Button asChild variant="outline" className="w-full sm:w-auto">
+        <Button asChild variant="outline" className="rounded-full">
           <Link href="/contact">Contact a Ministry</Link>
         </Button>
       </div>
 
-      {isLoading && (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i} className="p-6">
-              <div className="h-5 w-2/3 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-              <div className="mt-4 h-16 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-              <div className="mt-6 h-9 w-28 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {!isLoading && error && (
-        <Card className="border-red-200 bg-red-50/70 dark:border-red-900 dark:bg-red-950/30">
-          <CardContent className="p-6 text-sm font-medium text-red-700 dark:text-red-300">
-            Failed to load ministries.
-          </CardContent>
-        </Card>
-      )}
-
+      {isLoading && <MinistryState text="Loading ministries..." />}
+      {!isLoading && error && <MinistryState text="Failed to load ministries." />}
       {!isLoading && !error && ministries.length === 0 && (
-        <Card className="border-dashed">
-          <CardContent className="p-8 text-center text-ui-subtle">
-            No ministries available right now.
-          </CardContent>
-        </Card>
+        <MinistryState text="No ministries available right now." />
       )}
 
       {!isLoading && !error && ministries.length > 0 && (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {ministries.map((ministry) => (
-            <Card
+          {ministries.map((ministry: any, index: number) => (
+            <div
               key={ministry.id}
-              className="group h-full transition-all hover:-translate-y-0.5 hover:shadow-lg"
+              className="group h-full rounded-[1.5rem] border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-800 dark:bg-slate-950"
             >
-              <CardHeader className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-sky-700 dark:text-cyan-300">
-                  <Heart className="h-4 w-4" />
-                  Ministry
+              <div className={`h-36 rounded-t-[1.5rem] ${index % 3 === 0 ? 'bg-gradient-to-br from-amber-500 to-orange-600' : index % 3 === 1 ? 'bg-gradient-to-br from-sky-600 to-cyan-600' : 'bg-gradient-to-br from-purple-600 to-fuchsia-600'}`} />
+              <div className="space-y-4 p-6">
+                <div className="inline-flex rounded-2xl bg-sky-100 p-3 text-sky-700 dark:bg-cyan-950/50 dark:text-cyan-300">
+                  <Heart className="h-5 w-5" />
                 </div>
-                <CardTitle className="text-xl tracking-tight">{ministry.name}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {ministry.description && (
-                  <p className="text-sm leading-relaxed text-ui-muted">{ministry.description}</p>
-                )}
-                <Button
-                  asChild
-                  variant="outline"
-                  className="group-hover:border-cyan-400 group-hover:text-sky-700 dark:group-hover:text-cyan-300"
-                >
-                  <Link href={`/ministries/${ministry.id}`}>
-                    View Sermons <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white">
+                    {ministry.name}
+                  </h2>
+                  <p className="mt-3 text-sm leading-relaxed text-ui-muted">
+                    {ministry.description || 'Open this ministry to explore its connected sermons and content.'}
+                  </p>
+                </div>
+                <Button asChild variant="outline" className="rounded-full">
+                  <Link href={`/ministries/${ministry.id}`}>View Ministry</Link>
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function MinistryState({ text }: { text: string }) {
+  return (
+    <div className="rounded-[1.4rem] border border-dashed border-slate-300 bg-white p-10 text-center text-ui-subtle dark:border-slate-700 dark:bg-slate-950">
+      <Users className="mx-auto mb-4 h-10 w-10 opacity-30" />
+      <p>{text}</p>
     </div>
   );
 }

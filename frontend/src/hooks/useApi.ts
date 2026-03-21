@@ -571,6 +571,102 @@ export const useNewsPost = (id: number) => {
   });
 };
 
+export const useCommunityFeed = (page = 1, limit = 20) => {
+  return useQuery({
+    queryKey: ['community-feed', page, limit],
+    queryFn: async () => {
+      const response = await apiClient.get('/community', {
+        params: { page, limit },
+      });
+      return response.data;
+    },
+  });
+};
+
+export const useCreateCommunityPost = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { content: string; imageUrl?: string | null }) => {
+      const response = await apiClient.post('/community', payload);
+      return response.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['community-feed'] });
+      toast.success('Post shared with the community');
+    },
+    onError: (error: any) => {
+      toast.error(getApiErrorMessage(error, 'Failed to create post'));
+    },
+  });
+};
+
+export const useToggleCommunityLike = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (postId: number) => {
+      const response = await apiClient.post(`/community/${postId}/like`);
+      return response.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['community-feed'] });
+    },
+    onError: (error: any) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update like'));
+    },
+  });
+};
+
+export const useCreateCommunityComment = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ postId, content }: { postId: number; content: string }) => {
+      const response = await apiClient.post(`/community/${postId}/comments`, { content });
+      return response.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['community-feed'] });
+      toast.success('Comment added');
+    },
+    onError: (error: any) => {
+      toast.error(getApiErrorMessage(error, 'Failed to add comment'));
+    },
+  });
+};
+
+export const useDeleteCommunityPost = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (postId: number) => {
+      const response = await apiClient.delete(`/community/${postId}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['community-feed'] });
+      toast.success('Post removed');
+    },
+    onError: (error: any) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete post'));
+    },
+  });
+};
+
+export const useDeleteCommunityComment = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ postId, commentId }: { postId: number; commentId: number }) => {
+      const response = await apiClient.delete(`/community/${postId}/comments/${commentId}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['community-feed'] });
+      toast.success('Comment removed');
+    },
+    onError: (error: any) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete comment'));
+    },
+  });
+};
+
 export const useSubmitContactMessage = () => {
   return useMutation({
     mutationFn: async (payload: { name: string; email: string; subject: string; message: string }) => {

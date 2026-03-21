@@ -4,16 +4,21 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, CalendarDays, MapPin, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useEvent, useRegisterEvent } from '@/hooks/useApi';
+import { useEvent, useRegisterEvent, useUserEventRegistrations } from '@/hooks/useApi';
+import { useAuthStore } from '@/lib/store';
 
 export default function EventDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id ? Number(params.id) : 0;
+  const { isAuthenticated } = useAuthStore();
   const { data, isLoading, error } = useEvent(id);
+  const registrationsQuery = useUserEventRegistrations(isAuthenticated);
   const register = useRegisterEvent();
+  const registeredIds = new Set((registrationsQuery.data || []).map((item: any) => item.id));
+  const isRegistered = data?.id ? registeredIds.has(data.id) : false;
 
   const handleRegister = () => {
-    if (!id) return;
+    if (!id || isRegistered) return;
     register.mutate(id);
   };
 
@@ -74,10 +79,10 @@ export default function EventDetailPage() {
               </p>
               <Button
                 onClick={handleRegister}
-                disabled={register.isPending || !data}
+                disabled={register.isPending || !data || isRegistered}
                 className="mt-5 h-12 w-full rounded-xl bg-amber-500 text-slate-950 hover:bg-amber-400"
               >
-                {register.isPending ? 'Registering...' : 'Register for Event'}
+                {isRegistered ? 'Already Registered' : register.isPending ? 'Registering...' : 'Register for Event'}
               </Button>
 
               {register.isSuccess && (
@@ -85,9 +90,14 @@ export default function EventDetailPage() {
                   Registration completed successfully.
                 </p>
               )}
+              {isRegistered && !register.isSuccess && (
+                <p className="mt-3 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                  You are already registered for this event.
+                </p>
+              )}
               {register.isError && (
                 <p className="mt-3 text-sm font-medium text-red-700 dark:text-red-300">
-                  Could not complete registration. Please try again.
+                  {(register.error as any)?.response?.data?.message || 'Could not complete registration. Please try again.'}
                 </p>
               )}
             </div>

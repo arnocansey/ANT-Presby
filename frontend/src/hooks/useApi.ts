@@ -297,6 +297,17 @@ export const useRegisterEvent = () => {
   });
 };
 
+export const useUserEventRegistrations = (enabled = true) => {
+  return useQuery({
+    queryKey: ['events', 'registrations', 'user'],
+    enabled,
+    queryFn: async () => {
+      const response = await apiClient.get('/events/registrations/user');
+      return response.data?.data || [];
+    },
+  });
+};
+
 export const usePrayerRequests = () => {
   return useQuery({
     queryKey: ['prayers', 'user'],

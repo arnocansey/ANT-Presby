@@ -7,7 +7,6 @@ import { BrandScreen } from '@/components/brand-ui';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import {
-  useCancelEventRegistration,
   useMyEventRegistrations,
   useRegisterForEvent,
   useUpcomingEvents,
@@ -28,7 +27,6 @@ export default function EventsScreen() {
   const { data, isLoading } = useUpcomingEvents();
   const registrationsQuery = useMyEventRegistrations(Boolean(user));
   const registerMutation = useRegisterForEvent();
-  const cancelMutation = useCancelEventRegistration();
   const items = Array.isArray(data) ? data : [];
   const registeredIds = new Set((registrationsQuery.data || []).map((item: any) => item.id));
   const nextEvent = items[0];
@@ -64,11 +62,15 @@ export default function EventsScreen() {
             </View>
             <Pressable
               onPress={() =>
-                user ? registerMutation.mutate(nextEvent.id) : router.push(`/events/${nextEvent.id}` as never)
+                user
+                  ? registeredIds.has(nextEvent.id)
+                    ? router.push({ pathname: '/events/[id]', params: { id: String(nextEvent.id) } })
+                    : registerMutation.mutate(nextEvent.id)
+                  : router.push(`/events/${nextEvent.id}` as never)
               }
               style={styles.bannerButton}>
               <ThemedText type="smallBold" style={{ color: '#6D28D9' }}>
-                {registeredIds.has(nextEvent.id) ? 'View Event' : 'Register Now'}
+                {registeredIds.has(nextEvent.id) ? 'Already Registered' : 'Register Now'}
               </ThemedText>
             </Pressable>
           </View>
@@ -141,7 +143,7 @@ export default function EventsScreen() {
                     return;
                   }
                   if (isRegistered) {
-                    cancelMutation.mutate(item.id);
+                    router.push({ pathname: '/events/[id]', params: { id: String(item.id) } });
                   } else {
                     registerMutation.mutate(item.id);
                   }

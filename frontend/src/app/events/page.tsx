@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Calendar, MapPin, Search, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useEvents } from '@/hooks/useApi';
+import { useEvents, useUserEventRegistrations } from '@/hooks/useApi';
 import { useAuthStore } from '@/lib/store';
 
 const badgeColors = [
@@ -18,9 +18,11 @@ const badgeColors = [
 export default function EventsPage() {
   const { isAuthenticated } = useAuthStore();
   const { data, isLoading, error } = useEvents(1, 24);
+  const registrationsQuery = useUserEventRegistrations(isAuthenticated);
   const [search, setSearch] = React.useState('');
   const [filter, setFilter] = React.useState<'all' | 'upcoming' | 'past'>('all');
   const events = (data?.data ?? []) as any[];
+  const registeredIds = new Set((registrationsQuery.data || []).map((item: any) => item.id));
 
   const filtered = events.filter((event) => {
     const q = search.trim().toLowerCase();
@@ -130,11 +132,20 @@ export default function EventsPage() {
                   <Button asChild variant="outline" className="rounded-full">
                     <Link href={`/events/${event.id}`}>Details</Link>
                   </Button>
-                  <Button asChild className="rounded-full bg-amber-500 text-slate-950 hover:bg-amber-400">
-                    <Link href={isAuthenticated ? `/events/${event.id}` : '/login'}>
-                      {isAuthenticated ? 'Register' : 'Sign In'}
-                    </Link>
-                  </Button>
+                  {isAuthenticated && registeredIds.has(event.id) ? (
+                    <Button
+                      disabled
+                      className="rounded-full bg-amber-500 text-slate-950 opacity-70"
+                    >
+                      Registered
+                    </Button>
+                  ) : (
+                    <Button asChild className="rounded-full bg-amber-500 text-slate-950 hover:bg-amber-400">
+                      <Link href={isAuthenticated ? `/events/${event.id}` : '/login'}>
+                        {isAuthenticated ? 'Register' : 'Sign In'}
+                      </Link>
+                    </Button>
+                  )}
                 </div>
               </div>
             );

@@ -137,6 +137,10 @@ const registerForEvent = async (req, res, next) => {
 
     const registration = await eventModel.registerForEvent(id, userId);
 
+    if (!registration) {
+      return res.status(400).json(apiResponse(false, null, 'Already registered for this event'));
+    }
+
     res.status(201).json(apiResponse(true, registration, 'Registered for event successfully'));
   } catch (error) {
     if (error.code === '23505') {

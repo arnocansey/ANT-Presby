@@ -176,6 +176,46 @@ describe('Prayer requests and prayer wall', () => {
     });
   });
 
+  describe('GET /api/prayers/wall', () => {
+    test('requires sign-in', async () => {
+      const response = await request(app).get('/api/prayers/wall');
+      expect(response.status).toBe(401);
+    });
+
+    test('returns the wall for the viewer with pagination meta', async () => {
+      prayerRequestModel.getWallPrayerRequests.mockResolvedValue([{ id: 3, requester_name: 'A church member' }]);
+      prayerRequestModel.countWallPrayerRequests.mockResolvedValue(1);
+
+      const response = await request(app)
+        .get('/api/prayers/wall?category=health')
+        .set('Authorization', `Bearer ${tokenFor(7)}`);
+
+      expect(response.status).toBe(200);
+      expect(prayerRequestModel.getWallPrayerRequests).toHaveBeenCalledWith({
+        offset: 0,
+        limit: 10,
+        category: 'health',
+        viewerUserId: 7,
+      });
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.meta.total).toBe(1);
+    });
+
+    test('rejects an unknown category', async () => {
+      const response = await request(app)
+        .get('/api/prayers/wall?category=gossip')
+        .set('Authorization', `Bearer ${tokenFor(7)}`);
+
+      expect(response.status).toBe(400);
+      expect(prayerRequestModel.getWallPrayerRequests).not.toHaveBeenCalled();
+    });
+
+    test('is not swallowed by the /:id route', async () => {
+      await request(app).get('/api/prayers/wall').set('Authorization', `Bearer ${tokenFor(7)}`);
+      expect(prayerRequestModel.getPrayerRequestById).not.toHaveBeenCalled();
+    });
+  });
+
   describe('POST /api/prayers/:id/approve', () => {
     test('notifies the requester through the notification service', async () => {
       prayerRequestModel.getPrayerRequestById.mockResolvedValue({ id: 9, user_id: 42, title: 'Healing' });

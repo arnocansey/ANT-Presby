@@ -87,6 +87,34 @@ const getUserPrayerRequests = async (req, res, next) => {
   }
 };
 
+const PRAYER_CATEGORIES = ['personal', 'family', 'health', 'work', 'financial', 'other'];
+
+// Prayer wall: approved or answered requests their owners chose to share (signed-in members only)
+const getPrayerWall = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 10, category } = req.query;
+
+    if (category && !PRAYER_CATEGORIES.includes(category)) {
+      return res.status(400).json(apiResponse(false, null, 'Invalid prayer category'));
+    }
+
+    const { offset, limitNum } = getPagination(page, limit);
+    const [prayers, total] = await Promise.all([
+      prayerRequestModel.getWallPrayerRequests({
+        offset,
+        limit: limitNum,
+        category: category || undefined,
+        viewerUserId: req.user.userId,
+      }),
+      prayerRequestModel.countWallPrayerRequests({ category: category || undefined }),
+    ]);
+
+    res.json(apiResponse(true, prayers, 'Prayer wall retrieved', buildPaginationMeta(total, page, limit)));
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Update prayer request
 const updatePrayerRequest = async (req, res, next) => {
   try {
@@ -227,6 +255,7 @@ module.exports = {
   getAllPrayerRequests,
   getPrayerRequestById,
   getUserPrayerRequests,
+  getPrayerWall,
   updatePrayerRequest,
   approvePrayerRequest,
   markAsAnswered,

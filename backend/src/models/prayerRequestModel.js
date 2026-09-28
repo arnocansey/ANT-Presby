@@ -228,7 +228,68 @@ const getPrayerStatistics = async () => {
   };
 };
 
+// ---- Prayer wall ----
+
+const WALL_STATUSES = ['approved', 'answered'];
+const ANONYMOUS_NAME = 'A church member';
+
+const buildWallWhere = (category) => ({
+  shareOnWall: true,
+  status: { in: WALL_STATUSES },
+  ...(category ? { category } : {}),
+});
+
+// Builds the public wall shape field by field so nothing identifying can leak.
+const toWallItem = (row) => {
+  const fullName = `${row.user?.firstName || ''} ${row.user?.lastName || ''}`.trim();
+
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    category: row.category,
+    status: row.status,
+    requester_name: row.isAnonymous || !fullName ? ANONYMOUS_NAME : fullName,
+    prayer_count: row.prayerCount,
+    prayed_by_me: Array.isArray(row.intercessions) && row.intercessions.length > 0,
+    created_at: row.createdAt,
+  };
+};
+
+const getWallPrayerRequests = async ({ offset = 0, limit = 10, category, viewerUserId }) => {
+  const rows = await prisma.prayerRequest.findMany({
+    where: buildWallWhere(category),
+    skip: Number(offset),
+    take: Number(limit),
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      category: true,
+      status: true,
+      isAnonymous: true,
+      prayerCount: true,
+      createdAt: true,
+      user: { select: { firstName: true, lastName: true } },
+      intercessions: {
+        where: { userId: Number(viewerUserId) },
+        select: { id: true },
+      },
+    },
+  });
+
+  return rows.map(toWallItem);
+};
+
+const countWallPrayerRequests = async ({ category } = {}) =>
+  prisma.prayerRequest.count({ where: buildWallWhere(category) });
+
 module.exports = {
+  WALL_STATUSES,
+  toWallItem,
+  getWallPrayerRequests,
+  countWallPrayerRequests,
   createPrayerRequest,
   getAllPrayerRequests,
   countPrayerRequests,

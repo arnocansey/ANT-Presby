@@ -44,6 +44,34 @@ const createNotificationForAllUsers = async (title, message, type, entityType = 
   return result.count;
 };
 
+// Create the same notification for several users in one insert
+const createNotificationsForUsers = async (
+  userIds,
+  title,
+  message,
+  type,
+  entityType = null,
+  entityId = null
+) => {
+  if (!Array.isArray(userIds) || userIds.length === 0) {
+    return 0;
+  }
+
+  const result = await prisma.notification.createMany({
+    data: userIds.map((userId) => ({
+      userId: Number(userId),
+      title,
+      message,
+      type,
+      entityType,
+      entityId,
+      isRead: false,
+    })),
+  });
+
+  return result.count;
+};
+
 // Get notifications for a user
 const getUserNotifications = async (userId, offset = 0, limit = 20, unreadOnly = false) => {
   const where = {
@@ -129,6 +157,7 @@ const markAllNotificationsRead = async (userId) => {
 module.exports = {
   createNotification,
   createNotificationForAllUsers,
+  createNotificationsForUsers,
   getUserNotifications,
   countUnreadNotifications,
   markNotificationRead,

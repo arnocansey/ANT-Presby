@@ -1,6 +1,14 @@
 const { apiResponse, getPagination, buildPaginationMeta } = require('../utils/helpers');
 const prayerRequestModel = require('../models/prayerRequestModel');
-const notificationModel = require('../models/notificationModel');
+const { notify } = require('../services/notificationService');
+
+const parseId = (value) => {
+  const id = Number.parseInt(value, 10);
+  return Number.isInteger(id) && id > 0 && String(id) === String(value) ? id : null;
+};
+
+const isOwnerOrAdmin = (prayerRequest, user) =>
+  user.role === 'admin' || Number(prayerRequest.user_id) === Number(user.userId);
 
 /**
  * Prayer Request Controller - Handles prayer request operations
@@ -49,10 +57,11 @@ const getAllPrayerRequests = async (req, res, next) => {
 // Get prayer request by ID
 const getPrayerRequestById = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const prayerRequest = await prayerRequestModel.getPrayerRequestById(id);
+    const id = parseId(req.params.id);
+    const prayerRequest = id ? await prayerRequestModel.getPrayerRequestById(id) : undefined;
 
-    if (!prayerRequest) {
+    // 404 (not 403) so members can't discover which private requests exist.
+    if (!prayerRequest || !isOwnerOrAdmin(prayerRequest, req.user)) {
       return res.status(404).json(apiResponse(false, null, 'Prayer request not found'));
     }
 
@@ -125,18 +134,14 @@ const approvePrayerRequest = async (req, res, next) => {
       adminId
     );
 
-    try {
-      await notificationModel.createNotification(
-        prayerRequest.user_id,
-        'Prayer update',
-        `Your prayer request "${prayerRequest.title}" has been approved.`,
-        'prayer',
-        'prayer',
-        Number(id)
-      );
-    } catch (notifyError) {
-      console.warn('Prayer approval notification skipped:', notifyError.message);
-    }
+    await notify({
+      userIds: [prayerRequest.user_id],
+      title: 'Prayer update',
+      message: `Your prayer request "${prayerRequest.title}" has been approved.`,
+      type: 'prayer',
+      entityType: 'prayer',
+      entityId: Number(id),
+    });
 
     res.json(apiResponse(true, updatedRequest, 'Prayer request approved'));
   } catch (error) {
@@ -156,18 +161,14 @@ const markAsAnswered = async (req, res, next) => {
 
     const updatedRequest = await prayerRequestModel.updatePrayerRequestStatus(id, 'answered');
 
-    try {
-      await notificationModel.createNotification(
-        prayerRequest.user_id,
-        'Prayer answered update',
-        `Your prayer request "${prayerRequest.title}" has been marked as answered.`,
-        'prayer',
-        'prayer',
-        Number(id)
-      );
-    } catch (notifyError) {
-      console.warn('Prayer answered notification skipped:', notifyError.message);
-    }
+    await notify({
+      userIds: [prayerRequest.user_id],
+      title: 'Prayer answered update',
+      message: `Your prayer request "${prayerRequest.title}" has been marked as answered.`,
+      type: 'prayer',
+      entityType: 'prayer',
+      entityId: Number(id),
+    });
 
     res.json(apiResponse(true, updatedRequest, 'Prayer marked as answered'));
   } catch (error) {

@@ -14,6 +14,8 @@ type AdminPrayer = {
   category?: string;
   status?: string;
   created_at?: string;
+  share_on_wall?: boolean;
+  is_anonymous?: boolean;
 };
 
 export default function AdminPrayersPage() {
@@ -64,6 +66,18 @@ export default function AdminPrayersPage() {
               key: 'category',
               header: 'Category',
               render: (prayer: AdminPrayer) => prayer.category || 'general',
+            },
+            {
+              key: 'share_on_wall',
+              header: 'Wall',
+              render: (prayer: AdminPrayer) =>
+                prayer.share_on_wall ? (
+                  <span className="inline-flex rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">
+                    {prayer.is_anonymous ? 'Shared (anonymous)' : 'Shared'}
+                  </span>
+                ) : (
+                  <span className="text-xs text-ui-subtle">Private</span>
+                ),
             },
             {
               key: 'status',

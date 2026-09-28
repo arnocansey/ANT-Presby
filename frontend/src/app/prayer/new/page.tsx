@@ -15,6 +15,7 @@ type PrayerForm = {
   description: string;
   category: 'personal' | 'family' | 'health' | 'work' | 'financial' | 'other';
   isAnonymous: boolean;
+  shareOnWall: boolean;
 };
 
 export default function NewPrayerPage() {
@@ -22,6 +23,7 @@ export default function NewPrayerPage() {
     defaultValues: {
       category: 'personal',
       isAnonymous: false,
+      shareOnWall: false,
     },
   });
   const submit = useSubmitPrayer();
@@ -30,7 +32,7 @@ export default function NewPrayerPage() {
     submit.mutate(data, {
       onSuccess: () => {
         toast.success('Prayer submitted');
-        reset({ title: '', description: '', category: 'personal', isAnonymous: false });
+        reset({ title: '', description: '', category: 'personal', isAnonymous: false, shareOnWall: false });
       },
     });
   };
@@ -79,6 +81,23 @@ export default function NewPrayerPage() {
               <Label htmlFor="prayer-anonymous" className="text-sm">
                 Submit anonymously
               </Label>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <input
+                  id="prayer-share-on-wall"
+                  type="checkbox"
+                  {...register('shareOnWall')}
+                  className="h-4 w-4 rounded border-slate-400 text-sky-700 focus-visible:ring-cyan-500 dark:border-slate-600 dark:bg-slate-900"
+                />
+                <Label htmlFor="prayer-share-on-wall" className="text-sm">
+                  Share on the prayer wall
+                </Label>
+              </div>
+              <p className="pl-6 text-xs text-ui-subtle">
+                After approval, other signed-in members can see this request and pray for you.
+              </p>
             </div>
 
             <div className="flex items-center justify-between gap-3">

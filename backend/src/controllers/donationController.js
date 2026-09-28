@@ -2,6 +2,7 @@ const { apiResponse, getPagination, buildPaginationMeta } = require('../utils/he
 const donationModel = require('../models/donationModel');
 const paymentService = require('../services/paymentService');
 const auditLogModel = require('../models/auditLogModel');
+const { isAllowedAppRedirectUri } = require('../utils/redirects');
 
 const normalizeDonationPayload = (body) => ({
   amount: body.amount,
@@ -12,13 +13,20 @@ const normalizeDonationPayload = (body) => ({
   callbackUrl: body.callbackUrl || body.callback_url,
 });
 
-const isValidCallbackBase = (value) =>
-  typeof value === 'string' &&
-  /^(https?:\/\/|[a-z][a-z0-9+.-]*:\/\/)/i.test(value);
+const isAdmin = (req) => req.user?.role === 'admin';
+
+// Fields a donor may change on their own donation; everything else (status, amount, reference) is admin-only.
+const MEMBER_EDITABLE_DONATION_FIELDS = ['notes'];
+
+const pickMemberDonationUpdates = (body = {}) =>
+  MEMBER_EDITABLE_DONATION_FIELDS.reduce((updates, field) => {
+    if (body[field] !== undefined) updates[field] = body[field];
+    return updates;
+  }, {});
 
 const buildCallbackUrl = (value, reference) => {
   const fallbackBase = process.env.FRONTEND_URL || 'http://localhost:3000';
-  const base = isValidCallbackBase(value) ? value : `${fallbackBase}/donate`;
+  const base = isAllowedAppRedirectUri(value) ? value : `${fallbackBase}/donate`;
 
   try {
     const separator = base.includes('?') ? '&' : '?';
@@ -33,12 +41,13 @@ const createDonation = async (req, res, next) => {
     const userId = req.user.userId;
     const { amount, donationType, paymentMethod, reference, notes } = normalizeDonationPayload(req.body);
 
+    // Payment references link a donation to a Paystack charge, so members cannot choose their own.
     const donation = await donationModel.createDonation(
       userId,
       amount,
       donationType,
       paymentMethod,
-      reference,
+      isAdmin(req) ? reference : null,
       notes
     );
 
@@ -105,8 +114,14 @@ const verifyDonationPayment = async (req, res, next) => {
       return res.status(403).json(apiResponse(false, null, 'Unauthorized'));
     }
 
+    if (donation.status === 'completed') {
+      return res.json(apiResponse(true, { donation }, 'Donation already verified'));
+    }
+
     const payment = await paymentService.verifyPayment(reference);
-    const nextStatus = payment.status === 'success' ? 'completed' : 'failed';
+    const isPaid =
+      payment.status === 'success' && paymentService.isPaidAmountValid(donation.amount, payment.amount);
+    const nextStatus = isPaid ? 'completed' : 'failed';
     const updated = await donationModel.updateDonationStatusByReference(reference, nextStatus);
 
     res.json(apiResponse(true, { donation: updated, payment }, 'Donation payment verified'));
@@ -120,17 +135,37 @@ const handleDonationWebhook = async (req, res, next) => {
     const signature = req.headers['x-paystack-signature'];
     const raw = req.body;
 
+    // This route must receive the unparsed body (see server.js); signatures are computed over raw bytes.
+    if (!Buffer.isBuffer(raw)) {
+      return res.status(400).json(apiResponse(false, null, 'Webhook body must be raw JSON'));
+    }
+
     if (paymentService.hasPaystackConfig()) {
       const valid = paymentService.isValidWebhookSignature(raw, signature);
       if (!valid) {
         return res.status(401).json(apiResponse(false, null, 'Invalid webhook signature'));
       }
+    } else if (!paymentService.isMockPaymentAllowed()) {
+      return res.status(503).json(apiResponse(false, null, 'Payments are not configured'));
     }
 
-    const payload = JSON.parse(raw.toString('utf8'));
+    let payload;
+    try {
+      payload = JSON.parse(raw.toString('utf8'));
+    } catch (_error) {
+      return res.status(400).json(apiResponse(false, null, 'Invalid webhook payload'));
+    }
 
     if (payload.event === 'charge.success' && payload.data?.reference) {
-      await donationModel.updateDonationStatusByReference(payload.data.reference, 'completed');
+      const donation = await donationModel.getDonationByReference(payload.data.reference);
+
+      if (
+        donation &&
+        donation.status !== 'completed' &&
+        paymentService.isPaidAmountValid(donation.amount, payload.data.amount)
+      ) {
+        await donationModel.updateDonationStatusByReference(payload.data.reference, 'completed');
+      }
     }
 
     res.json({ status: 'ok' });
@@ -231,11 +266,12 @@ const updateDonation = async (req, res, next) => {
       return res.status(404).json(apiResponse(false, null, 'Donation not found'));
     }
 
-    if (req.user.role !== 'admin' && donation.user_id !== req.user.userId) {
+    if (!isAdmin(req) && donation.user_id !== req.user.userId) {
       return res.status(403).json(apiResponse(false, null, 'Unauthorized'));
     }
 
-    const updatedDonation = await donationModel.updateDonation(id, req.body);
+    const updates = isAdmin(req) ? req.body : pickMemberDonationUpdates(req.body);
+    const updatedDonation = await donationModel.updateDonation(id, updates);
 
     res.json(apiResponse(true, updatedDonation, 'Donation updated'));
   } catch (error) {

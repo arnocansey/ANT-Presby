@@ -10,6 +10,7 @@ const {
 } = require('../middleware/authMiddleware');
 const userModel = require('../models/userModel');
 const { sendEmailVerification } = require('../services/emailService');
+const { isAllowedMobileRedirectUri, isAllowedWebRedirectUri } = require('../utils/redirects');
 
 const VERIFICATION_WINDOW_MS = 24 * 60 * 60 * 1000;
 const GOOGLE_STATE_WINDOW_MS = 10 * 60 * 1000;
@@ -36,8 +37,26 @@ const buildVerificationUrl = (token) =>
 const buildFrontendGoogleCallbackUrl = () =>
   `${getVerificationAppBaseUrl().replace(/\/$/, '')}/oauth/google/callback`;
 
+const createHttpError = (statusCode, message) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+};
+
 const createVerificationToken = () => crypto.randomBytes(32).toString('hex');
 
+const getStateSigningSecret = () => {
+  const secret = process.env.OAUTH_STATE_SECRET || process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('OAuth state secret is not configured');
+  }
+  return secret;
+};
+
+const signStatePayload = (encodedPayload) =>
+  crypto.createHmac('sha256', getStateSigningSecret()).update(encodedPayload).digest('base64url');
+
+// State is HMAC-signed so the redirect target inside it cannot be forged.
 const createGoogleStateToken = (payload) => {
   const data = {
     ...payload,
@@ -45,11 +64,25 @@ const createGoogleStateToken = (payload) => {
     exp: Date.now() + GOOGLE_STATE_WINDOW_MS,
   };
 
-  return Buffer.from(JSON.stringify(data)).toString('base64url');
+  const encodedPayload = Buffer.from(JSON.stringify(data)).toString('base64url');
+  return `${encodedPayload}.${signStatePayload(encodedPayload)}`;
 };
 
 const parseGoogleStateToken = (state) => {
-  const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf8'));
+  const [encodedPayload, signature] = String(state).split('.');
+
+  if (!encodedPayload || !signature) {
+    throw new Error('Invalid state');
+  }
+
+  const expected = Buffer.from(signStatePayload(encodedPayload));
+  const provided = Buffer.from(signature);
+
+  if (expected.length !== provided.length || !crypto.timingSafeEqual(expected, provided)) {
+    throw new Error('Invalid state');
+  }
+
+  const decoded = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'));
 
   if (!decoded?.exp || Number(decoded.exp) < Date.now()) {
     throw new Error('State expired');
@@ -64,8 +97,9 @@ const getAllowedGoogleClientIds = () =>
     .map((value) => String(value || '').trim())
     .filter(Boolean);
 
-const isAllowedMobileRedirectUri = (redirectUri) =>
-  redirectUri.startsWith(`${DEFAULT_MOBILE_SCHEME}://`);
+// Tokens are appended to the redirect, so only our own app (mobile scheme or configured web origin) may receive them.
+const isAllowedRedirectUri = (redirectUri) =>
+  isAllowedMobileRedirectUri(redirectUri) || isAllowedWebRedirectUri(redirectUri);
 
 const setAuthCookies = (res, accessToken, refreshToken) => {
   const base = getCookieBaseOptions();
@@ -210,8 +244,12 @@ const validateGoogleAccessToken = async (accessToken) => {
   const allowedClientIds = getAllowedGoogleClientIds();
   const audience = tokenInfoResponse.data?.aud;
 
-  if (allowedClientIds.length > 0 && audience && !allowedClientIds.includes(audience)) {
-    throw new Error('Google token audience is not allowed');
+  if (allowedClientIds.length === 0) {
+    throw createHttpError(503, 'Google sign-in is not configured');
+  }
+
+  if (!audience || !allowedClientIds.includes(audience)) {
+    throw createHttpError(401, 'Google token audience is not allowed');
   }
 
   const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
@@ -221,7 +259,7 @@ const validateGoogleAccessToken = async (accessToken) => {
   });
 
   if (!userInfoResponse.data?.email || userInfoResponse.data?.email_verified !== true) {
-    throw new Error('Google account email is not verified');
+    throw createHttpError(401, 'Google account email is not verified');
   }
 
   return normalizeGoogleUserInfo(userInfoResponse.data);
@@ -361,7 +399,9 @@ const startGoogleOAuth = async (req, res) => {
       ? requestedRedirectUri && isAllowedMobileRedirectUri(requestedRedirectUri)
         ? requestedRedirectUri
         : `${DEFAULT_MOBILE_SCHEME}://oauth/google`
-      : requestedRedirectUri || buildFrontendGoogleCallbackUrl();
+      : requestedRedirectUri && isAllowedWebRedirectUri(requestedRedirectUri)
+        ? requestedRedirectUri
+        : buildFrontendGoogleCallbackUrl();
 
   const state = createGoogleStateToken({ mode, redirectUri });
   const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
@@ -386,7 +426,9 @@ const googleOAuthCallback = async (req, res) => {
     }
 
     const parsedState = parseGoogleStateToken(String(state));
-    redirectUri = parsedState.redirectUri || redirectUri;
+    if (isAllowedRedirectUri(parsedState.redirectUri)) {
+      redirectUri = parsedState.redirectUri;
+    }
 
     const tokenResponse = await axios.post(
       'https://oauth2.googleapis.com/token',
@@ -469,13 +511,18 @@ const resendVerificationEmail = async (req, res, next) => {
     }
 
     const user = await userModel.findUserByEmail(email);
+    const genericResponse = apiResponse(
+      true,
+      {
+        email,
+        verification_required: true,
+      },
+      'If an unverified account exists for this email, a verification link has been sent.'
+    );
 
-    if (!user) {
-      return res.status(404).json(apiResponse(false, null, 'Account not found'));
-    }
-
-    if (user.email_verified) {
-      return res.status(400).json(apiResponse(false, null, 'Email is already verified'));
+    // Same answer whether or not the account exists, so this can't be used to enumerate users.
+    if (!user || user.email_verified) {
+      return res.json(genericResponse);
     }
 
     const verificationToken = createVerificationToken();
@@ -490,16 +537,7 @@ const resendVerificationEmail = async (req, res, next) => {
 
     await sendVerificationForUser(user, verificationToken);
 
-    res.json(
-      apiResponse(
-        true,
-        {
-          email: user.email,
-          verification_required: true,
-        },
-        'Verification email sent successfully'
-      )
-    );
+    res.json(genericResponse);
   } catch (error) {
     next(error);
   }

@@ -1,0 +1,8 @@
+node_modules
+.next
+church-web-ui
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo

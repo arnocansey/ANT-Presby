@@ -2,6 +2,15 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 
+// The stored extension comes from this map, never from the client's filename, so an upload can't
+// become an .html/.js/.svg file served from our origin.
+const ALLOWED_IMAGE_TYPES = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+};
+
 const ensureDir = (dirPath) => {
   fs.mkdirSync(dirPath, { recursive: true });
   return dirPath;
@@ -15,8 +24,8 @@ const createImageUpload = ({ directoryName, filePrefix }) => {
       cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-      const safeExt = path.extname(file.originalname || '').toLowerCase() || '.jpg';
-      const actorId = req.user?.userId || 'system';
+      const safeExt = ALLOWED_IMAGE_TYPES[file.mimetype];
+      const actorId = Number(req.user?.userId) || 'system';
       const fileName = `${filePrefix}-${actorId}-${Date.now()}${safeExt}`;
       cb(null, fileName);
     },
@@ -25,8 +34,10 @@ const createImageUpload = ({ directoryName, filePrefix }) => {
   return multer({
     storage,
     fileFilter: (req, file, cb) => {
-      if (!file.mimetype || !file.mimetype.startsWith('image/')) {
-        return cb(new Error('Only image files are allowed'));
+      if (!Object.prototype.hasOwnProperty.call(ALLOWED_IMAGE_TYPES, file.mimetype)) {
+        const error = new Error('Only JPEG, PNG, WebP, or GIF images are allowed');
+        error.statusCode = 400;
+        return cb(error);
       }
       cb(null, true);
     },

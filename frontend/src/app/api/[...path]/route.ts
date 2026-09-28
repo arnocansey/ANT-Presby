@@ -13,6 +13,17 @@ const buildTargetUrl = (request: NextRequest, path: string[]) => {
   return target;
 };
 
+// Server-only secret shared with the backend so it can trust the client IP we forward for rate limiting.
+const PROXY_SHARED_SECRET = process.env.PROXY_SHARED_SECRET || '';
+
+const getClientIp = (request: NextRequest) => {
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  if (forwardedFor) {
+    return forwardedFor.split(',')[0]?.trim() || '';
+  }
+  return request.headers.get('x-real-ip')?.trim() || '';
+};
+
 const copyHeaders = (request: NextRequest) => {
   const headers = new Headers();
 
@@ -24,13 +35,22 @@ const copyHeaders = (request: NextRequest) => {
       lowerKey === 'connection' ||
       lowerKey === 'content-length' ||
       lowerKey === 'x-forwarded-host' ||
-      lowerKey === 'origin'
+      lowerKey === 'origin' ||
+      // Never let a browser supply these; only this proxy may set them.
+      lowerKey === 'x-proxy-secret' ||
+      lowerKey === 'x-client-ip'
     ) {
       return;
     }
 
     headers.set(key, value);
   });
+
+  const clientIp = getClientIp(request);
+  if (PROXY_SHARED_SECRET && clientIp) {
+    headers.set('x-proxy-secret', PROXY_SHARED_SECRET);
+    headers.set('x-client-ip', clientIp);
+  }
 
   return headers;
 };

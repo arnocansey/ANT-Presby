@@ -17,7 +17,7 @@ const isOwnerOrAdmin = (prayerRequest, user) =>
 // Create prayer request
 const createPrayerRequest = async (req, res, next) => {
   try {
-    const { title, description, category, isAnonymous } = req.body;
+    const { title, description, category, isAnonymous, shareOnWall } = req.body;
     const userId = req.user.userId;
 
     const prayerRequest = await prayerRequestModel.createPrayerRequest(
@@ -25,7 +25,8 @@ const createPrayerRequest = async (req, res, next) => {
       title,
       description,
       category,
-      isAnonymous || false
+      isAnonymous === true,
+      shareOnWall === true
     );
 
     res.status(201).json(apiResponse(true, prayerRequest, 'Prayer request submitted'));
@@ -89,17 +90,15 @@ const getUserPrayerRequests = async (req, res, next) => {
 // Update prayer request
 const updatePrayerRequest = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const userId = req.user.userId;
-    const { title, description, category, isAnonymous } = req.body;
+    const id = parseId(req.params.id);
+    const { title, description, category, isAnonymous, shareOnWall } = req.body;
 
-    // Check if user is the owner or admin
-    const prayerRequest = await prayerRequestModel.getPrayerRequestById(id);
+    const prayerRequest = id ? await prayerRequestModel.getPrayerRequestById(id) : undefined;
     if (!prayerRequest) {
       return res.status(404).json(apiResponse(false, null, 'Prayer request not found'));
     }
 
-    if (prayerRequest.user_id !== userId && req.user.role !== 'admin') {
+    if (!isOwnerOrAdmin(prayerRequest, req.user)) {
       return res.status(403).json(apiResponse(false, null, 'Unauthorized'));
     }
 
@@ -108,6 +107,15 @@ const updatePrayerRequest = async (req, res, next) => {
     if (description !== undefined) updates.description = description;
     if (category !== undefined) updates.category = category;
     if (isAnonymous !== undefined) updates.isAnonymous = isAnonymous;
+    if (shareOnWall !== undefined) updates.shareOnWall = shareOnWall;
+
+    // Approved text is shown on the prayer wall, so a member's edit needs review again.
+    const textChanged =
+      (title !== undefined && title !== prayerRequest.title) ||
+      (description !== undefined && description !== prayerRequest.description);
+    if (req.user.role !== 'admin' && textChanged && prayerRequest.status !== 'pending') {
+      updates.status = 'pending';
+    }
 
     const updatedRequest = await prayerRequestModel.updatePrayerRequest(id, updates);
 

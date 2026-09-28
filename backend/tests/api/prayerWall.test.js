@@ -88,6 +88,94 @@ describe('Prayer requests and prayer wall', () => {
     });
   });
 
+  describe('sharing on the wall', () => {
+    const validBody = {
+      title: 'Healing',
+      description: 'Please pray for my mother',
+      category: 'health',
+    };
+
+    test('create passes shareOnWall to the model', async () => {
+      const response = await request(app)
+        .post('/api/prayers')
+        .set('Authorization', `Bearer ${tokenFor(7)}`)
+        .send({ ...validBody, shareOnWall: true });
+
+      expect(response.status).toBe(201);
+      expect(prayerRequestModel.createPrayerRequest).toHaveBeenCalledWith(
+        7,
+        'Healing',
+        'Please pray for my mother',
+        'health',
+        false,
+        true
+      );
+    });
+
+    test('create rejects a non-boolean shareOnWall', async () => {
+      const response = await request(app)
+        .post('/api/prayers')
+        .set('Authorization', `Bearer ${tokenFor(7)}`)
+        .send({ ...validBody, shareOnWall: 'yes please' });
+
+      expect(response.status).toBe(400);
+    });
+
+    test('an owner editing the text of an approved request sends it back to pending', async () => {
+      prayerRequestModel.getPrayerRequestById.mockResolvedValue({
+        id: 9,
+        user_id: 7,
+        status: 'approved',
+        ...validBody,
+      });
+
+      await request(app)
+        .put('/api/prayers/9')
+        .set('Authorization', `Bearer ${tokenFor(7)}`)
+        .send({ ...validBody, description: 'Something new that nobody reviewed' });
+
+      expect(prayerRequestModel.updatePrayerRequest).toHaveBeenCalledWith(
+        9,
+        expect.objectContaining({ status: 'pending' })
+      );
+    });
+
+    test('an owner only toggling shareOnWall keeps the approval', async () => {
+      prayerRequestModel.getPrayerRequestById.mockResolvedValue({
+        id: 9,
+        user_id: 7,
+        status: 'approved',
+        ...validBody,
+      });
+
+      await request(app)
+        .put('/api/prayers/9')
+        .set('Authorization', `Bearer ${tokenFor(7)}`)
+        .send({ ...validBody, shareOnWall: true });
+
+      const updates = prayerRequestModel.updatePrayerRequest.mock.calls[0][1];
+      expect(updates.shareOnWall).toBe(true);
+      expect(updates.status).toBeUndefined();
+    });
+
+    test('an admin editing text keeps the status', async () => {
+      prayerRequestModel.getPrayerRequestById.mockResolvedValue({
+        id: 9,
+        user_id: 7,
+        status: 'approved',
+        ...validBody,
+      });
+
+      await request(app)
+        .put('/api/prayers/9')
+        .set('Authorization', `Bearer ${tokenFor(1, 'admin')}`)
+        .send({ ...validBody, description: 'Typo fixed by admin' });
+
+      const updates = prayerRequestModel.updatePrayerRequest.mock.calls[0][1];
+      expect(updates.status).toBeUndefined();
+    });
+  });
+
   describe('POST /api/prayers/:id/approve', () => {
     test('notifies the requester through the notification service', async () => {
       prayerRequestModel.getPrayerRequestById.mockResolvedValue({ id: 9, user_id: 42, title: 'Healing' });

@@ -6,7 +6,14 @@ const { toSnakeCaseObject } = require('../utils/prismaHelpers');
  */
 
 // Create prayer request
-const createPrayerRequest = async (userId, title, description, category, isAnonymous = false) => {
+const createPrayerRequest = async (
+  userId,
+  title,
+  description,
+  category,
+  isAnonymous = false,
+  shareOnWall = false
+) => {
   const prayerRequest = await prisma.prayerRequest.create({
     data: {
       userId: Number(userId),
@@ -14,6 +21,7 @@ const createPrayerRequest = async (userId, title, description, category, isAnony
       description,
       category,
       isAnonymous,
+      shareOnWall,
       status: 'pending',
     },
   });
@@ -45,6 +53,8 @@ const getAllPrayerRequests = async (offset, limit, filters = {}) => {
       category: true,
       status: true,
       isAnonymous: true,
+      shareOnWall: true,
+      prayerCount: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -136,6 +146,7 @@ const buildPrayerRequestUpdateData = (updates) => {
   if (updates.category !== undefined) data.category = updates.category;
   if (updates.status !== undefined) data.status = updates.status;
   if (updates.isAnonymous !== undefined) data.isAnonymous = updates.isAnonymous;
+  if (updates.shareOnWall !== undefined) data.shareOnWall = updates.shareOnWall;
   if (updates.approvedBy !== undefined) {
     data.approvedBy = updates.approvedBy === null ? null : Number(updates.approvedBy);
   }

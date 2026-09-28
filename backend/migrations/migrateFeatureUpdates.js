@@ -325,6 +325,33 @@ async function migrateFeatureUpdates() {
       ON community_likes(post_id);
     `);
 
+    // Prayer wall (phase 1)
+    await client.query(`
+      ALTER TABLE prayer_requests
+      ADD COLUMN IF NOT EXISTS share_on_wall BOOLEAN NOT NULL DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS prayer_count INTEGER NOT NULL DEFAULT 0;
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_prayer_requests_wall
+      ON prayer_requests(share_on_wall, status, created_at DESC);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS prayer_intercessions (
+        id SERIAL PRIMARY KEY,
+        prayer_request_id INTEGER NOT NULL REFERENCES prayer_requests(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT prayer_intercessions_request_user_unique UNIQUE (prayer_request_id, user_id)
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_prayer_intercessions_user
+      ON prayer_intercessions(user_id);
+    `);
+
     await client.query('COMMIT');
     console.log('Feature update migration completed successfully.');
     process.exit(0);

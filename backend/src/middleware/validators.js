@@ -110,6 +110,8 @@ const validatePrayerRequest = [
   body('category')
     .isIn(['personal', 'family', 'health', 'work', 'financial', 'other'])
     .withMessage('Invalid prayer category'),
+  body('isAnonymous').optional().isBoolean({ strict: true }).withMessage('isAnonymous must be true or false'),
+  body('shareOnWall').optional().isBoolean({ strict: true }).withMessage('shareOnWall must be true or false'),
 ];
 
 // Donation validation rules

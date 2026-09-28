@@ -39,6 +39,9 @@ router.get(
 // Prayer wall (signed-in members). Must be registered before '/:id'.
 router.get('/wall', isAuthenticated, prayerRequestController.getPrayerWall);
 
+// Record "I prayed" for a wall request
+router.post('/:id/pray', isAuthenticated, prayerRequestController.prayForRequest);
+
 // Get prayer request by ID
 router.get('/:id', isAuthenticated, prayerRequestController.getPrayerRequestById);
 

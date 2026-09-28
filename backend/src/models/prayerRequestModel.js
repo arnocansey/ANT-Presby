@@ -285,11 +285,52 @@ const getWallPrayerRequests = async ({ offset = 0, limit = 10, category, viewerU
 const countWallPrayerRequests = async ({ category } = {}) =>
   prisma.prayerRequest.count({ where: buildWallWhere(category) });
 
+// Records one prayer per member per wall request. Safe under double taps and races:
+// the unique (prayer_request_id, user_id) constraint makes the insert a no-op for repeats,
+// and the counter only moves when a row was actually inserted.
+const recordIntercession = async ({ prayerRequestId, userId }) => {
+  const id = Number(prayerRequestId);
+  const memberId = Number(userId);
+
+  return prisma.$transaction(async (tx) => {
+    const request = await tx.prayerRequest.findFirst({
+      where: { id, shareOnWall: true, status: { in: WALL_STATUSES } },
+      select: { id: true, userId: true, title: true },
+    });
+
+    if (!request) {
+      return null;
+    }
+
+    const inserted = await tx.prayerIntercession.createMany({
+      data: [{ prayerRequestId: id, userId: memberId }],
+      skipDuplicates: true,
+    });
+
+    if (inserted.count === 0) {
+      const current = await tx.prayerRequest.findUnique({
+        where: { id },
+        select: { prayerCount: true },
+      });
+      return { request, prayerCount: current.prayerCount, created: false };
+    }
+
+    const updated = await tx.prayerRequest.update({
+      where: { id },
+      data: { prayerCount: { increment: 1 } },
+      select: { prayerCount: true },
+    });
+
+    return { request, prayerCount: updated.prayerCount, created: true };
+  });
+};
+
 module.exports = {
   WALL_STATUSES,
   toWallItem,
   getWallPrayerRequests,
   countWallPrayerRequests,
+  recordIntercession,
   createPrayerRequest,
   getAllPrayerRequests,
   countPrayerRequests,

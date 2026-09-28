@@ -115,6 +115,49 @@ const getPrayerWall = async (req, res, next) => {
   }
 };
 
+const PRAYER_MILESTONES = [1, 5, 10, 25, 50, 100];
+
+// "I prayed" on a wall request. Repeats are harmless and return the current count.
+const prayForRequest = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    const result = id
+      ? await prayerRequestModel.recordIntercession({ prayerRequestId: id, userId: req.user.userId })
+      : null;
+
+    if (!result) {
+      return res.status(404).json(apiResponse(false, null, 'Prayer request not found'));
+    }
+
+    const { request, prayerCount, created } = result;
+    const prayedForSomeoneElse = Number(request.userId) !== Number(req.user.userId);
+
+    if (created && prayedForSomeoneElse && PRAYER_MILESTONES.includes(prayerCount)) {
+      await notify({
+        userIds: [request.userId],
+        title: 'People are praying for you',
+        message:
+          prayerCount === 1
+            ? `Someone prayed for your request "${request.title}".`
+            : `${prayerCount} people have prayed for your request "${request.title}".`,
+        type: 'prayer',
+        entityType: 'prayer',
+        entityId: request.id,
+      });
+    }
+
+    res.json(
+      apiResponse(
+        true,
+        { prayer_count: prayerCount, prayed_by_me: true },
+        created ? 'Thank you for praying' : 'You have already prayed for this request'
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Update prayer request
 const updatePrayerRequest = async (req, res, next) => {
   try {
@@ -256,6 +299,7 @@ module.exports = {
   getPrayerRequestById,
   getUserPrayerRequests,
   getPrayerWall,
+  prayForRequest,
   updatePrayerRequest,
   approvePrayerRequest,
   markAsAnswered,

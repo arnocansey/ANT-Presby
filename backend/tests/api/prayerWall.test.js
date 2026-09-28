@@ -216,6 +216,83 @@ describe('Prayer requests and prayer wall', () => {
     });
   });
 
+  describe('POST /api/prayers/:id/pray', () => {
+    const pray = (id, userId = 7) =>
+      request(app).post(`/api/prayers/${id}/pray`).set('Authorization', `Bearer ${tokenFor(userId)}`);
+
+    test('requires sign-in', async () => {
+      const response = await request(app).post('/api/prayers/3/pray');
+      expect(response.status).toBe(401);
+    });
+
+    test('returns 404 for a malformed id without touching the database', async () => {
+      for (const badId of ['abc', '1.5', '0', '-2']) {
+        const response = await pray(badId);
+        expect(response.status).toBe(404);
+      }
+      expect(prayerRequestModel.recordIntercession).not.toHaveBeenCalled();
+    });
+
+    test('returns 404 when the request is not on the wall', async () => {
+      prayerRequestModel.recordIntercession.mockResolvedValue(null);
+      const response = await pray(3);
+      expect(response.status).toBe(404);
+    });
+
+    test('records the prayer and notifies the requester at a milestone', async () => {
+      prayerRequestModel.recordIntercession.mockResolvedValue({
+        request: { id: 3, userId: 42, title: 'Job interview' },
+        prayerCount: 1,
+        created: true,
+      });
+
+      const response = await pray(3);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toEqual({ prayer_count: 1, prayed_by_me: true });
+      expect(prayerRequestModel.recordIntercession).toHaveBeenCalledWith({ prayerRequestId: 3, userId: 7 });
+      expect(notificationService.notify).toHaveBeenCalledWith(
+        expect.objectContaining({ userIds: [42], type: 'prayer', entityType: 'prayer', entityId: 3 })
+      );
+    });
+
+    test('does not notify between milestones', async () => {
+      prayerRequestModel.recordIntercession.mockResolvedValue({
+        request: { id: 3, userId: 42, title: 'Job interview' },
+        prayerCount: 2,
+        created: true,
+      });
+
+      await pray(3);
+      expect(notificationService.notify).not.toHaveBeenCalled();
+    });
+
+    test('a repeat prayer returns the current count and never notifies', async () => {
+      prayerRequestModel.recordIntercession.mockResolvedValue({
+        request: { id: 3, userId: 42, title: 'Job interview' },
+        prayerCount: 5,
+        created: false,
+      });
+
+      const response = await pray(3);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toEqual({ prayer_count: 5, prayed_by_me: true });
+      expect(notificationService.notify).not.toHaveBeenCalled();
+    });
+
+    test('praying for your own request never notifies yourself', async () => {
+      prayerRequestModel.recordIntercession.mockResolvedValue({
+        request: { id: 3, userId: 7, title: 'Mine' },
+        prayerCount: 1,
+        created: true,
+      });
+
+      await pray(3, 7);
+      expect(notificationService.notify).not.toHaveBeenCalled();
+    });
+  });
+
   describe('POST /api/prayers/:id/approve', () => {
     test('notifies the requester through the notification service', async () => {
       prayerRequestModel.getPrayerRequestById.mockResolvedValue({ id: 9, user_id: 42, title: 'Healing' });

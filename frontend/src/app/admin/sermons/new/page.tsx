@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import apiClient from '@/lib/api';
+import { useSermonSeriesList } from '@/hooks/useApi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,19 +19,25 @@ type SermonForm = {
   description: string;
   sermonDate: string;
   ministryId: number;
+  seriesId: string;
 };
 
 export default function NewSermonPage() {
   const { register, handleSubmit } = useForm<SermonForm>({
     defaultValues: {
       sermonDate: new Date().toISOString().slice(0, 16),
+      seriesId: '',
     },
   });
   const router = useRouter();
+  const { data: seriesList } = useSermonSeriesList();
 
   const onSubmit = async (data: SermonForm) => {
     try {
-      await apiClient.post('/admin/sermons', data);
+      await apiClient.post('/admin/sermons', {
+        ...data,
+        seriesId: data.seriesId ? Number(data.seriesId) : null,
+      });
       toast.success('Sermon created');
       router.push('/admin/sermons');
     } catch (err: any) {
@@ -74,6 +81,22 @@ export default function NewSermonPage() {
                 min="1"
                 {...register('ministryId', { valueAsNumber: true })}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="sermon-series">Series</Label>
+              <select
+                id="sermon-series"
+                {...register('seriesId')}
+                className="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950"
+              >
+                <option value="">No series</option>
+                {(seriesList ?? []).map((series) => (
+                  <option key={series.id} value={String(series.id)}>
+                    {series.title}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-2">

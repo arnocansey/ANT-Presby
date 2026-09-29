@@ -603,6 +603,64 @@ export const useDeleteSermon = () => {
   });
 };
 
+export type SeriesInput = {
+  title: string;
+  description: string;
+  coverImageUrl: string;
+  startDate: string;
+  endDate: string;
+};
+
+const invalidateSeries = (qc: ReturnType<typeof useQueryClient>) => {
+  qc.invalidateQueries({ queryKey: ['sermon-series'] });
+  qc.invalidateQueries({ queryKey: ['sermons'] });
+  qc.invalidateQueries({ queryKey: ['admin', 'sermons'] });
+};
+
+export const useSaveSermonSeries = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, input }: { id?: number; input: SeriesInput }) => {
+      const response = id
+        ? await apiClient.put(`/admin/sermon-series/${id}`, input)
+        : await apiClient.post('/admin/sermon-series', input);
+      return response.data?.data;
+    },
+    onSuccess: (_data, { id }) => {
+      invalidateSeries(qc);
+      toast.success(id ? 'Series updated' : 'Series created');
+    },
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not save the series')),
+  });
+};
+
+export const useDeleteSermonSeries = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await apiClient.delete(`/admin/sermon-series/${id}`);
+    },
+    onSuccess: () => {
+      invalidateSeries(qc);
+      toast.success('Series deleted');
+    },
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not delete the series')),
+  });
+};
+
+export const useUploadSeriesCover = () =>
+  useMutation({
+    mutationFn: async (file: File): Promise<{ url: string }> => {
+      const formData = new FormData();
+      formData.append('image', file);
+      const response = await apiClient.post('/admin/sermon-series/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data.data;
+    },
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not upload the image')),
+  });
+
 export const useAdminEvents = () => {
   return useQuery({
     queryKey: ['admin', 'events'],

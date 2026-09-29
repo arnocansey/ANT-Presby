@@ -129,7 +129,19 @@ const buildWhereClause = (filters) => {
   };
 };
 
+/**
+ * Parse a route id. Only canonical positive integers are accepted ("7", 7);
+ * anything else ("abc", "1.5", "07", "0") returns null so callers can 404
+ * without sending NaN or fractions to the database.
+ */
+const parseId = (value) => {
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+  const id = Number.parseInt(value, 10);
+  return Number.isInteger(id) && id > 0 && String(id) === String(value) ? id : null;
+};
+
 module.exports = {
+  parseId,
   hashPassword,
   comparePassword,
   generateId,

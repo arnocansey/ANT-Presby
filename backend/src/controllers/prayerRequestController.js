@@ -1,11 +1,6 @@
-const { apiResponse, getPagination, buildPaginationMeta } = require('../utils/helpers');
+const { apiResponse, getPagination, buildPaginationMeta, parseId } = require('../utils/helpers');
 const prayerRequestModel = require('../models/prayerRequestModel');
 const { notify } = require('../services/notificationService');
-
-const parseId = (value) => {
-  const id = Number.parseInt(value, 10);
-  return Number.isInteger(id) && id > 0 && String(id) === String(value) ? id : null;
-};
 
 const isOwnerOrAdmin = (prayerRequest, user) =>
   user.role === 'admin' || Number(prayerRequest.user_id) === Number(user.userId);

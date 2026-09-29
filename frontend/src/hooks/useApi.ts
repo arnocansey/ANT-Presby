@@ -245,6 +245,45 @@ export const useRecentSermons = () => {
   });
 };
 
+export type SermonSeriesSummary = {
+  id: number;
+  title: string;
+  description: string | null;
+  cover_image_url: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  sermon_count: number;
+};
+
+export type SermonSeriesDetail = SermonSeriesSummary & {
+  sermons: Array<{
+    id: number;
+    title: string;
+    speaker: string;
+    sermon_date: string;
+    description?: string;
+  }>;
+};
+
+export const useSermonSeriesList = () =>
+  useQuery({
+    queryKey: ['sermon-series'],
+    queryFn: async (): Promise<SermonSeriesSummary[]> => {
+      const response = await apiClient.get('/sermon-series');
+      return response.data?.data ?? [];
+    },
+  });
+
+export const useSermonSeries = (id?: number) =>
+  useQuery({
+    queryKey: ['sermon-series', id],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<SermonSeriesDetail> => {
+      const response = await apiClient.get(`/sermon-series/${id}`);
+      return response.data?.data;
+    },
+  });
+
 export const useEvents = (page = 1, limit = 10) => {
   return useQuery({
     queryKey: ['events', page, limit],

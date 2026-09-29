@@ -29,6 +29,7 @@
 - Event cancellation
 - Donation initialization and history
 - Prayer request submission
+- Prayer wall (members only): share approved requests, pray for others, milestone notifications
 - Notifications
 - Community posting, commenting, liking, and deletion of owned content
 
@@ -109,3 +110,12 @@ Current media behavior:
 
 - Some deeper admin and mobile surfaces are intentionally more task-focused than the web equivalents, but they are backed by the same shared live data.
 - The project has been moved off major dummy/mock data flows in the main product paths.
+
+## Prayer Wall
+
+- Members choose "Share on the prayer wall" when submitting a request; requests are private by default.
+- Only approved or answered requests that were shared appear, newest first, to signed-in members.
+- Anonymous requests show "A church member" and never expose the author.
+- "I prayed" counts once per member per request; the requester is notified at 1, 5, 10, 25, 50 and 100 prayers.
+- Editing the text of an approved request sends it back for approval.
+- Available on web (`/prayer/wall`) and mobile (Prayer Wall screen).

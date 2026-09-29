@@ -6,7 +6,13 @@ import { Heart } from 'lucide-react';
 import RouteGuard from '@/components/auth/RouteGuard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { usePrayerWall, usePrayForRequest, type WallPrayer } from '@/hooks/useApi';
+import {
+  usePrayerRequests,
+  usePrayerWall,
+  usePrayForRequest,
+  useSetPrayerSharing,
+  type WallPrayer,
+} from '@/hooks/useApi';
 import { cn, formatDateTime } from '@/lib/utils';
 
 const CATEGORIES = ['all', 'personal', 'family', 'health', 'work', 'financial', 'other'] as const;
@@ -51,6 +57,70 @@ function PrayerCard({ prayer }: { prayer: WallPrayer }) {
         </Button>
       </CardContent>
     </Card>
+  );
+}
+
+type OwnPrayer = {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  status: string;
+  share_on_wall?: boolean;
+  prayer_count?: number;
+};
+
+// The member's own requests, with a switch to put each on or take it off the wall.
+function MyRequests() {
+  const { data, isLoading } = usePrayerRequests();
+  const setSharing = useSetPrayerSharing();
+  const requests = (Array.isArray(data) ? data : []) as OwnPrayer[];
+
+  if (isLoading || requests.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-lg font-bold tracking-tight">My requests</h2>
+      <div className="space-y-3">
+        {requests.map((prayer) => (
+          <Card key={prayer.id} className="border-slate-200 dark:border-slate-800">
+            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{prayer.title}</p>
+                <p className="text-xs capitalize text-ui-subtle">
+                  {prayer.status}
+                  {' · '}
+                  {prayer.share_on_wall
+                    ? prayer.status === 'pending'
+                      ? 'will appear on the wall after approval'
+                      : `on the wall · ${prayer.prayer_count ?? 0} prayed`
+                    : 'private'}
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={setSharing.isPending}
+                onClick={() =>
+                  setSharing.mutate({
+                    id: prayer.id,
+                    title: prayer.title,
+                    description: prayer.description,
+                    category: prayer.category,
+                    shareOnWall: !prayer.share_on_wall,
+                  })
+                }
+              >
+                {prayer.share_on_wall ? 'Stop sharing' : 'Share on wall'}
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -128,6 +198,8 @@ function PrayerWallContent() {
           </Button>
         </div>
       )}
+
+      <MyRequests />
     </div>
   );
 }

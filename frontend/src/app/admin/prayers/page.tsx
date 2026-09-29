@@ -2,7 +2,7 @@
 
 import React from 'react';
 import SimpleTable from '@/components/ui/table';
-import { useAdminPrayerRequests, useApprovePrayer } from '@/hooks/useApi';
+import { useAdminPrayerRequests, useApprovePrayer, useSetPrayerSharing } from '@/hooks/useApi';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ type AdminPrayer = {
 export default function AdminPrayersPage() {
   const { data, isLoading } = useAdminPrayerRequests();
   const approve = useApprovePrayer();
+  const setSharing = useSetPrayerSharing();
   const [query, setQuery] = React.useState('');
   const prayers = (data ?? []) as AdminPrayer[];
 
@@ -92,14 +93,34 @@ export default function AdminPrayersPage() {
               key: 'actions',
               header: 'Actions',
               render: (prayer: AdminPrayer) => (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => approve.mutate(prayer.id)}
-                  disabled={approve.isPending || prayer.status === 'approved'}
-                >
-                  {prayer.status === 'approved' ? 'Approved' : 'Approve'}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => approve.mutate(prayer.id)}
+                    disabled={approve.isPending || prayer.status === 'approved'}
+                  >
+                    {prayer.status === 'approved' ? 'Approved' : 'Approve'}
+                  </Button>
+                  {prayer.share_on_wall && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={setSharing.isPending}
+                      onClick={() =>
+                        setSharing.mutate({
+                          id: prayer.id,
+                          title: prayer.title,
+                          description: prayer.description || '',
+                          category: prayer.category || 'other',
+                          shareOnWall: false,
+                        })
+                      }
+                    >
+                      Remove from wall
+                    </Button>
+                  )}
+                </div>
               ),
             },
           ]}

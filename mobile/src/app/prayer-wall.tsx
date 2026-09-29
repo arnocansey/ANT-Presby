@@ -1,12 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { BrandButton, BrandCard, BrandPill, BrandScreen } from '@/components/brand-ui';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
-import { useMyPrayerRequests, usePrayerWall, usePrayForRequest, type WallPrayer } from '@/hooks/use-api';
+import {
+  useMyPrayerRequests,
+  usePrayerWall,
+  usePrayForRequest,
+  useSetPrayerSharing,
+  type WallPrayer,
+} from '@/hooks/use-api';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/store/auth';
 
@@ -19,6 +25,31 @@ export default function PrayerWallScreen() {
   const wallQuery = usePrayerWall(Boolean(user));
   const myPrayersQuery = useMyPrayerRequests(Boolean(user) && tab === 'mine');
   const prayMutation = usePrayForRequest();
+  const sharingMutation = useSetPrayerSharing();
+
+  const errorMessage = (error: any, fallback: string) =>
+    error?.response?.status === 404
+      ? 'This request is no longer on the prayer wall.'
+      : error?.response?.data?.message || fallback;
+
+  const pray = (id: number) =>
+    prayMutation.mutate(id, {
+      onError: (error) => Alert.alert('Prayer not recorded', errorMessage(error, 'Please try again.')),
+    });
+
+  const toggleSharing = (prayer: any) =>
+    sharingMutation.mutate(
+      {
+        id: prayer.id,
+        title: prayer.title,
+        description: prayer.description,
+        category: prayer.category,
+        shareOnWall: !prayer.share_on_wall,
+      },
+      {
+        onError: (error) => Alert.alert('Could not update sharing', errorMessage(error, 'Please try again.')),
+      }
+    );
 
   if (!user) {
     return (
@@ -36,7 +67,9 @@ export default function PrayerWallScreen() {
 
   const wall = Array.isArray(wallQuery.data) ? wallQuery.data : [];
   const mine = Array.isArray(myPrayersQuery.data) ? myPrayersQuery.data : [];
-  const isLoading = tab === 'wall' ? wallQuery.isLoading : myPrayersQuery.isLoading;
+  const activeQuery = tab === 'wall' ? wallQuery : myPrayersQuery;
+  const isLoading = activeQuery.isLoading;
+  const isError = activeQuery.isError;
 
   const renderTab = (value: Tab, label: string) => {
     const active = tab === value;
@@ -79,7 +112,7 @@ export default function PrayerWallScreen() {
         variant={prayer.prayed_by_me ? 'outline' : 'primary'}
         onPress={() => {
           if (!prayer.prayed_by_me && !prayMutation.isPending) {
-            prayMutation.mutate(prayer.id);
+            pray(prayer.id);
           }
         }}
       />
@@ -121,6 +154,14 @@ export default function PrayerWallScreen() {
 
       {isLoading ? (
         <ActivityIndicator color={theme.tint} />
+      ) : isError ? (
+        <BrandCard>
+          <ThemedText type="defaultSemiBold">Could not load prayers</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Check your connection and try again.
+          </ThemedText>
+          <BrandButton label="Try again" onPress={() => activeQuery.refetch()} />
+        </BrandCard>
       ) : tab === 'wall' ? (
         wall.length > 0 ? (
           wall.map(renderWallItem)
@@ -145,9 +186,20 @@ export default function PrayerWallScreen() {
             <ThemedText type="small">{prayer?.description}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               {prayer?.share_on_wall
-                ? `Shared on the wall · ${prayer?.prayer_count ?? 0} prayed`
+                ? prayer?.status === 'pending'
+                  ? 'Will appear on the wall after approval'
+                  : `Shared on the wall · ${prayer?.prayer_count ?? 0} prayed`
                 : 'Private'}
             </ThemedText>
+            <BrandButton
+              label={prayer?.share_on_wall ? 'Stop sharing' : 'Share on wall'}
+              variant="outline"
+              onPress={() => {
+                if (!sharingMutation.isPending) {
+                  toggleSharing(prayer);
+                }
+              }}
+            />
           </BrandCard>
         ))
       ) : (

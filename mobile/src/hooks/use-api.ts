@@ -783,8 +783,32 @@ export const usePrayForRequest = () =>
       const response = await apiClient.post(`/prayers/${id}/pray`);
       return response.data?.data as { prayer_count: number; prayed_by_me: boolean };
     },
-    onSuccess: async () => {
+    // Refresh on failure too: a 404 usually means the request just left the wall.
+    onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: ['prayers', 'wall'] });
+    },
+  });
+
+type PrayerSharingInput = {
+  id: number;
+  title: string;
+  description: string;
+  category: PrayerPayload['category'];
+  shareOnWall: boolean;
+};
+
+// The update endpoint validates the full form, so the existing text is sent back unchanged.
+export const useSetPrayerSharing = () =>
+  useMutation({
+    mutationFn: async ({ id, ...body }: PrayerSharingInput) => {
+      const response = await apiClient.put(`/prayers/${id}`, body);
+      return response.data?.data;
+    },
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['me', 'prayers'] }),
+        queryClient.invalidateQueries({ queryKey: ['prayers', 'wall'] }),
+      ]);
     },
   });
 

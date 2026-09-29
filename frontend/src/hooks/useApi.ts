@@ -384,6 +384,35 @@ export const usePrayForRequest = () => {
   });
 };
 
+type PrayerSharingInput = {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  shareOnWall: boolean;
+};
+
+// Owners and admins can put a request on, or take it off, the prayer wall.
+// The update endpoint validates the full form, so the existing text is sent back unchanged.
+export const useSetPrayerSharing = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...body }: PrayerSharingInput) => {
+      const response = await apiClient.put(`/prayers/${id}`, body);
+      return response.data?.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['prayers'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'prayers'] });
+      toast.success(variables.shareOnWall ? 'Shared on the prayer wall' : 'Removed from the prayer wall');
+    },
+    onError: (error: any) => {
+      toast.error(getApiErrorMessage(error, 'Could not update sharing'));
+    },
+  });
+};
+
 export const useDonations = () => {
   return useQuery({
     queryKey: ['donations', 'user'],

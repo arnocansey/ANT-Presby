@@ -107,11 +107,15 @@ const validateSermonSeries = [
     .optional({ values: 'falsy' })
     .matches(SERIES_COVER_PATTERN)
     .withMessage('Cover image must be uploaded through the series image upload'),
-  body('startDate').optional({ values: 'falsy' }).isISO8601().withMessage('Invalid start date'),
+  // Date-only values: a real calendar date in YYYY-MM-DD (rejects "20260901", "2026-02-30", timestamps).
+  body('startDate')
+    .optional({ values: 'falsy' })
+    .isDate({ format: 'YYYY-MM-DD', strictMode: true, delimiters: ['-'] })
+    .withMessage('Start date must be a real date in YYYY-MM-DD format'),
   body('endDate')
     .optional({ values: 'falsy' })
-    .isISO8601()
-    .withMessage('Invalid end date')
+    .isDate({ format: 'YYYY-MM-DD', strictMode: true, delimiters: ['-'] })
+    .withMessage('End date must be a real date in YYYY-MM-DD format')
     .bail()
     .custom((endDate, { req }) => !req.body.startDate || new Date(endDate) >= new Date(req.body.startDate))
     .withMessage('End date cannot be before the start date'),

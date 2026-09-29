@@ -359,3 +359,28 @@ describe('Admin sermon series API', () => {
     fs.rmSync(path.join(__dirname, '..', '..', response.body.data.url), { force: true });
   });
 });
+
+describe('Series dates must be real calendar dates', () => {
+  let models;
+  let app;
+
+  beforeEach(() => {
+    models = buildModels();
+    app = buildApp(models);
+  });
+
+  test.each([
+    ['startDate', '20260901'],
+    ['startDate', '2026-02-30'],
+    ['endDate', '2026-13-01'],
+    ['endDate', '2026-12-01T22:00:00-05:00'],
+  ])('%s %p is rejected with 400', async (field, value) => {
+    const response = await request(app)
+      .post('/api/admin/sermon-series')
+      .set('Authorization', admin())
+      .send({ title: 'Advent', [field]: value });
+
+    expect(response.status).toBe(400);
+    expect(models.sermonSeriesModel.createSeries).not.toHaveBeenCalled();
+  });
+});

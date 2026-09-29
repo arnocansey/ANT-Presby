@@ -53,10 +53,57 @@ const getSeriesWithSermons = async (seriesId) => {
   return { ...mapSeries(series), sermons: series.sermons.map(mapSermon) };
 };
 
+// Build Prisma data from API input. Empty strings clear optional fields.
+const toSeriesData = (input = {}) => {
+  const data = {};
+
+  if (input.title !== undefined) data.title = String(input.title).trim();
+  if (input.description !== undefined) data.description = input.description || null;
+  if (input.coverImageUrl !== undefined) data.coverImageUrl = input.coverImageUrl || null;
+  if (input.startDate !== undefined) data.startDate = input.startDate ? new Date(input.startDate) : null;
+  if (input.endDate !== undefined) data.endDate = input.endDate ? new Date(input.endDate) : null;
+
+  return data;
+};
+
+const createSeries = async (input) => {
+  const series = await prisma.sermonSeries.create({
+    data: toSeriesData(input),
+    include: withSermonCount,
+  });
+
+  return mapSeries(series);
+};
+
+const updateSeries = async (seriesId, input) => {
+  const id = Number(seriesId);
+  const updated = await prisma.sermonSeries.updateMany({
+    where: { id },
+    data: toSeriesData(input),
+  });
+
+  if (updated.count === 0) {
+    return undefined;
+  }
+
+  return getSeriesById(id);
+};
+
+// Sermons keep existing: the sermons.series_id foreign key is ON DELETE SET NULL.
+const deleteSeries = async (seriesId) => {
+  const id = Number(seriesId);
+  const deleted = await prisma.sermonSeries.deleteMany({ where: { id } });
+
+  return deleted.count === 0 ? undefined : { id };
+};
+
 module.exports = {
   withSermonCount,
   mapSeries,
   getSeriesById,
   listSeries,
   getSeriesWithSermons,
+  createSeries,
+  updateSeries,
+  deleteSeries,
 };

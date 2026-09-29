@@ -91,6 +91,32 @@ const validateSermonSeriesLink = [
     .withMessage('seriesId must be a positive integer or null'),
 ];
 
+// Covers can only be files we stored ourselves under /uploads/series-images/.
+const SERIES_COVER_PATTERN = /^\/uploads\/series-images\/[A-Za-z0-9_-]+\.(jpg|png|webp|gif)$/;
+
+const validateSermonSeries = [
+  body('title')
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('Series title is required')
+    .isLength({ max: 255 })
+    .withMessage('Series title must be 255 characters or fewer'),
+  body('description').optional({ values: 'null' }).isString().withMessage('Description must be text'),
+  body('coverImageUrl')
+    .optional({ values: 'falsy' })
+    .matches(SERIES_COVER_PATTERN)
+    .withMessage('Cover image must be uploaded through the series image upload'),
+  body('startDate').optional({ values: 'falsy' }).isISO8601().withMessage('Invalid start date'),
+  body('endDate')
+    .optional({ values: 'falsy' })
+    .isISO8601()
+    .withMessage('Invalid end date')
+    .bail()
+    .custom((endDate, { req }) => !req.body.startDate || new Date(endDate) >= new Date(req.body.startDate))
+    .withMessage('End date cannot be before the start date'),
+];
+
 // Event validation rules
 const validateEventCreation = [
   body('name').trim().notEmpty().withMessage('Event name is required'),
@@ -191,6 +217,7 @@ module.exports = {
   validateUserUpdate,
   validateSermonCreation,
   validateSermonSeriesLink,
+  validateSermonSeries,
   validateEventCreation,
   validatePrayerRequest,
   validateDonation,

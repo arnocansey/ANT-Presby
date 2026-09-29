@@ -1,6 +1,8 @@
 const request = require('supertest');
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const fs = require('fs');
+const path = require('path');
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test_jwt_secret';
 
@@ -43,6 +45,7 @@ const buildApp = (models) => {
   app.use('/api/sermons', require('../../src/routes/sermonRoutes'));
   app.use('/api/admin/sermons', require('../../src/routes/adminSermonRoutes'));
   app.use('/api/sermon-series', require('../../src/routes/sermonSeriesRoutes'));
+  app.use('/api/admin/sermon-series', require('../../src/routes/adminSermonSeriesRoutes'));
   const { errorHandler } = require('../../src/middleware/errorHandler');
   app.use(errorHandler);
   return app;
@@ -207,5 +210,152 @@ describe('Sermon series routes are mounted in the server', () => {
 
     expect(response.status).toBe(200);
     expect(models.sermonSeriesModel.listSeries).toHaveBeenCalled();
+  });
+});
+
+describe('Admin sermon series API', () => {
+  let models;
+  let app;
+  const validSeries = { title: 'Romans', description: 'Verse by verse', startDate: '2026-09-01', endDate: '2026-11-30' };
+
+  beforeEach(() => {
+    models = buildModels();
+    app = buildApp(models);
+  });
+
+  test('members cannot manage series', async () => {
+    const response = await request(app)
+      .post('/api/admin/sermon-series')
+      .set('Authorization', `Bearer ${tokenFor(7)}`)
+      .send(validSeries);
+
+    expect(response.status).toBe(403);
+    expect(models.sermonSeriesModel.createSeries).not.toHaveBeenCalled();
+  });
+
+  test('an admin creates a series and it is audited', async () => {
+    const response = await request(app).post('/api/admin/sermon-series').set('Authorization', admin()).send(validSeries);
+
+    expect(response.status).toBe(201);
+    expect(models.sermonSeriesModel.createSeries).toHaveBeenCalledWith(expect.objectContaining({ title: 'Romans' }));
+    expect(models.auditLogModel.createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ entityType: 'sermon_series', action: 'create', entityId: 3, actorUserId: 1 })
+    );
+  });
+
+  test('a missing title is rejected', async () => {
+    const response = await request(app)
+      .post('/api/admin/sermon-series')
+      .set('Authorization', admin())
+      .send({ ...validSeries, title: '   ' });
+
+    expect(response.status).toBe(400);
+  });
+
+  test('an end date before the start date is rejected', async () => {
+    const response = await request(app)
+      .post('/api/admin/sermon-series')
+      .set('Authorization', admin())
+      .send({ ...validSeries, startDate: '2026-11-30', endDate: '2026-09-01' });
+
+    expect(response.status).toBe(400);
+    expect(models.sermonSeriesModel.createSeries).not.toHaveBeenCalled();
+  });
+
+  test.each(['https://evil.example/x.png', 'javascript:alert(1)', '/uploads/profile-images/user-1.png', '/uploads/series-images/../x'])(
+    'a cover image outside our series uploads is rejected: %s',
+    async (coverImageUrl) => {
+      const response = await request(app)
+        .post('/api/admin/sermon-series')
+        .set('Authorization', admin())
+        .send({ ...validSeries, coverImageUrl });
+
+      expect(response.status).toBe(400);
+    }
+  );
+
+  test('an uploaded series cover is accepted', async () => {
+    const response = await request(app)
+      .post('/api/admin/sermon-series')
+      .set('Authorization', admin())
+      .send({ ...validSeries, coverImageUrl: '/uploads/series-images/series-1-123.png' });
+
+    expect(response.status).toBe(201);
+  });
+
+  test('a duplicate title returns 409', async () => {
+    models.sermonSeriesModel.createSeries.mockRejectedValue(Object.assign(new Error('Unique'), { code: 'P2002' }));
+
+    const response = await request(app).post('/api/admin/sermon-series').set('Authorization', admin()).send(validSeries);
+
+    expect(response.status).toBe(409);
+    expect(response.body.message).toBe('A series with this title already exists');
+  });
+
+  test('renaming to a duplicate title returns 409', async () => {
+    models.sermonSeriesModel.updateSeries.mockRejectedValue(Object.assign(new Error('Unique'), { code: 'P2002' }));
+
+    const response = await request(app).put('/api/admin/sermon-series/3').set('Authorization', admin()).send(validSeries);
+
+    expect(response.status).toBe(409);
+  });
+
+  test('updating a series is audited', async () => {
+    const response = await request(app).put('/api/admin/sermon-series/3').set('Authorization', admin()).send(validSeries);
+
+    expect(response.status).toBe(200);
+    expect(models.sermonSeriesModel.updateSeries).toHaveBeenCalledWith(3, expect.objectContaining({ title: 'Romans' }));
+    expect(models.auditLogModel.createAuditLog).toHaveBeenCalledWith(expect.objectContaining({ action: 'update' }));
+  });
+
+  test('updating a missing series returns 404', async () => {
+    models.sermonSeriesModel.updateSeries.mockResolvedValue(undefined);
+
+    const response = await request(app).put('/api/admin/sermon-series/99').set('Authorization', admin()).send(validSeries);
+
+    expect(response.status).toBe(404);
+  });
+
+  test('malformed ids return 404 without querying', async () => {
+    const put = await request(app).put('/api/admin/sermon-series/1.5').set('Authorization', admin()).send(validSeries);
+    const del = await request(app).delete('/api/admin/sermon-series/abc').set('Authorization', admin());
+
+    expect(put.status).toBe(404);
+    expect(del.status).toBe(404);
+    expect(models.sermonSeriesModel.updateSeries).not.toHaveBeenCalled();
+    expect(models.sermonSeriesModel.deleteSeries).not.toHaveBeenCalled();
+  });
+
+  test('deleting a series is audited', async () => {
+    const response = await request(app).delete('/api/admin/sermon-series/3').set('Authorization', admin());
+
+    expect(response.status).toBe(200);
+    expect(models.sermonSeriesModel.deleteSeries).toHaveBeenCalledWith(3);
+    expect(models.auditLogModel.createAuditLog).toHaveBeenCalledWith(expect.objectContaining({ action: 'delete' }));
+  });
+
+  test('deleting a missing series returns 404', async () => {
+    models.sermonSeriesModel.deleteSeries.mockResolvedValue(undefined);
+
+    const response = await request(app).delete('/api/admin/sermon-series/99').set('Authorization', admin());
+
+    expect(response.status).toBe(404);
+  });
+
+  test('uploading without a file returns 400', async () => {
+    const response = await request(app).post('/api/admin/sermon-series/upload-image').set('Authorization', admin());
+
+    expect(response.status).toBe(400);
+  });
+
+  test('uploading a cover stores it under series-images and returns its url', async () => {
+    const response = await request(app)
+      .post('/api/admin/sermon-series/upload-image')
+      .set('Authorization', admin())
+      .attach('image', Buffer.from('fake-png-bytes'), { filename: 'cover.html', contentType: 'image/png' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.url).toMatch(/^\/uploads\/series-images\/series-1-\d+\.png$/);
+    fs.rmSync(path.join(__dirname, '..', '..', response.body.data.url), { force: true });
   });
 });

@@ -17,6 +17,7 @@ const prayerSchema = z.object({
   description: z.string().trim().min(1, 'Description is required'),
   category: z.enum(['personal', 'family', 'health', 'work', 'financial', 'other']),
   isAnonymous: z.boolean().default(false),
+  shareOnWall: z.boolean().default(false),
 });
 
 type PrayerFormValues = z.infer<typeof prayerSchema>;
@@ -51,6 +52,7 @@ export default function PrayerScreen() {
       description: '',
       category: 'personal',
       isAnonymous: false,
+      shareOnWall: false,
     },
   });
 
@@ -63,6 +65,7 @@ export default function PrayerScreen() {
       description: '',
       category: 'personal',
       isAnonymous: false,
+      shareOnWall: false,
     });
   };
 
@@ -90,7 +93,10 @@ export default function PrayerScreen() {
 
       <View style={styles.metrics}>
         <BrandMetric label="Requests" value={requests.length} />
-        <BrandMetric label="Mode" value="Private" />
+        <BrandMetric
+          label="On the wall"
+          value={requests.filter((item: any) => item?.share_on_wall).length}
+        />
       </View>
 
       <BrandCard>
@@ -145,6 +151,27 @@ export default function PrayerScreen() {
           <Controller
             control={control}
             name="isAnonymous"
+            render={({ field: { onChange, value } }) => (
+              <Switch
+                trackColor={{ false: theme.backgroundSelected, true: theme.tint }}
+                thumbColor={theme.white}
+                onValueChange={onChange}
+                value={value}
+              />
+            )}
+          />
+        </View>
+
+        <View style={styles.switchRow}>
+          <View style={styles.switchCopy}>
+            <ThemedText type="smallBold">Share on the prayer wall</ThemedText>
+            <ThemedText type="small">
+              After approval, other signed-in members can see this request and pray for you.
+            </ThemedText>
+          </View>
+          <Controller
+            control={control}
+            name="shareOnWall"
             render={({ field: { onChange, value } }) => (
               <Switch
                 trackColor={{ false: theme.backgroundSelected, true: theme.tint }}

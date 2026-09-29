@@ -596,7 +596,7 @@ export const useDeleteSermon = () => {
       return res.data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'sermons'] });
+      invalidateSeries(qc);
       toast.success('Sermon deleted');
     },
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to delete sermon'),
@@ -611,10 +611,19 @@ export type SeriesInput = {
   endDate: string;
 };
 
+// Sermons and series appear in each other's views (series sermon counts, sermon series labels),
+// so any sermon or series change refreshes all of them.
 const invalidateSeries = (qc: ReturnType<typeof useQueryClient>) => {
   qc.invalidateQueries({ queryKey: ['sermon-series'] });
   qc.invalidateQueries({ queryKey: ['sermons'] });
+  qc.invalidateQueries({ queryKey: ['sermon'] });
   qc.invalidateQueries({ queryKey: ['admin', 'sermons'] });
+};
+
+// For pages that save sermons with apiClient directly (admin sermon new/edit).
+export const useRefreshSermonData = () => {
+  const qc = useQueryClient();
+  return () => invalidateSeries(qc);
 };
 
 export const useSaveSermonSeries = () => {

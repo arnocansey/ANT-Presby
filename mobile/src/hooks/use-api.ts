@@ -625,6 +625,7 @@ export const useCreateAdminSermon = () =>
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['admin', 'sermons'] }),
         queryClient.invalidateQueries({ queryKey: ['sermons'] }),
+        queryClient.invalidateQueries({ queryKey: ['sermon-series'] }),
       ]);
     },
   });
@@ -639,6 +640,7 @@ export const useUpdateAdminSermon = () =>
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['admin', 'sermons'] }),
         queryClient.invalidateQueries({ queryKey: ['sermons'] }),
+        queryClient.invalidateQueries({ queryKey: ['sermon-series'] }),
       ]);
     },
   });
@@ -653,6 +655,7 @@ export const useDeleteAdminSermon = () =>
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['admin', 'sermons'] }),
         queryClient.invalidateQueries({ queryKey: ['sermons'] }),
+        queryClient.invalidateQueries({ queryKey: ['sermon-series'] }),
       ]);
     },
   });

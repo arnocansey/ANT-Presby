@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import apiClient from '@/lib/api';
-import { useSermonSeriesList } from '@/hooks/useApi';
+import { useRefreshSermonData, useSermonSeriesList } from '@/hooks/useApi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,7 @@ export default function NewSermonPage() {
   });
   const router = useRouter();
   const { data: seriesList } = useSermonSeriesList();
+  const refreshSermonData = useRefreshSermonData();
 
   const onSubmit = async (data: SermonForm) => {
     try {
@@ -38,6 +39,7 @@ export default function NewSermonPage() {
         ...data,
         seriesId: data.seriesId ? Number(data.seriesId) : null,
       });
+      refreshSermonData();
       toast.success('Sermon created');
       router.push('/admin/sermons');
     } catch (err: any) {

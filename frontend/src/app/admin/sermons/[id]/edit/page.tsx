@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import apiClient from '@/lib/api';
-import { useSermonSeriesList } from '@/hooks/useApi';
+import { useRefreshSermonData, useSermonSeriesList } from '@/hooks/useApi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ export default function EditSermonPage() {
   const { register, handleSubmit, reset } = useForm<SermonForm>();
   const router = useRouter();
   const { data: seriesList } = useSermonSeriesList();
+  const refreshSermonData = useRefreshSermonData();
 
   React.useEffect(() => {
     if (!id) return;
@@ -50,6 +51,7 @@ export default function EditSermonPage() {
         ...vals,
         seriesId: vals.seriesId ? Number(vals.seriesId) : null,
       });
+      refreshSermonData();
       toast.success('Sermon updated');
       router.push('/admin/sermons');
     } catch {
@@ -97,18 +99,24 @@ export default function EditSermonPage() {
 
             <div className="space-y-2">
               <Label htmlFor="edit-sermon-series">Series</Label>
-              <select
-                id="edit-sermon-series"
-                {...register('seriesId')}
-                className="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950"
-              >
-                <option value="">No series</option>
-                {(seriesList ?? []).map((series) => (
-                  <option key={series.id} value={String(series.id)}>
-                    {series.title}
-                  </option>
-                ))}
-              </select>
+              {/* Mount the select only once its options exist, so the sermon's saved series
+                  is selected even when the series list loads after the sermon. */}
+              {seriesList ? (
+                <select
+                  id="edit-sermon-series"
+                  {...register('seriesId')}
+                  className="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950"
+                >
+                  <option value="">No series</option>
+                  {seriesList.map((series) => (
+                    <option key={series.id} value={String(series.id)}>
+                      {series.title}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-sm text-ui-subtle">Loading series...</p>
+              )}
             </div>
 
             <div className="space-y-2">

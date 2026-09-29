@@ -58,3 +58,12 @@ Use this checklist for final smoke testing on web and Android.
 - [ ] "Stop sharing" (web My requests, mobile My requests) removes a request from the wall; "Share on wall" puts it back
 - [ ] Admin "Remove from wall" on `/admin/prayers` takes a shared request off the wall
 - [ ] On mobile, "I prayed" on a request that just left the wall shows an alert; a failed load shows "Could not load prayers" with Try again
+
+## Sermon Series
+
+- [ ] Admin creates a series with a cover on `/admin/series`; a duplicate title shows "A series with this title already exists"
+- [ ] An end date before the start date is refused
+- [ ] Assigning a sermon to a series (web form and mobile edit) shows it on `/sermons/series/[id]`, oldest first
+- [ ] Deleting a series keeps its sermons in the library
+- [ ] Series dates show the same day in any time zone
+- [ ] Mobile Sermons tab: tapping a series pill filters; "All" resets

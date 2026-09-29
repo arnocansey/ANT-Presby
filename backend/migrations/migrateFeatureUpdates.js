@@ -352,6 +352,31 @@ async function migrateFeatureUpdates() {
       ON prayer_intercessions(user_id);
     `);
 
+    // Sermon series (phase 2)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS sermon_series (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        cover_image_url VARCHAR(500),
+        start_date DATE,
+        end_date DATE,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT sermon_series_title_key UNIQUE (title)
+      );
+    `);
+
+    await client.query(`
+      ALTER TABLE sermons
+      ADD COLUMN IF NOT EXISTS series_id INTEGER REFERENCES sermon_series(id) ON DELETE SET NULL;
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_sermons_series
+      ON sermons(series_id);
+    `);
+
     await client.query('COMMIT');
     console.log('Feature update migration completed successfully.');
     process.exit(0);

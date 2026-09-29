@@ -83,6 +83,14 @@ const validateSermonCreation = [
     .withMessage('Valid ministry ID is required'),
 ];
 
+// Optional series link on sermon create/update. null clears it.
+const validateSermonSeriesLink = [
+  body('seriesId')
+    .optional({ values: 'null' })
+    .isInt({ min: 1 })
+    .withMessage('seriesId must be a positive integer or null'),
+];
+
 // Event validation rules
 const validateEventCreation = [
   body('name').trim().notEmpty().withMessage('Event name is required'),
@@ -182,6 +190,7 @@ module.exports = {
   validateUserLogin,
   validateUserUpdate,
   validateSermonCreation,
+  validateSermonSeriesLink,
   validateEventCreation,
   validatePrayerRequest,
   validateDonation,

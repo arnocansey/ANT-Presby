@@ -150,14 +150,31 @@ model Sermon {
   videoUrl    String    @map("video_url") @db.VarChar(500)
   sermonDate  DateTime  @map("sermon_date") @db.Date
   ministryId  Int?      @map("ministry_id")
+  seriesId    Int?          @map("series_id")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   ministry    Ministry? @relation(fields: [ministryId], references: [id], onDelete: SetNull)
+  series      SermonSeries? @relation(fields: [seriesId], references: [id], onDelete: SetNull)
 
   @@index([ministryId], map: "idx_sermons_ministry")
   @@index([sermonDate(sort: Desc)], map: "idx_sermons_date")
   @@index([title], map: "idx_sermons_title")
+  @@index([seriesId], map: "idx_sermons_series")
   @@map("sermons")
+}
+
+model SermonSeries {
+  id            Int       @id @default(autoincrement())
+  title         String    @unique @db.VarChar(255)
+  description   String?
+  coverImageUrl String?   @map("cover_image_url") @db.VarChar(500)
+  startDate     DateTime? @map("start_date") @db.Date
+  endDate       DateTime? @map("end_date") @db.Date
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  sermons       Sermon[]
+
+  @@map("sermon_series")
 }
 
 model Event {

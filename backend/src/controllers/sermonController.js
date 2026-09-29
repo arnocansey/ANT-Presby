@@ -1,5 +1,12 @@
-const { apiResponse, getPagination, buildPaginationMeta } = require('../utils/helpers');
+const { apiResponse, getPagination, buildPaginationMeta, parseId } = require('../utils/helpers');
 const sermonModel = require('../models/sermonModel');
+const sermonSeriesModel = require('../models/sermonSeriesModel');
+
+// A sermon may only point at a series that exists. null/undefined means "no series".
+const seriesExists = async (seriesId) =>
+  seriesId === undefined || seriesId === null || Boolean(await sermonSeriesModel.getSeriesById(seriesId));
+
+const SERIES_NOT_FOUND = 'Sermon series not found';
 
 /**
  * Sermon Controller - Handles sermon operations
@@ -8,7 +15,11 @@ const sermonModel = require('../models/sermonModel');
 // Create sermon (admin only)
 const createSermon = async (req, res, next) => {
   try {
-    const { title, speaker, description, videoUrl, sermonDate, ministryId } = req.body;
+    const { title, speaker, description, videoUrl, sermonDate, ministryId, seriesId } = req.body;
+
+    if (!(await seriesExists(seriesId))) {
+      return res.status(400).json(apiResponse(false, null, SERIES_NOT_FOUND));
+    }
 
     const sermon = await sermonModel.createSermon(
       title,
@@ -16,7 +27,8 @@ const createSermon = async (req, res, next) => {
       description,
       videoUrl,
       sermonDate,
-      ministryId
+      ministryId,
+      seriesId ? Number(seriesId) : null
     );
 
     res.status(201).json(apiResponse(true, sermon, 'Sermon created successfully'));
@@ -28,11 +40,18 @@ const createSermon = async (req, res, next) => {
 // Get all sermons with pagination
 const getAllSermons = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, ministry_id, speaker } = req.query;
+    const { page = 1, limit = 10, ministry_id, series_id, speaker } = req.query;
     const { offset, limitNum } = getPagination(page, limit);
 
     const filters = {};
     if (ministry_id) filters.ministryId = parseInt(ministry_id, 10);
+    if (series_id !== undefined) {
+      const seriesId = parseId(series_id);
+      if (!seriesId) {
+        return res.status(400).json(apiResponse(false, null, 'Invalid series_id'));
+      }
+      filters.seriesId = seriesId;
+    }
     if (speaker) filters.speaker = speaker;
 
     const sermons = await sermonModel.getAllSermons(offset, limitNum, filters);
@@ -98,6 +117,10 @@ const updateSermon = async (req, res, next) => {
   try {
     const { id } = req.params;
     const updates = req.body;
+
+    if (!(await seriesExists(updates.seriesId))) {
+      return res.status(400).json(apiResponse(false, null, SERIES_NOT_FOUND));
+    }
 
     const updatedSermon = await sermonModel.updateSermon(id, updates);
 

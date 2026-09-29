@@ -4,6 +4,7 @@ const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 const {
   handleValidationErrors,
   validateSermonCreation,
+  validateSermonSeriesLink,
 } = require('../middleware/validators');
 
 const router = express.Router();
@@ -30,6 +31,7 @@ router.post(
   verifyToken,
   requireRole('admin'),
   validateSermonCreation,
+  validateSermonSeriesLink,
   handleValidationErrors,
   sermonController.createSermon
 );
@@ -39,6 +41,8 @@ router.put(
   '/:id',
   verifyToken,
   requireRole('admin'),
+  validateSermonSeriesLink,
+  handleValidationErrors,
   sermonController.updateSermon
 );
 

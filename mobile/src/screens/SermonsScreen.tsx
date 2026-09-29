@@ -6,16 +6,21 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { BrandScreen } from '@/components/brand-ui';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
-import { useSermons } from '@/hooks/use-api';
+import { useSermons, useSermonSeriesList } from '@/hooks/use-api';
 import { useTheme } from '@/hooks/use-theme';
 
 const gradients = ['#7C3AED', '#E11D48', '#0F9FA8', '#D97706'];
 
 export default function SermonsScreen() {
   const theme = useTheme();
-  const sermonsQuery = useSermons();
+  const [selectedSeriesId, setSelectedSeriesId] = React.useState<number | undefined>();
+  const sermonsQuery = useSermons(1, 12, true, selectedSeriesId);
+  const seriesQuery = useSermonSeriesList();
   const sermons = Array.isArray(sermonsQuery.data) ? sermonsQuery.data : [];
-  const series = ['All', ...Array.from(new Set(sermons.map((item: any) => item?.series).filter(Boolean))).slice(0, 4)];
+  const seriesOptions = [
+    { id: undefined as number | undefined, title: 'All' },
+    ...(seriesQuery.data || []).map((item) => ({ id: item.id as number | undefined, title: item.title })),
+  ];
   const featured = sermons[0];
   const recent = featured ? sermons.slice(1) : sermons;
 
@@ -46,20 +51,24 @@ export default function SermonsScreen() {
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillRow}>
-        {series.map((item, index) => (
-          <View
-            key={item}
-            style={[
-              styles.seriesPill,
-              index === 0
-                ? { backgroundColor: theme.tint, borderColor: theme.tint }
-                : { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.12)' },
-            ]}>
-            <ThemedText type="smallBold" style={{ color: index === 0 ? '#FFFFFF' : theme.textSecondary }}>
-              {item}
-            </ThemedText>
-          </View>
-        ))}
+        {seriesOptions.map((option) => {
+          const active = option.id === selectedSeriesId;
+          return (
+            <Pressable key={option.id ?? 'all'} onPress={() => setSelectedSeriesId(option.id)}>
+              <View
+                style={[
+                  styles.seriesPill,
+                  active
+                    ? { backgroundColor: theme.tint, borderColor: theme.tint }
+                    : { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.12)' },
+                ]}>
+                <ThemedText type="smallBold" style={{ color: active ? '#FFFFFF' : theme.textSecondary }}>
+                  {option.title}
+                </ThemedText>
+              </View>
+            </Pressable>
+          );
+        })}
       </ScrollView>
 
       {featured ? (
@@ -85,7 +94,7 @@ export default function SermonsScreen() {
 
           <View style={[styles.featuredBody, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
             <ThemedText type="smallBold" style={{ color: theme.tint }}>
-              {featured.series || 'Featured Sermon'}
+              {featured.series_title || 'Featured Sermon'}
             </ThemedText>
             <ThemedText type="defaultSemiBold">{featured.title || 'Untitled sermon'}</ThemedText>
             <View style={styles.featuredMetaRow}>
@@ -139,7 +148,7 @@ export default function SermonsScreen() {
             </View>
             <View style={styles.listContent}>
               <ThemedText type="smallBold" style={{ color: theme.tint }}>
-                {sermon?.series || 'Sermon'}
+                {sermon?.series_title || 'Sermon'}
               </ThemedText>
               <ThemedText type="defaultSemiBold" numberOfLines={2}>
                 {sermon?.title || 'Untitled sermon'}

@@ -55,3 +55,6 @@ Use this checklist for final smoke testing on web and Android.
 - [ ] Editing an approved request's text removes it from the wall until re-approved
 - [ ] A member cannot open another member's private request by id
 - [ ] The mobile "+" button opens the request form and does not auto-submit
+- [ ] "Stop sharing" (web My requests, mobile My requests) removes a request from the wall; "Share on wall" puts it back
+- [ ] Admin "Remove from wall" on `/admin/prayers` takes a shared request off the wall
+- [ ] On mobile, "I prayed" on a request that just left the wall shows an alert; a failed load shows "Could not load prayers" with Try again

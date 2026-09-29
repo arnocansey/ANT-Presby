@@ -199,9 +199,9 @@ const updatePrayerRequest = async (req, res, next) => {
 // Approve prayer request (admin only)
 const approvePrayerRequest = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const id = parseId(req.params.id);
     const adminId = req.user.userId;
-    const prayerRequest = await prayerRequestModel.getPrayerRequestById(id);
+    const prayerRequest = id ? await prayerRequestModel.getPrayerRequestById(id) : undefined;
 
     if (!prayerRequest) {
       return res.status(404).json(apiResponse(false, null, 'Prayer request not found'));
@@ -231,8 +231,8 @@ const approvePrayerRequest = async (req, res, next) => {
 // Mark prayer as answered (admin only)
 const markAsAnswered = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const prayerRequest = await prayerRequestModel.getPrayerRequestById(id);
+    const id = parseId(req.params.id);
+    const prayerRequest = id ? await prayerRequestModel.getPrayerRequestById(id) : undefined;
 
     if (!prayerRequest) {
       return res.status(404).json(apiResponse(false, null, 'Prayer request not found'));
@@ -258,16 +258,14 @@ const markAsAnswered = async (req, res, next) => {
 // Delete prayer request
 const deletePrayerRequest = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const userId = req.user.userId;
+    const id = parseId(req.params.id);
 
-    // Check if user is the owner or admin
-    const prayerRequest = await prayerRequestModel.getPrayerRequestById(id);
+    const prayerRequest = id ? await prayerRequestModel.getPrayerRequestById(id) : undefined;
     if (!prayerRequest) {
       return res.status(404).json(apiResponse(false, null, 'Prayer request not found'));
     }
 
-    if (prayerRequest.user_id !== userId && req.user.role !== 'admin') {
+    if (!isOwnerOrAdmin(prayerRequest, req.user)) {
       return res.status(403).json(apiResponse(false, null, 'Unauthorized'));
     }
 

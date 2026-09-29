@@ -293,6 +293,72 @@ describe('Prayer requests and prayer wall', () => {
     });
   });
 
+  describe('malformed ids on the remaining prayer routes', () => {
+    test('DELETE returns 404 without querying the database', async () => {
+      const response = await request(app)
+        .delete('/api/prayers/abc')
+        .set('Authorization', `Bearer ${tokenFor(7)}`);
+
+      expect(response.status).toBe(404);
+      expect(prayerRequestModel.getPrayerRequestById).not.toHaveBeenCalled();
+    });
+
+    test('approve returns 404 without querying the database', async () => {
+      const response = await request(app)
+        .post('/api/prayers/1.5/approve')
+        .set('Authorization', `Bearer ${tokenFor(1, 'admin')}`);
+
+      expect(response.status).toBe(404);
+      expect(prayerRequestModel.getPrayerRequestById).not.toHaveBeenCalled();
+    });
+
+    test('answered returns 404 without querying the database', async () => {
+      const response = await request(app)
+        .post('/api/prayers/abc/answered')
+        .set('Authorization', `Bearer ${tokenFor(1, 'admin')}`);
+
+      expect(response.status).toBe(404);
+      expect(prayerRequestModel.getPrayerRequestById).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('taking a request off the wall', () => {
+    const shared = {
+      id: 9,
+      user_id: 7,
+      status: 'approved',
+      title: 'Healing',
+      description: 'Please pray for my mother',
+      category: 'health',
+    };
+
+    test('the owner can stop sharing without losing approval', async () => {
+      prayerRequestModel.getPrayerRequestById.mockResolvedValue(shared);
+
+      const response = await request(app)
+        .put('/api/prayers/9')
+        .set('Authorization', `Bearer ${tokenFor(7)}`)
+        .send({ title: shared.title, description: shared.description, category: shared.category, shareOnWall: false });
+
+      expect(response.status).toBe(200);
+      const updates = prayerRequestModel.updatePrayerRequest.mock.calls[0][1];
+      expect(updates.shareOnWall).toBe(false);
+      expect(updates.status).toBeUndefined();
+    });
+
+    test('an admin can remove a member request from the wall', async () => {
+      prayerRequestModel.getPrayerRequestById.mockResolvedValue(shared);
+
+      const response = await request(app)
+        .put('/api/prayers/9')
+        .set('Authorization', `Bearer ${tokenFor(1, 'admin')}`)
+        .send({ title: shared.title, description: shared.description, category: shared.category, shareOnWall: false });
+
+      expect(response.status).toBe(200);
+      expect(prayerRequestModel.updatePrayerRequest.mock.calls[0][1].shareOnWall).toBe(false);
+    });
+  });
+
   describe('POST /api/prayers/:id/approve', () => {
     test('notifies the requester through the notification service', async () => {
       prayerRequestModel.getPrayerRequestById.mockResolvedValue({ id: 9, user_id: 42, title: 'Healing' });

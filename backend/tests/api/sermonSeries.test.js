@@ -42,6 +42,7 @@ const buildApp = (models) => {
   app.use(express.json());
   app.use('/api/sermons', require('../../src/routes/sermonRoutes'));
   app.use('/api/admin/sermons', require('../../src/routes/adminSermonRoutes'));
+  app.use('/api/sermon-series', require('../../src/routes/sermonSeriesRoutes'));
   const { errorHandler } = require('../../src/middleware/errorHandler');
   app.use(errorHandler);
   return app;
@@ -150,5 +151,61 @@ describe('Linking sermons to series', () => {
 
     expect(response.status).toBe(400);
     expect(models.sermonModel.getAllSermons).not.toHaveBeenCalled();
+  });
+});
+
+describe('Public sermon series API', () => {
+  let models;
+  let app;
+
+  beforeEach(() => {
+    models = buildModels();
+    app = buildApp(models);
+  });
+
+  test('GET /api/sermon-series lists series', async () => {
+    models.sermonSeriesModel.listSeries.mockResolvedValue([{ id: 3, title: 'Romans', sermon_count: 4 }]);
+
+    const response = await request(app).get('/api/sermon-series');
+
+    expect(response.status).toBe(200);
+    expect(response.body.data).toEqual([{ id: 3, title: 'Romans', sermon_count: 4 }]);
+  });
+
+  test('GET /api/sermon-series/:id returns the series with its sermons', async () => {
+    models.sermonSeriesModel.getSeriesWithSermons.mockResolvedValue({ id: 3, title: 'Romans', sermons: [{ id: 5 }] });
+
+    const response = await request(app).get('/api/sermon-series/3');
+
+    expect(response.status).toBe(200);
+    expect(models.sermonSeriesModel.getSeriesWithSermons).toHaveBeenCalledWith(3);
+    expect(response.body.data.sermons).toHaveLength(1);
+  });
+
+  test('GET /api/sermon-series/:id returns 404 for a missing series', async () => {
+    const response = await request(app).get('/api/sermon-series/99');
+    expect(response.status).toBe(404);
+  });
+
+  test('GET /api/sermon-series/:id returns 404 for a malformed id without querying', async () => {
+    const response = await request(app).get('/api/sermon-series/abc');
+
+    expect(response.status).toBe(404);
+    expect(models.sermonSeriesModel.getSeriesWithSermons).not.toHaveBeenCalled();
+  });
+});
+
+describe('Sermon series routes are mounted in the server', () => {
+  test('GET /api/sermon-series is served by the real app', async () => {
+    const models = buildModels();
+    models.sermonSeriesModel.listSeries.mockResolvedValue([]);
+    jest.resetModules();
+    jest.doMock('../../src/models/sermonSeriesModel', () => models.sermonSeriesModel);
+    const server = require('../../src/server');
+
+    const response = await request(server).get('/api/sermon-series');
+
+    expect(response.status).toBe(200);
+    expect(models.sermonSeriesModel.listSeries).toHaveBeenCalled();
   });
 });

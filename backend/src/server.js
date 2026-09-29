@@ -13,6 +13,7 @@ const donationController = require('./controllers/donationController');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const sermonRoutes = require('./routes/sermonRoutes');
+const sermonSeriesRoutes = require('./routes/sermonSeriesRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const prayerRequestRoutes = require('./routes/prayerRequestRoutes');
 const donationRoutes = require('./routes/donationRoutes');
@@ -158,6 +159,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sermons', sermonRoutes);
+app.use('/api/sermon-series', sermonSeriesRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/prayers', prayerRequestRoutes);
 app.use('/api/donations', donationRoutes);

@@ -245,6 +245,45 @@ export const useRecentSermons = () => {
   });
 };
 
+export type SermonSeriesSummary = {
+  id: number;
+  title: string;
+  description: string | null;
+  cover_image_url: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  sermon_count: number;
+};
+
+export type SermonSeriesDetail = SermonSeriesSummary & {
+  sermons: Array<{
+    id: number;
+    title: string;
+    speaker: string;
+    sermon_date: string;
+    description?: string;
+  }>;
+};
+
+export const useSermonSeriesList = () =>
+  useQuery({
+    queryKey: ['sermon-series'],
+    queryFn: async (): Promise<SermonSeriesSummary[]> => {
+      const response = await apiClient.get('/sermon-series');
+      return response.data?.data ?? [];
+    },
+  });
+
+export const useSermonSeries = (id?: number) =>
+  useQuery({
+    queryKey: ['sermon-series', id],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<SermonSeriesDetail> => {
+      const response = await apiClient.get(`/sermon-series/${id}`);
+      return response.data?.data;
+    },
+  });
+
 export const useEvents = (page = 1, limit = 10) => {
   return useQuery({
     queryKey: ['events', page, limit],
@@ -557,12 +596,79 @@ export const useDeleteSermon = () => {
       return res.data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'sermons'] });
+      invalidateSeries(qc);
       toast.success('Sermon deleted');
     },
     onError: (error: any) => toast.error(error.response?.data?.message || 'Failed to delete sermon'),
   });
 };
+
+export type SeriesInput = {
+  title: string;
+  description: string;
+  coverImageUrl: string;
+  startDate: string;
+  endDate: string;
+};
+
+// Sermons and series appear in each other's views (series sermon counts, sermon series labels),
+// so any sermon or series change refreshes all of them.
+const invalidateSeries = (qc: ReturnType<typeof useQueryClient>) => {
+  qc.invalidateQueries({ queryKey: ['sermon-series'] });
+  qc.invalidateQueries({ queryKey: ['sermons'] });
+  qc.invalidateQueries({ queryKey: ['sermon'] });
+  qc.invalidateQueries({ queryKey: ['admin', 'sermons'] });
+};
+
+// For pages that save sermons with apiClient directly (admin sermon new/edit).
+export const useRefreshSermonData = () => {
+  const qc = useQueryClient();
+  return () => invalidateSeries(qc);
+};
+
+export const useSaveSermonSeries = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, input }: { id?: number; input: SeriesInput }) => {
+      const response = id
+        ? await apiClient.put(`/admin/sermon-series/${id}`, input)
+        : await apiClient.post('/admin/sermon-series', input);
+      return response.data?.data;
+    },
+    onSuccess: (_data, { id }) => {
+      invalidateSeries(qc);
+      toast.success(id ? 'Series updated' : 'Series created');
+    },
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not save the series')),
+  });
+};
+
+export const useDeleteSermonSeries = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await apiClient.delete(`/admin/sermon-series/${id}`);
+    },
+    onSuccess: () => {
+      invalidateSeries(qc);
+      toast.success('Series deleted');
+    },
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not delete the series')),
+  });
+};
+
+export const useUploadSeriesCover = () =>
+  useMutation({
+    mutationFn: async (file: File): Promise<{ url: string }> => {
+      const formData = new FormData();
+      formData.append('image', file);
+      const response = await apiClient.post('/admin/sermon-series/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data.data;
+    },
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not upload the image')),
+  });
 
 export const useAdminEvents = () => {
   return useQuery({

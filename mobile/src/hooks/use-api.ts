@@ -63,6 +63,7 @@ type AdminSermonPayload = {
   videoUrl?: string;
   sermonDate?: string;
   ministryId: number;
+  seriesId?: number | null;
 };
 
 type AdminSettingsPayload = {
@@ -241,13 +242,13 @@ export const useUpcomingEvents = () =>
     },
   });
 
-export const useSermons = (page = 1, limit = 12, enabled = true) =>
+export const useSermons = (page = 1, limit = 12, enabled = true, seriesId?: number) =>
   useQuery({
-    queryKey: ['sermons', page, limit],
+    queryKey: ['sermons', page, limit, seriesId ?? 'all'],
     enabled,
     queryFn: async () => {
       const response = await apiClient.get('/sermons', {
-        params: { page, limit },
+        params: { page, limit, ...(seriesId ? { series_id: seriesId } : {}) },
       });
       return response.data?.data || [];
     },
@@ -624,6 +625,7 @@ export const useCreateAdminSermon = () =>
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['admin', 'sermons'] }),
         queryClient.invalidateQueries({ queryKey: ['sermons'] }),
+        queryClient.invalidateQueries({ queryKey: ['sermon-series'] }),
       ]);
     },
   });
@@ -638,6 +640,7 @@ export const useUpdateAdminSermon = () =>
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['admin', 'sermons'] }),
         queryClient.invalidateQueries({ queryKey: ['sermons'] }),
+        queryClient.invalidateQueries({ queryKey: ['sermon-series'] }),
       ]);
     },
   });
@@ -652,8 +655,62 @@ export const useDeleteAdminSermon = () =>
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['admin', 'sermons'] }),
         queryClient.invalidateQueries({ queryKey: ['sermons'] }),
+        queryClient.invalidateQueries({ queryKey: ['sermon-series'] }),
       ]);
     },
+  });
+
+export type SermonSeriesSummary = {
+  id: number;
+  title: string;
+  description: string | null;
+  cover_image_url: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  sermon_count: number;
+};
+
+export type SeriesInput = {
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+};
+
+export const useSermonSeriesList = (enabled = true) =>
+  useQuery({
+    queryKey: ['sermon-series'],
+    enabled,
+    queryFn: async (): Promise<SermonSeriesSummary[]> => {
+      const response = await apiClient.get('/sermon-series');
+      return response.data?.data || [];
+    },
+  });
+
+const invalidateSeries = () =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['sermon-series'] }),
+    queryClient.invalidateQueries({ queryKey: ['sermons'] }),
+    queryClient.invalidateQueries({ queryKey: ['admin', 'sermons'] }),
+  ]);
+
+export const useSaveSermonSeries = () =>
+  useMutation({
+    mutationFn: async ({ id, input }: { id?: number; input: SeriesInput }) => {
+      const response = id
+        ? await apiClient.put(`/admin/sermon-series/${id}`, input)
+        : await apiClient.post('/admin/sermon-series', input);
+      return response.data?.data;
+    },
+    onSuccess: invalidateSeries,
+  });
+
+export const useDeleteSermonSeries = () =>
+  useMutation({
+    mutationFn: async (id: number) => {
+      await apiClient.delete(`/admin/sermon-series/${id}`);
+    },
+    onSuccess: invalidateSeries,
   });
 
 export const useAdminSettings = (enabled = true) =>

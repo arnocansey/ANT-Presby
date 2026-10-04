@@ -57,7 +57,13 @@ const newsImageUpload = createImageUpload({
   filePrefix: 'news',
 });
 
+const seriesImageUpload = createImageUpload({
+  directoryName: 'series-images',
+  filePrefix: 'series',
+});
+
 module.exports = {
   profilePhotoUpload,
   newsImageUpload,
+  seriesImageUpload,
 };

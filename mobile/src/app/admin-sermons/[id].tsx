@@ -1,12 +1,18 @@
 import { useLocalSearchParams, router } from 'expo-router';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { BrandButton, BrandCard, BrandHero, BrandPill, BrandScreen, BrandSectionHeader } from '@/components/brand-ui';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
-import { getApiErrorMessage, useAdminSermons, useMinistries, useUpdateAdminSermon } from '@/hooks/use-api';
+import {
+  getApiErrorMessage,
+  useAdminSermons,
+  useMinistries,
+  useSermonSeriesList,
+  useUpdateAdminSermon,
+} from '@/hooks/use-api';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/store/auth';
 
@@ -17,6 +23,7 @@ type SermonFormValues = {
   videoUrl: string;
   sermonDate: string;
   ministryId: string;
+  seriesId: string;
 };
 
 export default function AdminSermonEditScreen() {
@@ -25,10 +32,13 @@ export default function AdminSermonEditScreen() {
   const isAdmin = user?.role === 'admin';
   const sermonsQuery = useAdminSermons(isAdmin);
   const ministriesQuery = useMinistries(isAdmin);
+  const seriesQuery = useSermonSeriesList(isAdmin);
+  const theme = useTheme();
   const updateMutation = useUpdateAdminSermon();
-  const { control, handleSubmit, reset } = useForm<SermonFormValues>({
-    defaultValues: { title: '', speaker: '', description: '', videoUrl: '', sermonDate: '', ministryId: '' },
+  const { control, handleSubmit, reset, watch, setValue } = useForm<SermonFormValues>({
+    defaultValues: { title: '', speaker: '', description: '', videoUrl: '', sermonDate: '', ministryId: '', seriesId: '' },
   });
+  const selectedSeriesId = watch('seriesId');
 
   const sermon = React.useMemo(
     () => (sermonsQuery.data || []).find((item: any) => String(item?.id) === String(params.id)),
@@ -44,6 +54,7 @@ export default function AdminSermonEditScreen() {
         videoUrl: sermon.video_url || sermon.videoUrl || '',
         sermonDate: sermon.sermon_date || sermon.sermonDate || '',
         ministryId: sermon.ministry_id ? String(sermon.ministry_id) : sermon.ministryId ? String(sermon.ministryId) : '',
+        seriesId: sermon.series_id ? String(sermon.series_id) : '',
       });
     }
   }, [sermon, reset]);
@@ -59,6 +70,7 @@ export default function AdminSermonEditScreen() {
           videoUrl: values.videoUrl || undefined,
           sermonDate: values.sermonDate || undefined,
           ministryId: Number(values.ministryId),
+          seriesId: values.seriesId ? Number(values.seriesId) : null,
         },
       });
       router.back();
@@ -96,6 +108,29 @@ export default function AdminSermonEditScreen() {
                 Available ministries: {ministriesQuery.data.map((item: any) => `${item.id}=${item.name}`).join(', ')}
               </ThemedText>
             ) : null}
+            <View style={styles.field}>
+              <ThemedText type="smallBold">Series</ThemedText>
+              <View style={styles.chips}>
+                {[{ id: '', title: 'No series' }, ...(seriesQuery.data || []).map((s) => ({ id: String(s.id), title: s.title }))].map(
+                  (option) => {
+                    const active = selectedSeriesId === option.id;
+                    return (
+                      <Pressable key={option.id || 'none'} onPress={() => setValue('seriesId', option.id)}>
+                        <View
+                          style={[
+                            styles.chip,
+                            { backgroundColor: active ? theme.tint : theme.background, borderColor: active ? theme.tint : theme.border },
+                          ]}>
+                          <ThemedText type="smallBold" style={{ color: active ? theme.white : theme.text }}>
+                            {option.title}
+                          </ThemedText>
+                        </View>
+                      </Pressable>
+                    );
+                  }
+                )}
+              </View>
+            </View>
             <BrandButton label="Save Changes" onPress={handleSubmit(onSubmit)} variant="secondary" />
             {updateMutation.isError ? (
               <ThemedText style={styles.errorText}>{getApiErrorMessage(updateMutation.error, 'Failed to update sermon.')}</ThemedText>
@@ -136,4 +171,6 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: Radius.medium, paddingHorizontal: Spacing.three, paddingVertical: Spacing.three, fontSize: 16 },
   multiline: { minHeight: 110, textAlignVertical: 'top' },
   errorText: { color: '#B91C1C' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  chip: { borderWidth: 1, borderRadius: Radius.pill, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
 });

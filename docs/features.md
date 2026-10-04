@@ -9,6 +9,7 @@
 - Ministries listing and detail pages
 - News listing and detail pages
 - Sermons listing and detail pages
+- Sermon series (browse series and their sermons in order)
 - Events listing and detail pages
 - Donate page
 - Community feed
@@ -43,6 +44,7 @@
 - News CRUD
 - Events CRUD
 - Sermons CRUD
+- Sermon series CRUD with cover images
 - Donations review
 - Settings
 - Audit / operational areas
@@ -119,3 +121,10 @@ Current media behavior:
 - "I prayed" counts once per member per request; the requester is notified at 1, 5, 10, 25, 50 and 100 prayers.
 - Editing the text of an approved request sends it back for approval.
 - Available on web (`/prayer/wall`) and mobile (Prayer Wall screen).
+
+## Sermon Series
+
+- Admins create series (title, description, dates, cover image) on web `/admin/series` or mobile Series Manager, and assign sermons on the sermon form.
+- Members see a Series strip on `/sermons`, each series at `/sermons/series/[id]` (sermons oldest first), and series filter pills on the mobile Sermons tab.
+- Deleting a series keeps its sermons; they simply lose the series label.
+- Series titles are unique; covers must be uploaded through the admin upload.

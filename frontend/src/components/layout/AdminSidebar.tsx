@@ -3,12 +3,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Calendar, DollarSign, Heart, History, Home, Megaphone, Newspaper, Settings, UserRoundCog, Users } from 'lucide-react';
+import { Calendar, DollarSign, Heart, History, Home, Layers, Megaphone, Newspaper, Settings, UserRoundCog, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: Home },
   { href: '/admin/sermons', label: 'Sermons', icon: Megaphone },
+  { href: '/admin/series', label: 'Sermon Series', icon: Layers },
   { href: '/admin/events', label: 'Events', icon: Calendar },
   { href: '/admin/ministries', label: 'Ministries', icon: UserRoundCog },
   { href: '/admin/news', label: 'News', icon: Newspaper },

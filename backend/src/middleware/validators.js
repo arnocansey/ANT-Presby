@@ -83,6 +83,44 @@ const validateSermonCreation = [
     .withMessage('Valid ministry ID is required'),
 ];
 
+// Optional series link on sermon create/update. null clears it.
+const validateSermonSeriesLink = [
+  body('seriesId')
+    .optional({ values: 'null' })
+    .isInt({ min: 1 })
+    .withMessage('seriesId must be a positive integer or null'),
+];
+
+// Covers can only be files we stored ourselves under /uploads/series-images/.
+const SERIES_COVER_PATTERN = /^\/uploads\/series-images\/[A-Za-z0-9_-]+\.(jpg|png|webp|gif)$/;
+
+const validateSermonSeries = [
+  body('title')
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('Series title is required')
+    .isLength({ max: 255 })
+    .withMessage('Series title must be 255 characters or fewer'),
+  body('description').optional({ values: 'null' }).isString().withMessage('Description must be text'),
+  body('coverImageUrl')
+    .optional({ values: 'falsy' })
+    .matches(SERIES_COVER_PATTERN)
+    .withMessage('Cover image must be uploaded through the series image upload'),
+  // Date-only values: a real calendar date in YYYY-MM-DD (rejects "20260901", "2026-02-30", timestamps).
+  body('startDate')
+    .optional({ values: 'falsy' })
+    .isDate({ format: 'YYYY-MM-DD', strictMode: true, delimiters: ['-'] })
+    .withMessage('Start date must be a real date in YYYY-MM-DD format'),
+  body('endDate')
+    .optional({ values: 'falsy' })
+    .isDate({ format: 'YYYY-MM-DD', strictMode: true, delimiters: ['-'] })
+    .withMessage('End date must be a real date in YYYY-MM-DD format')
+    .bail()
+    .custom((endDate, { req }) => !req.body.startDate || new Date(endDate) >= new Date(req.body.startDate))
+    .withMessage('End date cannot be before the start date'),
+];
+
 // Event validation rules
 const validateEventCreation = [
   body('name').trim().notEmpty().withMessage('Event name is required'),
@@ -182,6 +220,8 @@ module.exports = {
   validateUserLogin,
   validateUserUpdate,
   validateSermonCreation,
+  validateSermonSeriesLink,
+  validateSermonSeries,
   validateEventCreation,
   validatePrayerRequest,
   validateDonation,

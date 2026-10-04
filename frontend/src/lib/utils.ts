@@ -32,6 +32,18 @@ export const formatDateTime = (date: string | Date): string => {
   });
 };
 
+// Date-only values (e.g. series start/end) arrive as midnight UTC; format in UTC
+// so viewers west of Greenwich don't see the previous day.
+export const formatDateOnly = (value?: string | null): string => {
+  if (!value) return '';
+  return new Date(value).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+};
+
 /**
  * Format currency
  */

@@ -2,9 +2,10 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { BookOpen, Clock, Play, Search } from 'lucide-react';
+import { BookOpen, Clock, Layers, Play, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { useSermons } from '@/hooks/useApi';
+import { useSermons, useSermonSeriesList } from '@/hooks/useApi';
+import { formatDateOnly } from '@/lib/utils';
 
 const sermonGradients = [
   'from-indigo-600 to-purple-600',
@@ -17,6 +18,7 @@ export default function SermonsPage() {
   const { data, isLoading, error } = useSermons(1, 24);
   const [search, setSearch] = React.useState('');
   const sermons = (data?.data ?? []) as any[];
+  const { data: seriesList } = useSermonSeriesList();
 
   const speakers = React.useMemo(() => {
     const values = Array.from(
@@ -47,6 +49,29 @@ export default function SermonsPage() {
           Watch and revisit messages from the real ANT PRESS sermon collection.
         </p>
       </div>
+
+      {seriesList && seriesList.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-slate-950 dark:text-white">
+            <Layers className="h-5 w-5" /> Series
+          </h2>
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {seriesList.map((series) => (
+              <Link
+                key={series.id}
+                href={`/sermons/series/${series.id}`}
+                className="min-w-[14rem] max-w-[16rem] shrink-0 rounded-[1.2rem] border border-slate-200 bg-white p-4 transition-colors hover:border-sky-300 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-cyan-500/40"
+              >
+                <p className="line-clamp-2 font-bold text-slate-950 dark:text-white">{series.title}</p>
+                <p className="mt-1 text-xs text-ui-subtle">
+                  {series.sermon_count} {series.sermon_count === 1 ? 'sermon' : 'sermons'}
+                  {series.start_date ? ` · from ${formatDateOnly(series.start_date)}` : ''}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="mb-6 flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
@@ -93,7 +118,7 @@ export default function SermonsPage() {
                 </div>
                 <div className="space-y-2 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700 dark:text-cyan-300">
-                    Sermon
+                    {sermon.series_title || 'Sermon'}
                   </p>
                   <h3 className="line-clamp-2 text-lg font-bold text-slate-950 dark:text-white">
                     {sermon.title}

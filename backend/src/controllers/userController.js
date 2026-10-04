@@ -60,11 +60,12 @@ const uploadProfilePhoto = async (req, res, next) => {
 // Get all users (admin only)
 const getAllUsers = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, search } = req.query;
     const { offset, limitNum } = getPagination(page, limit);
+    const searchTerm = typeof search === 'string' ? search.trim().slice(0, 100) : '';
 
-    const users = await userModel.getAllUsers(offset, limitNum);
-    const total = await userModel.countUsers();
+    const users = await userModel.getAllUsers(offset, limitNum, searchTerm);
+    const total = await userModel.countUsers(searchTerm);
     const meta = buildPaginationMeta(total, page, limit);
 
     res.json(

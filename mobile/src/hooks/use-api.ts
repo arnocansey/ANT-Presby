@@ -561,6 +561,79 @@ export const useAdminEvents = (enabled = true) =>
     },
   });
 
+export type AttendancePerson = { user_id: number; first_name: string; last_name: string; email: string };
+
+export type EventAttendance = {
+  event: { id: number; name: string; event_date: string; location: string; status: string };
+  registered: (AttendancePerson & { checked_in: boolean; record_id: number | null; checked_in_at: string | null })[];
+  walk_in_members: (AttendancePerson & { record_id: number; checked_in_at: string })[];
+  guests: { record_id: number; guest_name: string; checked_in_at: string }[];
+  totals: { registered: number; checked_in_members: number; guests: number; total: number };
+};
+
+export type AttendanceSummaryRow = {
+  event_id: number;
+  name: string;
+  event_date: string;
+  registered: number;
+  members: number;
+  guests: number;
+  total: number;
+};
+
+export type MemberSearchResult = { id: number; first_name: string; last_name: string; email: string };
+
+export const useEventAttendance = (eventId?: number) =>
+  useQuery({
+    queryKey: ['admin', 'attendance', 'event', eventId],
+    enabled: Boolean(eventId),
+    queryFn: async (): Promise<EventAttendance> => {
+      const response = await apiClient.get(`/admin/attendance/events/${eventId}`);
+      return response.data?.data;
+    },
+  });
+
+export const useAttendanceSummary = (enabled = true) =>
+  useQuery({
+    queryKey: ['admin', 'attendance', 'summary'],
+    enabled,
+    queryFn: async (): Promise<AttendanceSummaryRow[]> => {
+      const response = await apiClient.get('/admin/attendance/summary', { params: { limit: 8 } });
+      return response.data?.data || [];
+    },
+  });
+
+const invalidateAttendance = () => queryClient.invalidateQueries({ queryKey: ['admin', 'attendance'] });
+
+export const useCheckIn = (eventId?: number) =>
+  useMutation({
+    mutationFn: async (input: { userId: number } | { guestName: string }) => {
+      const response = await apiClient.post(`/admin/attendance/events/${eventId}/check-in`, input);
+      return response.data?.data;
+    },
+    onSettled: invalidateAttendance,
+  });
+
+export const useUndoCheckIn = () =>
+  useMutation({
+    mutationFn: async (recordId: number) => {
+      await apiClient.delete(`/admin/attendance/records/${recordId}`);
+    },
+    onSettled: invalidateAttendance,
+  });
+
+export const useMemberSearch = (term: string, enabled = true) => {
+  const search = term.trim();
+  return useQuery({
+    queryKey: ['admin', 'users', 'search', search],
+    enabled: enabled && search.length >= 2,
+    queryFn: async (): Promise<MemberSearchResult[]> => {
+      const response = await apiClient.get('/admin/users', { params: { search, limit: 10 } });
+      return response.data?.data || [];
+    },
+  });
+};
+
 export const useCreateAdminEvent = () =>
   useMutation({
     mutationFn: async (payload: AdminEventPayload) => {

@@ -121,6 +121,29 @@ const validateSermonSeries = [
     .withMessage('End date cannot be before the start date'),
 ];
 
+// Check-in body: exactly one of a member (userId) or a walk-in guest (guestName).
+const validateCheckIn = [
+  body('userId').optional({ values: 'null' }).isInt({ min: 1 }).withMessage('userId must be a positive integer'),
+  body('guestName')
+    .optional({ values: 'null' })
+    .isString()
+    .withMessage('Guest name must be text')
+    .bail()
+    .trim()
+    .notEmpty()
+    .withMessage('Guest name cannot be blank')
+    .isLength({ max: 255 })
+    .withMessage('Guest name must be 255 characters or fewer'),
+  body().custom((value) => {
+    const hasMember = value?.userId !== undefined && value?.userId !== null;
+    const hasGuest = value?.guestName !== undefined && value?.guestName !== null;
+    if (hasMember === hasGuest) {
+      throw new Error('Send either userId or guestName');
+    }
+    return true;
+  }),
+];
+
 // Event validation rules
 const validateEventCreation = [
   body('name').trim().notEmpty().withMessage('Event name is required'),
@@ -222,6 +245,7 @@ module.exports = {
   validateSermonCreation,
   validateSermonSeriesLink,
   validateSermonSeries,
+  validateCheckIn,
   validateEventCreation,
   validatePrayerRequest,
   validateDonation,

@@ -138,3 +138,25 @@ describe('checkInMember', () => {
     await expect(checkInMember({ eventId: 7, userId: 2, checkedInBy: 1 })).rejects.toThrow('connection lost');
   });
 });
+
+describe('listCheckInEvents', () => {
+  test('lists non-cancelled events in the window, soonest first', async () => {
+    const prisma = buildPrismaMock();
+    prisma.event = {
+      findMany: jest.fn().mockResolvedValue([{ id: 7, name: 'Sunday Service', eventDate: at, location: 'Hall', status: 'active' }]),
+    };
+    const { listCheckInEvents } = loadModel(prisma);
+    const from = new Date('2026-09-20T00:00:00Z');
+    const to = new Date('2026-10-18T00:00:00Z');
+
+    const events = await listCheckInEvents({ from, to });
+
+    expect(prisma.event.findMany).toHaveBeenCalledWith({
+      where: { eventDate: { gte: from, lte: to }, status: { not: 'cancelled' } },
+      orderBy: { eventDate: 'asc' },
+      take: 100,
+      select: { id: true, name: true, eventDate: true, location: true, status: true },
+    });
+    expect(events).toEqual([{ id: 7, name: 'Sunday Service', event_date: at, location: 'Hall', status: 'active' }]);
+  });
+});

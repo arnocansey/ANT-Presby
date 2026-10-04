@@ -234,3 +234,26 @@ describe('Out-of-range ids', () => {
     expect(models.attendanceModel.getEventAttendance).not.toHaveBeenCalled();
   });
 });
+
+describe('GET /api/admin/attendance/events (check-in list)', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('asks for events from 14 days ago to 14 days ahead', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+    jest.setSystemTime(new Date('2026-10-04T12:00:00Z'));
+    const models = buildModels();
+    models.attendanceModel.listCheckInEvents = jest.fn().mockResolvedValue([{ id: 7 }]);
+    const app = buildApp(models);
+
+    const response = await request(app).get('/api/admin/attendance/events').set('Authorization', admin());
+
+    expect(response.status).toBe(200);
+    expect(response.body.data).toEqual([{ id: 7 }]);
+    expect(models.attendanceModel.listCheckInEvents).toHaveBeenCalledWith({
+      from: new Date('2026-09-20T12:00:00Z'),
+      to: new Date('2026-10-18T12:00:00Z'),
+    });
+  });
+});

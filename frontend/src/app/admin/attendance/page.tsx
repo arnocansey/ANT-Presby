@@ -3,15 +3,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAdminEvents, useAttendanceSummary } from '@/hooks/useApi';
+import { useAttendanceSummary, useCheckInEvents } from '@/hooks/useApi';
 import { formatDateTime } from '@/lib/utils';
 
-type AdminEvent = { id: number; name: string; event_date: string; location?: string; status?: string };
-
 export default function AdminAttendancePage() {
-  const { data: eventsData, isLoading: eventsLoading } = useAdminEvents();
+  const { data: eventsData, isLoading: eventsLoading } = useCheckInEvents();
   const { data: summary, isLoading: summaryLoading } = useAttendanceSummary();
-  const events = ((eventsData ?? []) as AdminEvent[]).filter((event) => event.status !== 'cancelled');
+  const events = eventsData ?? [];
   const maxTotal = Math.max(1, ...(summary ?? []).map((row) => row.total));
 
   return (
@@ -29,7 +27,7 @@ export default function AdminAttendancePage() {
           {eventsLoading ? (
             <p className="text-sm text-ui-subtle">Loading events...</p>
           ) : events.length === 0 ? (
-            <p className="text-sm text-ui-subtle">No events yet.</p>
+            <p className="text-sm text-ui-subtle">No events in the last or next two weeks.</p>
           ) : (
             <ul className="divide-y divide-slate-200 dark:divide-slate-800">
               {events.map((event) => (

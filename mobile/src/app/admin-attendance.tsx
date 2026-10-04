@@ -9,8 +9,8 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import {
   getApiErrorMessage,
-  useAdminEvents,
   useAttendanceSummary,
+  useCheckInEvents,
   useCheckIn,
   useEventAttendance,
   useMemberSearch,
@@ -31,7 +31,7 @@ export default function AdminAttendanceScreen() {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [guestName, setGuestName] = React.useState('');
 
-  const eventsQuery = useAdminEvents(isAdmin);
+  const eventsQuery = useCheckInEvents(isAdmin);
   const summaryQuery = useAttendanceSummary(isAdmin && !selectedEventId);
   const sheetQuery = useEventAttendance(isAdmin ? selectedEventId : undefined);
   const searchQuery = useMemberSearch(searchTerm, isAdmin && Boolean(selectedEventId));
@@ -82,9 +82,7 @@ export default function AdminAttendanceScreen() {
   const inputStyle = [styles.input, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }];
 
   if (!selectedEventId) {
-    const events = (Array.isArray(eventsQuery.data) ? eventsQuery.data : []).filter(
-      (event: any) => event?.status !== 'cancelled'
-    );
+    const events = Array.isArray(eventsQuery.data) ? eventsQuery.data : [];
     const summary = Array.isArray(summaryQuery.data) ? summaryQuery.data : [];
 
     return (
@@ -93,7 +91,12 @@ export default function AdminAttendanceScreen() {
 
         <ThemedText type="defaultSemiBold">Choose an event to check people in</ThemedText>
         {eventsQuery.isLoading ? <ActivityIndicator color={theme.tint} /> : null}
-        {events.slice(0, 20).map((event: any) => (
+        {!eventsQuery.isLoading && events.length === 0 ? (
+          <ThemedText type="small" themeColor="textSecondary">
+            No events in the last or next two weeks.
+          </ThemedText>
+        ) : null}
+        {events.map((event) => (
           <Pressable key={String(event.id)} onPress={() => openEvent(Number(event.id))}>
             <BrandCard>
               <View style={styles.row}>

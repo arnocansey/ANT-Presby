@@ -165,7 +165,20 @@ const getAttendanceSummary = async (limit = 10) => {
   return events.map(toSummaryRow);
 };
 
+// Events an admin is likely checking people in to: not cancelled, inside the window, soonest first.
+const listCheckInEvents = async ({ from, to }) => {
+  const events = await prisma.event.findMany({
+    where: { eventDate: { gte: from, lte: to }, status: { not: 'cancelled' } },
+    orderBy: { eventDate: 'asc' },
+    take: 100,
+    select: { id: true, name: true, eventDate: true, location: true, status: true },
+  });
+
+  return toSnakeCaseObject(events);
+};
+
 module.exports = {
+  listCheckInEvents,
   buildAttendanceSummary,
   toSummaryRow,
   getEventAttendance,

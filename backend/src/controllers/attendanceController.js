@@ -22,6 +22,24 @@ const audit = (req, action, entityId, summary, metadata = {}) =>
     metadata,
   });
 
+// Events to choose from for check-in: two weeks back (late entries) to two weeks ahead.
+const CHECK_IN_WINDOW_DAYS = 14;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const listCheckInEvents = async (req, res, next) => {
+  try {
+    const now = Date.now();
+    const events = await attendanceModel.listCheckInEvents({
+      from: new Date(now - CHECK_IN_WINDOW_DAYS * DAY_MS),
+      to: new Date(now + CHECK_IN_WINDOW_DAYS * DAY_MS),
+    });
+
+    res.json(apiResponse(true, events, 'Check-in events retrieved'));
+  } catch (error) {
+    next(error);
+  }
+};
+
 // The check-in sheet for one event
 const getEventAttendance = async (req, res, next) => {
   try {
@@ -117,6 +135,7 @@ const getSummary = async (req, res, next) => {
 };
 
 module.exports = {
+  listCheckInEvents,
   getEventAttendance,
   checkIn,
   removeCheckIn,

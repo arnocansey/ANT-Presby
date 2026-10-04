@@ -702,6 +702,18 @@ export type AttendanceSummaryRow = {
 
 export type MemberSearchResult = { id: number; first_name: string; last_name: string; email: string };
 
+export type CheckInEvent = { id: number; name: string; event_date: string; location: string; status: string };
+
+// Events two weeks either side of today (not cancelled), soonest first.
+export const useCheckInEvents = () =>
+  useQuery({
+    queryKey: ['admin', 'attendance', 'events'],
+    queryFn: async (): Promise<CheckInEvent[]> => {
+      const response = await apiClient.get('/admin/attendance/events');
+      return response.data?.data ?? [];
+    },
+  });
+
 export const useEventAttendance = (eventId?: number) =>
   useQuery({
     queryKey: ['admin', 'attendance', 'event', eventId],

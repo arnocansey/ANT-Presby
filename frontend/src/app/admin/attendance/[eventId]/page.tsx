@@ -18,7 +18,7 @@ export default function EventCheckInPage() {
   const id = Number(params?.eventId);
   const eventId = Number.isInteger(id) && id > 0 ? id : undefined;
 
-  const { data: sheet, isLoading, error } = useEventAttendance(eventId);
+  const { data: sheet, isLoading, error, refetch } = useEventAttendance(eventId);
   const checkIn = useCheckIn(eventId);
   const undo = useUndoCheckIn();
 
@@ -47,13 +47,27 @@ export default function EventCheckInPage() {
     checkIn.mutate({ guestName: name }, { onSuccess: () => setGuestName('') });
   };
 
-  if (!eventId || error) {
+  // Keep showing a loaded sheet if a background refresh fails (e.g. a flaky connection mid check-in).
+  const notFound = !eventId || (error as any)?.response?.status === 404;
+
+  if (notFound) {
     return (
       <div className="container-max py-12">
         <p className="text-ui-subtle">This event could not be found.</p>
         <Link href="/admin/attendance" className="text-sm font-semibold text-sky-700">
           ← Back to attendance
         </Link>
+      </div>
+    );
+  }
+
+  if (error && !sheet) {
+    return (
+      <div className="container-max space-y-3 py-12">
+        <p className="text-ui-subtle">Could not load the check-in sheet. Check your connection and try again.</p>
+        <Button variant="outline" onClick={() => refetch()}>
+          Try again
+        </Button>
       </div>
     );
   }

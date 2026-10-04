@@ -8,6 +8,7 @@ const router = express.Router();
 router.use(verifyToken, requireRole('admin'));
 
 router.get('/summary', attendanceController.getSummary);
+router.get('/events', attendanceController.listCheckInEvents);
 router.get('/events/:eventId', attendanceController.getEventAttendance);
 router.post('/events/:eventId/check-in', validateCheckIn, handleValidationErrors, attendanceController.checkIn);
 router.delete('/records/:id', attendanceController.removeCheckIn);

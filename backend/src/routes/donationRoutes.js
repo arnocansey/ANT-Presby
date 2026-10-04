@@ -8,11 +8,7 @@ const {
 
 const router = express.Router();
 
-router.post(
-  '/webhook',
-  express.raw({ type: 'application/json' }),
-  donationController.handleDonationWebhook
-);
+// The Paystack webhook (POST /api/donations/webhook) is mounted in server.js ahead of the JSON body parser.
 
 router.post(
   '/',

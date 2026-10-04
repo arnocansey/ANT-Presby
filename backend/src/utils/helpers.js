@@ -67,9 +67,19 @@ const isValidEmail = (email) => {
 /**
  * Sanitize user object (remove sensitive fields)
  */
+const SENSITIVE_USER_FIELDS = [
+  'password',
+  'email_verification_token',
+  'emailVerificationToken',
+  'email_verification_expires_at',
+  'emailVerificationExpiresAt',
+];
+
 const sanitizeUser = (user) => {
   const sanitized = { ...user };
-  delete sanitized.password;
+  SENSITIVE_USER_FIELDS.forEach((field) => {
+    delete sanitized[field];
+  });
   return sanitized;
 };
 

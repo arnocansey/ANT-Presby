@@ -9,6 +9,7 @@ import {
   BookOpen,
   Calendar,
   Gift,
+  Heart,
   Info,
   LogIn,
   LogOut,
@@ -43,6 +44,7 @@ const navLinks = [
   { href: '/ministries', label: 'Ministries', icon: Users },
   { href: '/news', label: 'News', icon: Newspaper },
   { href: '/community', label: 'Community', icon: Users },
+  { href: '/prayer/wall', label: 'Prayer', icon: Heart },
   { href: '/about', label: 'About', icon: Info },
   { href: '/contact', label: 'Contact', icon: Mail },
 ];

@@ -1,5 +1,6 @@
 version: '3.8'
 
+# Required: JWT_SECRET and JWT_REFRESH_SECRET (put them in a .env file next to this compose file).
 services:
   # PostgreSQL Database
   postgres:
@@ -11,6 +12,8 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Base schema is applied once, when the data volume is first created.
+      - ./backend/migrations/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
     ports:
       - '5432:5432'
     healthcheck:
@@ -27,16 +30,24 @@ services:
     container_name: antpress_backend
     environment:
       NODE_ENV: production
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-antpress}?schema=public
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:-antpress}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      JWT_SECRET: ${JWT_SECRET:-your_secret_key}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET in .env}
+      PROXY_SHARED_SECRET: ${PROXY_SHARED_SECRET:-}
+      PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       PORT: 5000
       FRONTEND_URL: http://localhost:3000
     ports:
       - '5000:5000'
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -47,9 +58,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # The browser only calls the frontend's own /api proxy, which reaches the backend over the compose network.
+        NEXT_PUBLIC_API_URL: http://backend:5000/api
     container_name: antpress_frontend
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:5000/api
+      PROXY_SHARED_SECRET: ${PROXY_SHARED_SECRET:-}
     ports:
       - '3000:3000'
     depends_on:
@@ -58,4 +72,6 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  uploads_data:
     driver: local

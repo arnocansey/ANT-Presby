@@ -42,6 +42,11 @@ const errorHandler = (err, req, res, _next) => {
     return res.status(401).json(errorResponse);
   }
 
+  // Upload errors (file too large, unexpected field, etc.)
+  if (err.name === 'MulterError') {
+    return res.status(400).json(errorResponse);
+  }
+
   // Validation errors
   if (err.validationErrors) {
     errorResponse.error = 'Validation failed';

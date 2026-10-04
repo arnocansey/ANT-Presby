@@ -43,3 +43,18 @@ Use this checklist for final smoke testing on web and Android.
 - Community feed live updates after action success
 - Admin dashboards showing real values instead of stale `0` or `NaN`
 - Responsive behavior of public pages and header navigation
+
+## Prayer Wall
+
+- [ ] Signed out, `/prayer/wall` redirects to login; the mobile screen asks to sign in
+- [ ] A new request is private unless "Share on the prayer wall" is ticked
+- [ ] A shared request appears on the wall only after admin approval
+- [ ] An anonymous shared request shows "A church member"
+- [ ] "I prayed" counts once per member, even when tapped repeatedly
+- [ ] The requester is notified on the 1st prayer, not the 2nd
+- [ ] Editing an approved request's text removes it from the wall until re-approved
+- [ ] A member cannot open another member's private request by id
+- [ ] The mobile "+" button opens the request form and does not auto-submit
+- [ ] "Stop sharing" (web My requests, mobile My requests) removes a request from the wall; "Share on wall" puts it back
+- [ ] Admin "Remove from wall" on `/admin/prayers` takes a shared request off the wall
+- [ ] On mobile, "I prayed" on a request that just left the wall shows an alert; a failed load shows "Could not load prayers" with Try again

@@ -109,6 +109,7 @@ model User {
   communityPosts       CommunityPost[]     @relation("CommunityPostAuthor")
   communityComments    CommunityComment[]  @relation("CommunityCommentAuthor")
   communityLikes       CommunityLike[]
+  prayerIntercessions  PrayerIntercession[]
 
   @@index([role], map: "idx_users_role")
   @@index([createdAt], map: "idx_users_created_at")
@@ -199,16 +200,33 @@ model PrayerRequest {
   status      PrayerStatus   @default(pending)
   isAnonymous Boolean        @default(false) @map("is_anonymous")
   approvedBy  Int?           @map("approved_by")
+  shareOnWall Boolean        @default(false) @map("share_on_wall")
+  prayerCount Int            @default(0) @map("prayer_count")
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")
   user        User           @relation("PrayerRequestUser", fields: [userId], references: [id], onDelete: Cascade)
   approver    User?          @relation("PrayerRequestApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  intercessions PrayerIntercession[]
 
   @@index([userId], map: "idx_prayer_requests_user")
   @@index([status], map: "idx_prayer_requests_status")
   @@index([category], map: "idx_prayer_requests_category")
   @@index([createdAt(sort: Desc)], map: "idx_prayer_requests_created_at")
+  @@index([shareOnWall, status, createdAt(sort: Desc)], map: "idx_prayer_requests_wall")
   @@map("prayer_requests")
+}
+
+model PrayerIntercession {
+  id              Int           @id @default(autoincrement())
+  prayerRequestId Int           @map("prayer_request_id")
+  userId          Int           @map("user_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  prayerRequest   PrayerRequest @relation(fields: [prayerRequestId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([prayerRequestId, userId], map: "prayer_intercessions_request_user_unique")
+  @@index([userId], map: "idx_prayer_intercessions_user")
+  @@map("prayer_intercessions")
 }
 
 model Donation {

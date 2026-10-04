@@ -4,8 +4,10 @@ const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
 const path = require('path');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+const donationController = require('./controllers/donationController');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -78,20 +80,71 @@ app.use(
   })
 );
 
+// Paystack signs the raw request bytes, so the webhook must be registered before the JSON parser.
+app.post(
+  '/api/donations/webhook',
+  express.raw({ type: 'application/json', limit: '100kb' }),
+  donationController.handleDonationWebhook
+);
+
 // Body parsing middleware
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ limit: '10kb', extended: true }));
 app.use(cookieParser());
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+app.use(
+  '/uploads',
+  express.static(path.join(__dirname, '..', 'uploads'), {
+    dotfiles: 'deny',
+    setHeaders: (res) => {
+      // Uploaded files are user content: never let the browser sniff them into HTML/JS.
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; sandbox");
+    },
+  })
+);
 
 // Rate limiting
+// Web traffic reaches us through the Next.js proxy, so every web visitor would share the proxy's IP.
+// When the proxy presents the shared secret, trust the client IP it forwards instead.
+const PROXY_SHARED_SECRET = process.env.PROXY_SHARED_SECRET || '';
+
+const isTrustedProxyRequest = (req) => {
+  const provided = req.get('x-proxy-secret');
+  if (!PROXY_SHARED_SECRET || !provided) return false;
+
+  const expected = Buffer.from(PROXY_SHARED_SECRET);
+  const actual = Buffer.from(provided);
+  return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+};
+
+const getClientKey = (req) => {
+  const forwardedClientIp = req.get('x-client-ip');
+  if (forwardedClientIp && isTrustedProxyRequest(req)) {
+    return forwardedClientIp.trim();
+  }
+  return req.ip;
+};
+
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000, // 15 minutes
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
   message: 'Too many requests from this IP, please try again later.',
+  keyGenerator: getClientKey,
+});
+
+// Tighter limit for credential and email-sending endpoints.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS) || 20,
+  message: 'Too many authentication attempts, please try again later.',
+  keyGenerator: getClientKey,
 });
 
 app.use(limiter);
+app.use(
+  ['/api/auth/login', '/api/auth/register', '/api/auth/resend-verification', '/api/auth/google'],
+  authLimiter
+);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

@@ -336,6 +336,83 @@ export const useSubmitPrayer = () => {
   });
 };
 
+export type WallPrayer = {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  status: 'approved' | 'answered';
+  requester_name: string;
+  prayer_count: number;
+  prayed_by_me: boolean;
+  created_at: string;
+};
+
+type PaginationMeta = {
+  current_page: number;
+  per_page: number;
+  total: number;
+  total_pages: number;
+  has_more: boolean;
+};
+
+export const usePrayerWall = ({ page = 1, category }: { page?: number; category?: string } = {}) =>
+  useQuery({
+    queryKey: ['prayers', 'wall', category ?? 'all', page],
+    queryFn: async (): Promise<{ data: WallPrayer[]; meta?: PaginationMeta }> => {
+      const response = await apiClient.get('/prayers/wall', {
+        params: { page, limit: 20, ...(category ? { category } : {}) },
+      });
+      return { data: response.data?.data ?? [], meta: response.data?.meta };
+    },
+  });
+
+export const usePrayForRequest = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiClient.post(`/prayers/${id}/pray`);
+      return response.data?.data as { prayer_count: number; prayed_by_me: boolean };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prayers', 'wall'] });
+    },
+    onError: (error: any) => {
+      toast.error(getApiErrorMessage(error, 'Could not record your prayer'));
+    },
+  });
+};
+
+type PrayerSharingInput = {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  shareOnWall: boolean;
+};
+
+// Owners and admins can put a request on, or take it off, the prayer wall.
+// The update endpoint validates the full form, so the existing text is sent back unchanged.
+export const useSetPrayerSharing = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...body }: PrayerSharingInput) => {
+      const response = await apiClient.put(`/prayers/${id}`, body);
+      return response.data?.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['prayers'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'prayers'] });
+      toast.success(variables.shareOnWall ? 'Shared on the prayer wall' : 'Removed from the prayer wall');
+    },
+    onError: (error: any) => {
+      toast.error(getApiErrorMessage(error, 'Could not update sharing'));
+    },
+  });
+};
+
 export const useDonations = () => {
   return useQuery({
     queryKey: ['donations', 'user'],

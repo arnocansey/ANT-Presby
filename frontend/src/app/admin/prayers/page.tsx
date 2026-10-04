@@ -2,7 +2,7 @@
 
 import React from 'react';
 import SimpleTable from '@/components/ui/table';
-import { useAdminPrayerRequests, useApprovePrayer } from '@/hooks/useApi';
+import { useAdminPrayerRequests, useApprovePrayer, useSetPrayerSharing } from '@/hooks/useApi';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,11 +14,14 @@ type AdminPrayer = {
   category?: string;
   status?: string;
   created_at?: string;
+  share_on_wall?: boolean;
+  is_anonymous?: boolean;
 };
 
 export default function AdminPrayersPage() {
   const { data, isLoading } = useAdminPrayerRequests();
   const approve = useApprovePrayer();
+  const setSharing = useSetPrayerSharing();
   const [query, setQuery] = React.useState('');
   const prayers = (data ?? []) as AdminPrayer[];
 
@@ -66,6 +69,18 @@ export default function AdminPrayersPage() {
               render: (prayer: AdminPrayer) => prayer.category || 'general',
             },
             {
+              key: 'share_on_wall',
+              header: 'Wall',
+              render: (prayer: AdminPrayer) =>
+                prayer.share_on_wall ? (
+                  <span className="inline-flex rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">
+                    {prayer.is_anonymous ? 'Shared (anonymous)' : 'Shared'}
+                  </span>
+                ) : (
+                  <span className="text-xs text-ui-subtle">Private</span>
+                ),
+            },
+            {
               key: 'status',
               header: 'Status',
               render: (prayer: AdminPrayer) => (
@@ -78,14 +93,34 @@ export default function AdminPrayersPage() {
               key: 'actions',
               header: 'Actions',
               render: (prayer: AdminPrayer) => (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => approve.mutate(prayer.id)}
-                  disabled={approve.isPending || prayer.status === 'approved'}
-                >
-                  {prayer.status === 'approved' ? 'Approved' : 'Approve'}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => approve.mutate(prayer.id)}
+                    disabled={approve.isPending || prayer.status === 'approved'}
+                  >
+                    {prayer.status === 'approved' ? 'Approved' : 'Approve'}
+                  </Button>
+                  {prayer.share_on_wall && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={setSharing.isPending}
+                      onClick={() =>
+                        setSharing.mutate({
+                          id: prayer.id,
+                          title: prayer.title,
+                          description: prayer.description || '',
+                          category: prayer.category || 'other',
+                          shareOnWall: false,
+                        })
+                      }
+                    >
+                      Remove from wall
+                    </Button>
+                  )}
+                </div>
               ),
             },
           ]}

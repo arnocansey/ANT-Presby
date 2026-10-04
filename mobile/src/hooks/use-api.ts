@@ -28,6 +28,7 @@ type PrayerPayload = {
   description: string;
   category: 'personal' | 'family' | 'health' | 'work' | 'financial' | 'other';
   isAnonymous?: boolean;
+  shareOnWall?: boolean;
 };
 
 type DonationPayload = {
@@ -338,6 +339,28 @@ export const useMyPrayerRequests = (enabled = true) =>
     enabled,
     queryFn: async () => {
       const response = await apiClient.get('/prayers/user/requests');
+      return response.data?.data || [];
+    },
+  });
+
+export type WallPrayer = {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  status: 'approved' | 'answered';
+  requester_name: string;
+  prayer_count: number;
+  prayed_by_me: boolean;
+  created_at: string;
+};
+
+export const usePrayerWall = (enabled = true) =>
+  useQuery({
+    queryKey: ['prayers', 'wall'],
+    enabled,
+    queryFn: async (): Promise<WallPrayer[]> => {
+      const response = await apiClient.get('/prayers/wall', { params: { limit: 50 } });
       return response.data?.data || [];
     },
   });
@@ -751,6 +774,41 @@ export const useCreatePrayerRequest = () =>
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['me', 'prayers'] });
+    },
+  });
+
+export const usePrayForRequest = () =>
+  useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiClient.post(`/prayers/${id}/pray`);
+      return response.data?.data as { prayer_count: number; prayed_by_me: boolean };
+    },
+    // Refresh on failure too: a 404 usually means the request just left the wall.
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['prayers', 'wall'] });
+    },
+  });
+
+type PrayerSharingInput = {
+  id: number;
+  title: string;
+  description: string;
+  category: PrayerPayload['category'];
+  shareOnWall: boolean;
+};
+
+// The update endpoint validates the full form, so the existing text is sent back unchanged.
+export const useSetPrayerSharing = () =>
+  useMutation({
+    mutationFn: async ({ id, ...body }: PrayerSharingInput) => {
+      const response = await apiClient.put(`/prayers/${id}`, body);
+      return response.data?.data;
+    },
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['me', 'prayers'] }),
+        queryClient.invalidateQueries({ queryKey: ['prayers', 'wall'] }),
+      ]);
     },
   });
 

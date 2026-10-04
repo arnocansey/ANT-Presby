@@ -6,7 +6,14 @@ const { toSnakeCaseObject } = require('../utils/prismaHelpers');
  */
 
 // Create prayer request
-const createPrayerRequest = async (userId, title, description, category, isAnonymous = false) => {
+const createPrayerRequest = async (
+  userId,
+  title,
+  description,
+  category,
+  isAnonymous = false,
+  shareOnWall = false
+) => {
   const prayerRequest = await prisma.prayerRequest.create({
     data: {
       userId: Number(userId),
@@ -14,6 +21,7 @@ const createPrayerRequest = async (userId, title, description, category, isAnony
       description,
       category,
       isAnonymous,
+      shareOnWall,
       status: 'pending',
     },
   });
@@ -45,6 +53,8 @@ const getAllPrayerRequests = async (offset, limit, filters = {}) => {
       category: true,
       status: true,
       isAnonymous: true,
+      shareOnWall: true,
+      prayerCount: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -136,6 +146,7 @@ const buildPrayerRequestUpdateData = (updates) => {
   if (updates.category !== undefined) data.category = updates.category;
   if (updates.status !== undefined) data.status = updates.status;
   if (updates.isAnonymous !== undefined) data.isAnonymous = updates.isAnonymous;
+  if (updates.shareOnWall !== undefined) data.shareOnWall = updates.shareOnWall;
   if (updates.approvedBy !== undefined) {
     data.approvedBy = updates.approvedBy === null ? null : Number(updates.approvedBy);
   }
@@ -217,7 +228,109 @@ const getPrayerStatistics = async () => {
   };
 };
 
+// ---- Prayer wall ----
+
+const WALL_STATUSES = ['approved', 'answered'];
+const ANONYMOUS_NAME = 'A church member';
+
+const buildWallWhere = (category) => ({
+  shareOnWall: true,
+  status: { in: WALL_STATUSES },
+  ...(category ? { category } : {}),
+});
+
+// Builds the public wall shape field by field so nothing identifying can leak.
+const toWallItem = (row) => {
+  const fullName = `${row.user?.firstName || ''} ${row.user?.lastName || ''}`.trim();
+
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    category: row.category,
+    status: row.status,
+    requester_name: row.isAnonymous || !fullName ? ANONYMOUS_NAME : fullName,
+    prayer_count: row.prayerCount,
+    prayed_by_me: Array.isArray(row.intercessions) && row.intercessions.length > 0,
+    created_at: row.createdAt,
+  };
+};
+
+const getWallPrayerRequests = async ({ offset = 0, limit = 10, category, viewerUserId }) => {
+  const rows = await prisma.prayerRequest.findMany({
+    where: buildWallWhere(category),
+    skip: Number(offset),
+    take: Number(limit),
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      category: true,
+      status: true,
+      isAnonymous: true,
+      prayerCount: true,
+      createdAt: true,
+      user: { select: { firstName: true, lastName: true } },
+      intercessions: {
+        where: { userId: Number(viewerUserId) },
+        select: { id: true },
+      },
+    },
+  });
+
+  return rows.map(toWallItem);
+};
+
+const countWallPrayerRequests = async ({ category } = {}) =>
+  prisma.prayerRequest.count({ where: buildWallWhere(category) });
+
+// Records one prayer per member per wall request. Safe under double taps and races:
+// the unique (prayer_request_id, user_id) constraint makes the insert a no-op for repeats,
+// and the counter only moves when a row was actually inserted.
+const recordIntercession = async ({ prayerRequestId, userId }) => {
+  const id = Number(prayerRequestId);
+  const memberId = Number(userId);
+
+  return prisma.$transaction(async (tx) => {
+    const request = await tx.prayerRequest.findFirst({
+      where: { id, shareOnWall: true, status: { in: WALL_STATUSES } },
+      select: { id: true, userId: true, title: true },
+    });
+
+    if (!request) {
+      return null;
+    }
+
+    const inserted = await tx.prayerIntercession.createMany({
+      data: [{ prayerRequestId: id, userId: memberId }],
+      skipDuplicates: true,
+    });
+
+    if (inserted.count === 0) {
+      const current = await tx.prayerRequest.findUnique({
+        where: { id },
+        select: { prayerCount: true },
+      });
+      return { request, prayerCount: current.prayerCount, created: false };
+    }
+
+    const updated = await tx.prayerRequest.update({
+      where: { id },
+      data: { prayerCount: { increment: 1 } },
+      select: { prayerCount: true },
+    });
+
+    return { request, prayerCount: updated.prayerCount, created: true };
+  });
+};
+
 module.exports = {
+  WALL_STATUSES,
+  toWallItem,
+  getWallPrayerRequests,
+  countWallPrayerRequests,
+  recordIntercession,
   createPrayerRequest,
   getAllPrayerRequests,
   countPrayerRequests,

@@ -377,6 +377,31 @@ async function migrateFeatureUpdates() {
       ON sermons(series_id);
     `);
 
+    // Attendance (phase 3)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS attendance_records (
+        id SERIAL PRIMARY KEY,
+        event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        guest_name VARCHAR(255),
+        checked_in_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT attendance_member_or_guest CHECK ((user_id IS NULL) <> (guest_name IS NULL))
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_attendance_event
+      ON attendance_records(event_id);
+    `);
+
+    // A member can be checked in to an event only once; guests are unlimited.
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS attendance_event_user_unique
+      ON attendance_records(event_id, user_id)
+      WHERE user_id IS NOT NULL;
+    `);
+
     await client.query('COMMIT');
     console.log('Feature update migration completed successfully.');
     process.exit(0);

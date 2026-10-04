@@ -110,6 +110,8 @@ model User {
   communityComments    CommunityComment[]  @relation("CommunityCommentAuthor")
   communityLikes       CommunityLike[]
   prayerIntercessions  PrayerIntercession[]
+  attendanceRecords    AttendanceRecord[]  @relation("AttendanceMember")
+  attendanceCheckIns   AttendanceRecord[]  @relation("AttendanceCheckedInBy")
 
   @@index([role], map: "idx_users_role")
   @@index([createdAt], map: "idx_users_created_at")
@@ -188,6 +190,7 @@ model Event {
   createdAt        DateTime            @default(now()) @map("created_at")
   updatedAt        DateTime            @updatedAt @map("updated_at")
   registrations    EventRegistration[]
+  attendance       AttendanceRecord[]
 
   @@index([eventDate(sort: Desc)], map: "idx_events_date")
   @@index([status], map: "idx_events_status")
@@ -206,6 +209,24 @@ model EventRegistration {
   @@index([userId], map: "idx_event_registrations_user")
   @@index([eventId], map: "idx_event_registrations_event")
   @@map("event_registrations")
+}
+
+// One row per person per event: a member (userId) or a walk-in guest (guestName), never both.
+// The SQL migration also adds a partial unique index (event_id, user_id) WHERE user_id IS NOT NULL
+// and a check constraint; Prisma cannot express either, so never `prisma db push` to production.
+model AttendanceRecord {
+  id          Int      @id @default(autoincrement())
+  eventId     Int      @map("event_id")
+  userId      Int?     @map("user_id")
+  guestName   String?  @map("guest_name") @db.VarChar(255)
+  checkedInBy Int?     @map("checked_in_by")
+  checkedInAt DateTime @default(now()) @map("checked_in_at")
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user        User?    @relation("AttendanceMember", fields: [userId], references: [id], onDelete: Cascade)
+  checker     User?    @relation("AttendanceCheckedInBy", fields: [checkedInBy], references: [id], onDelete: SetNull)
+
+  @@index([eventId], map: "idx_attendance_event")
+  @@map("attendance_records")
 }
 
 model PrayerRequest {

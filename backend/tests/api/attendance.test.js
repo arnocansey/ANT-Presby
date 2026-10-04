@@ -207,3 +207,30 @@ describe('Attendance routes are mounted in the server', () => {
     expect(response.status).toBe(200);
   });
 });
+
+describe('Out-of-range ids', () => {
+  let models;
+  let app;
+
+  beforeEach(() => {
+    models = buildModels();
+    app = buildApp(models);
+  });
+
+  test('a userId beyond the database integer range is rejected with 400', async () => {
+    const response = await request(app)
+      .post('/api/admin/attendance/events/7/check-in')
+      .set('Authorization', admin())
+      .send({ userId: 99999999999 });
+
+    expect(response.status).toBe(400);
+    expect(models.userModel.findUserById).not.toHaveBeenCalled();
+  });
+
+  test('an event id beyond the database integer range returns 404 without querying', async () => {
+    const response = await request(app).get('/api/admin/attendance/events/99999999999').set('Authorization', admin());
+
+    expect(response.status).toBe(404);
+    expect(models.attendanceModel.getEventAttendance).not.toHaveBeenCalled();
+  });
+});

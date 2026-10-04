@@ -13,3 +13,14 @@ describe('parseId', () => {
     expect(parseId(input)).toBeNull();
   });
 });
+
+describe('parseId range', () => {
+  test('accepts the largest database integer', () => {
+    expect(parseId('2147483647')).toBe(2147483647);
+  });
+
+  test('rejects ids beyond the database integer range', () => {
+    expect(parseId('2147483648')).toBeNull();
+    expect(parseId('99999999999')).toBeNull();
+  });
+});

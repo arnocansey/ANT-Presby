@@ -384,3 +384,18 @@ describe('Series dates must be real calendar dates', () => {
     expect(models.sermonSeriesModel.createSeries).not.toHaveBeenCalled();
   });
 });
+
+describe('Out-of-range series id', () => {
+  test('a seriesId beyond the database integer range is rejected with 400', async () => {
+    const models = buildModels();
+    const app = buildApp(models);
+
+    const response = await request(app)
+      .put('/api/admin/sermons/5')
+      .set('Authorization', admin())
+      .send({ seriesId: 99999999999 });
+
+    expect(response.status).toBe(400);
+    expect(models.sermonSeriesModel.getSeriesById).not.toHaveBeenCalled();
+  });
+});

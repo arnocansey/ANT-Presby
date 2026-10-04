@@ -1,4 +1,5 @@
 ﻿const { validationResult, body } = require('express-validator');
+const { MAX_DB_ID } = require('../utils/helpers');
 
 /**
  * Middleware to handle validation errors
@@ -79,7 +80,7 @@ const validateSermonCreation = [
     .isISO8601()
     .withMessage('Invalid sermon date format'),
   body('ministryId')
-    .isInt({ min: 1 })
+    .isInt({ min: 1, max: MAX_DB_ID })
     .withMessage('Valid ministry ID is required'),
 ];
 
@@ -87,7 +88,7 @@ const validateSermonCreation = [
 const validateSermonSeriesLink = [
   body('seriesId')
     .optional({ values: 'null' })
-    .isInt({ min: 1 })
+    .isInt({ min: 1, max: MAX_DB_ID })
     .withMessage('seriesId must be a positive integer or null'),
 ];
 
@@ -123,7 +124,10 @@ const validateSermonSeries = [
 
 // Check-in body: exactly one of a member (userId) or a walk-in guest (guestName).
 const validateCheckIn = [
-  body('userId').optional({ values: 'null' }).isInt({ min: 1 }).withMessage('userId must be a positive integer'),
+  body('userId')
+    .optional({ values: 'null' })
+    .isInt({ min: 1, max: MAX_DB_ID })
+    .withMessage('userId must be a positive integer'),
   body('guestName')
     .optional({ values: 'null' })
     .isString()
@@ -157,7 +161,7 @@ const validateEventCreation = [
   body('location').trim().notEmpty().withMessage('Location is required'),
   body('maxRegistrations')
     .optional()
-    .isInt({ min: 1 })
+    .isInt({ min: 1, max: MAX_DB_ID })
     .withMessage('Max registrations must be a positive integer'),
 ];
 

@@ -18,6 +18,16 @@ type AuthState = {
   clearSession: () => Promise<void>;
 };
 
+// Work that must run while the user is still signed in (e.g. removing this device's push token).
+const beforeClearSessionHandlers = new Set<() => Promise<void>>();
+
+export const onBeforeClearSession = (handler: () => Promise<void>) => {
+  beforeClearSessionHandlers.add(handler);
+  return () => {
+    beforeClearSessionHandlers.delete(handler);
+  };
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: null,
@@ -51,6 +61,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ token, user });
   },
   clearSession: async () => {
+    for (const handler of beforeClearSessionHandlers) {
+      try {
+        await handler();
+      } catch {
+        // Never block sign-out.
+      }
+    }
     await Promise.all([
       secureStorage.clearAccessToken(),
       secureStorage.clearUser(),

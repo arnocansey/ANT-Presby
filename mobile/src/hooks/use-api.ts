@@ -712,6 +712,42 @@ export const useUndoCheckIn = () =>
     onSettled: invalidateAttendance,
   });
 
+export type AnnouncementInput =
+  | { title: string; message: string; audience: 'everyone' }
+  | { title: string; message: string; audience: 'group'; groupId: number }
+  | { title: string; message: string; audience: 'event'; eventId: number };
+
+export type Announcement = {
+  id: number;
+  title: string;
+  message: string;
+  audience: 'everyone' | 'group' | 'event';
+  group_name?: string | null;
+  event_name?: string | null;
+  recipient_count: number;
+  push_count: number;
+  created_at: string;
+};
+
+export const useSentAnnouncements = (enabled = true) =>
+  useQuery({
+    queryKey: ['announcements', 'sent'],
+    enabled,
+    queryFn: async (): Promise<Announcement[]> => {
+      const response = await apiClient.get('/announcements/sent');
+      return response.data?.data || [];
+    },
+  });
+
+export const useSendAnnouncement = () =>
+  useMutation({
+    mutationFn: async (input: AnnouncementInput) => {
+      const response = await apiClient.post('/announcements', input);
+      return response.data?.data as Announcement;
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['announcements'] }),
+  });
+
 export const useMemberSearch = (term: string, enabled = true) => {
   const search = term.trim();
   return useQuery({

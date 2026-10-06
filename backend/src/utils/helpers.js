@@ -134,13 +134,17 @@ const buildWhereClause = (filters) => {
  * anything else ("abc", "1.5", "07", "0") returns null so callers can 404
  * without sending NaN or fractions to the database.
  */
+// Largest value a PostgreSQL INTEGER id column can hold; bigger ids make Prisma throw (500).
+const MAX_DB_ID = 2147483647;
+
 const parseId = (value) => {
   if (typeof value !== 'string' && typeof value !== 'number') return null;
   const id = Number.parseInt(value, 10);
-  return Number.isInteger(id) && id > 0 && String(id) === String(value) ? id : null;
+  return Number.isInteger(id) && id > 0 && id <= MAX_DB_ID && String(id) === String(value) ? id : null;
 };
 
 module.exports = {
+  MAX_DB_ID,
   parseId,
   hashPassword,
   comparePassword,

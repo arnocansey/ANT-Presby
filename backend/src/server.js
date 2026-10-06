@@ -22,6 +22,8 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const adminSermonRoutes = require('./routes/adminSermonRoutes');
 const adminSermonSeriesRoutes = require('./routes/adminSermonSeriesRoutes');
 const adminEventRoutes = require('./routes/adminEventRoutes');
+const adminAttendanceRoutes = require('./routes/adminAttendanceRoutes');
+const adminGroupRoutes = require('./routes/adminGroupRoutes');
 const adminUserRoutes = require('./routes/adminUserRoutes');
 const adminPrayerRoutes = require('./routes/adminPrayerRoutes');
 const adminDonationRoutes = require('./routes/adminDonationRoutes');
@@ -34,6 +36,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const prismaRoutes = require('./routes/prismaRoutes');
 const communityFeedRoutes = require('./routes/communityFeedRoutes');
+const groupRoutes = require('./routes/groupRoutes');
 
 // Initialize Express app
 const app = express();
@@ -169,6 +172,8 @@ app.use('/api/admin/dashboard', dashboardRoutes);
 app.use('/api/admin/sermons', adminSermonRoutes);
 app.use('/api/admin/sermon-series', adminSermonSeriesRoutes);
 app.use('/api/admin/events', adminEventRoutes);
+app.use('/api/admin/attendance', adminAttendanceRoutes);
+app.use('/api/admin/groups', adminGroupRoutes);
 app.use('/api/admin/users', adminUserRoutes);
 app.use('/api/admin/prayers', adminPrayerRoutes);
 app.use('/api/admin/donations', adminDonationRoutes);
@@ -181,6 +186,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/prisma', prismaRoutes);
 app.use('/api/community', communityFeedRoutes);
+app.use('/api/groups', groupRoutes);
 
 // 404 handler
 app.use(notFoundHandler);

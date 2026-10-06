@@ -274,6 +274,83 @@ export const useMinistries = (enabled = true) =>
     },
   });
 
+export type GroupSummary = {
+  id: number;
+  name: string;
+  description: string | null;
+  meeting_day: string | null;
+  meeting_time: string | null;
+  location: string | null;
+  capacity: number | null;
+  ministry_name: string | null;
+  is_active: boolean;
+  member_count: number;
+  leaders: { user_id: number; first_name: string; last_name: string }[];
+  my_status: 'pending' | 'active' | null;
+  my_role: 'leader' | 'member' | null;
+};
+
+export type GroupDetail = GroupSummary & {
+  members: { user_id: number; first_name: string; last_name: string; role: 'leader' | 'member' }[] | null;
+};
+
+export type GroupJoinRequest = { user_id: number; first_name: string; last_name: string; email: string; requested_at: string };
+
+const invalidateGroups = () => queryClient.invalidateQueries({ queryKey: ['groups'] });
+
+export const useGroups = () =>
+  useQuery({
+    queryKey: ['groups', 'list'],
+    queryFn: async (): Promise<GroupSummary[]> => {
+      const response = await apiClient.get('/groups');
+      return response.data?.data || [];
+    },
+  });
+
+export const useGroup = (id?: number) =>
+  useQuery({
+    queryKey: ['groups', 'detail', id],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<GroupDetail> => {
+      const response = await apiClient.get(`/groups/${id}`);
+      return response.data?.data;
+    },
+  });
+
+export const useJoinGroup = () =>
+  useMutation({
+    mutationFn: async (groupId: number) => {
+      await apiClient.post(`/groups/${groupId}/join`);
+    },
+    onSettled: invalidateGroups,
+  });
+
+export const useLeaveGroup = () =>
+  useMutation({
+    mutationFn: async (groupId: number) => {
+      await apiClient.delete(`/groups/${groupId}/membership`);
+    },
+    onSettled: invalidateGroups,
+  });
+
+export const useGroupRequests = (groupId?: number, enabled = true) =>
+  useQuery({
+    queryKey: ['groups', 'requests', groupId],
+    enabled: Boolean(groupId) && enabled,
+    queryFn: async (): Promise<GroupJoinRequest[]> => {
+      const response = await apiClient.get(`/groups/${groupId}/requests`);
+      return response.data?.data || [];
+    },
+  });
+
+export const useDecideGroupRequest = (groupId?: number) =>
+  useMutation({
+    mutationFn: async ({ userId, decision }: { userId: number; decision: 'approve' | 'decline' }) => {
+      await apiClient.post(`/groups/${groupId}/requests/${userId}/${decision}`);
+    },
+    onSettled: invalidateGroups,
+  });
+
 export const useMinistrySermons = (ministryId?: number | string, enabled = true) =>
   useQuery({
     queryKey: ['ministries', ministryId, 'sermons'],
@@ -560,6 +637,92 @@ export const useAdminEvents = (enabled = true) =>
       return response.data?.data || [];
     },
   });
+
+export type AttendancePerson = { user_id: number; first_name: string; last_name: string; email: string };
+
+export type EventAttendance = {
+  event: { id: number; name: string; event_date: string; location: string; status: string };
+  registered: (AttendancePerson & { checked_in: boolean; record_id: number | null; checked_in_at: string | null })[];
+  walk_in_members: (AttendancePerson & { record_id: number; checked_in_at: string })[];
+  guests: { record_id: number; guest_name: string; checked_in_at: string }[];
+  totals: { registered: number; checked_in_members: number; guests: number; total: number };
+};
+
+export type AttendanceSummaryRow = {
+  event_id: number;
+  name: string;
+  event_date: string;
+  registered: number;
+  members: number;
+  guests: number;
+  total: number;
+};
+
+export type MemberSearchResult = { id: number; first_name: string; last_name: string; email: string };
+
+export type CheckInEvent = { id: number; name: string; event_date: string; location: string; status: string };
+
+// Events two weeks either side of today (not cancelled), soonest first.
+export const useCheckInEvents = (enabled = true) =>
+  useQuery({
+    queryKey: ['admin', 'attendance', 'events'],
+    enabled,
+    queryFn: async (): Promise<CheckInEvent[]> => {
+      const response = await apiClient.get('/admin/attendance/events');
+      return response.data?.data || [];
+    },
+  });
+
+export const useEventAttendance = (eventId?: number) =>
+  useQuery({
+    queryKey: ['admin', 'attendance', 'event', eventId],
+    enabled: Boolean(eventId),
+    queryFn: async (): Promise<EventAttendance> => {
+      const response = await apiClient.get(`/admin/attendance/events/${eventId}`);
+      return response.data?.data;
+    },
+  });
+
+export const useAttendanceSummary = (enabled = true) =>
+  useQuery({
+    queryKey: ['admin', 'attendance', 'summary'],
+    enabled,
+    queryFn: async (): Promise<AttendanceSummaryRow[]> => {
+      const response = await apiClient.get('/admin/attendance/summary', { params: { limit: 8 } });
+      return response.data?.data || [];
+    },
+  });
+
+const invalidateAttendance = () => queryClient.invalidateQueries({ queryKey: ['admin', 'attendance'] });
+
+export const useCheckIn = (eventId?: number) =>
+  useMutation({
+    mutationFn: async (input: { userId: number } | { guestName: string }) => {
+      const response = await apiClient.post(`/admin/attendance/events/${eventId}/check-in`, input);
+      return response.data?.data;
+    },
+    onSettled: invalidateAttendance,
+  });
+
+export const useUndoCheckIn = () =>
+  useMutation({
+    mutationFn: async (recordId: number) => {
+      await apiClient.delete(`/admin/attendance/records/${recordId}`);
+    },
+    onSettled: invalidateAttendance,
+  });
+
+export const useMemberSearch = (term: string, enabled = true) => {
+  const search = term.trim();
+  return useQuery({
+    queryKey: ['admin', 'users', 'search', search],
+    enabled: enabled && search.length >= 2,
+    queryFn: async (): Promise<MemberSearchResult[]> => {
+      const response = await apiClient.get('/admin/users', { params: { search, limit: 10 } });
+      return response.data?.data || [];
+    },
+  });
+};
 
 export const useCreateAdminEvent = () =>
   useMutation({

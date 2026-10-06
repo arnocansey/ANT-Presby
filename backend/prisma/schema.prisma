@@ -60,6 +60,20 @@ enum PrayerCategory {
   @@map("prayer_category")
 }
 
+enum GroupRole {
+  leader
+  member
+
+  @@map("group_role")
+}
+
+enum MembershipStatus {
+  pending
+  active
+
+  @@map("membership_status")
+}
+
 enum DonationType {
   tithe
   offering
@@ -110,6 +124,9 @@ model User {
   communityComments    CommunityComment[]  @relation("CommunityCommentAuthor")
   communityLikes       CommunityLike[]
   prayerIntercessions  PrayerIntercession[]
+  attendanceRecords    AttendanceRecord[]  @relation("AttendanceMember")
+  attendanceCheckIns   AttendanceRecord[]  @relation("AttendanceCheckedInBy")
+  groupMemberships     GroupMembership[]
 
   @@index([role], map: "idx_users_role")
   @@index([createdAt], map: "idx_users_created_at")
@@ -138,6 +155,7 @@ model Ministry {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   sermons     Sermon[]
+  smallGroups SmallGroup[]
 
   @@map("ministries")
 }
@@ -188,6 +206,7 @@ model Event {
   createdAt        DateTime            @default(now()) @map("created_at")
   updatedAt        DateTime            @updatedAt @map("updated_at")
   registrations    EventRegistration[]
+  attendance       AttendanceRecord[]
 
   @@index([eventDate(sort: Desc)], map: "idx_events_date")
   @@index([status], map: "idx_events_status")
@@ -206,6 +225,59 @@ model EventRegistration {
   @@index([userId], map: "idx_event_registrations_user")
   @@index([eventId], map: "idx_event_registrations_event")
   @@map("event_registrations")
+}
+
+// One row per person per event: a member (userId) or a walk-in guest (guestName), never both.
+// The SQL migration also adds a partial unique index (event_id, user_id) WHERE user_id IS NOT NULL
+// and a check constraint; Prisma cannot express either, so never `prisma db push` to production.
+model AttendanceRecord {
+  id          Int      @id @default(autoincrement())
+  eventId     Int      @map("event_id")
+  userId      Int?     @map("user_id")
+  guestName   String?  @map("guest_name") @db.VarChar(255)
+  checkedInBy Int?     @map("checked_in_by")
+  checkedInAt DateTime @default(now()) @map("checked_in_at")
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user        User?    @relation("AttendanceMember", fields: [userId], references: [id], onDelete: Cascade)
+  checker     User?    @relation("AttendanceCheckedInBy", fields: [checkedInBy], references: [id], onDelete: SetNull)
+
+  @@index([eventId], map: "idx_attendance_event")
+  @@map("attendance_records")
+}
+
+model SmallGroup {
+  id          Int               @id @default(autoincrement())
+  name        String            @unique @db.VarChar(255)
+  description String?
+  meetingDay  String?           @map("meeting_day") @db.VarChar(20)
+  meetingTime String?           @map("meeting_time") @db.VarChar(20)
+  location    String?           @db.VarChar(255)
+  capacity    Int?
+  ministryId  Int?              @map("ministry_id")
+  isActive    Boolean           @default(true) @map("is_active")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  ministry    Ministry?         @relation(fields: [ministryId], references: [id], onDelete: SetNull)
+  memberships GroupMembership[]
+
+  @@index([ministryId], map: "idx_small_groups_ministry")
+  @@map("small_groups")
+}
+
+model GroupMembership {
+  id        Int              @id @default(autoincrement())
+  groupId   Int              @map("group_id")
+  userId    Int              @map("user_id")
+  role      GroupRole        @default(member)
+  status    MembershipStatus @default(pending)
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+  group     SmallGroup       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId], map: "group_memberships_group_user_unique")
+  @@index([userId], map: "idx_group_memberships_user")
+  @@map("group_memberships")
 }
 
 model PrayerRequest {

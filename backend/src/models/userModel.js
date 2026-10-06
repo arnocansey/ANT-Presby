@@ -86,9 +86,33 @@ const findUserByGoogleId = async (googleId) => {
   return toSnakeCaseObject(user);
 };
 
+// Admin member lookup: every word must match a first name, last name or email (case-insensitive).
+const buildUserSearchWhere = (search) => {
+  const words = String(search || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 5);
+
+  if (words.length === 0) {
+    return {};
+  }
+
+  return {
+    AND: words.map((word) => ({
+      OR: [
+        { firstName: { contains: word, mode: 'insensitive' } },
+        { lastName: { contains: word, mode: 'insensitive' } },
+        { email: { contains: word, mode: 'insensitive' } },
+      ],
+    })),
+  };
+};
+
 // Get all users with pagination
-const getAllUsers = async (offset, limit) => {
+const getAllUsers = async (offset, limit, search = '') => {
   const users = await prisma.user.findMany({
+    where: buildUserSearchWhere(search),
     skip: Number(offset),
     take: Number(limit),
     orderBy: { createdAt: 'desc' },
@@ -118,9 +142,19 @@ const getAllUserIds = async () => {
   return users.map((row) => row.id);
 };
 
+// Active admin IDs (fallback recipients when a group has no leader yet)
+const getActiveAdminIds = async () => {
+  const admins = await prisma.user.findMany({
+    where: { isActive: true, role: 'admin' },
+    select: { id: true },
+  });
+
+  return admins.map((row) => row.id);
+};
+
 // Count total users
-const countUsers = async () => {
-  return prisma.user.count();
+const countUsers = async (search = '') => {
+  return prisma.user.count({ where: buildUserSearchWhere(search) });
 };
 
 const buildUserUpdateData = (updates) => {
@@ -325,6 +359,7 @@ const markEmailVerified = async (userId) =>
   });
 
 module.exports = {
+  buildUserSearchWhere,
   createUser,
   findUserByEmail,
   findUserById,
@@ -332,6 +367,7 @@ module.exports = {
   findUserByGoogleId,
   getAllUsers,
   getAllUserIds,
+  getActiveAdminIds,
   countUsers,
   updateUser,
   updateUserProfileImage,

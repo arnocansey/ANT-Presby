@@ -160,3 +160,9 @@ Use:
 6. Test event registration and duplicate-registration blocking
 7. Test donation initialization
 8. Test mobile login and feed behavior against the hosted backend
+
+## Database schema changes
+
+Schema changes are applied by `npm run migrate:features` (idempotent SQL in `backend/migrations/migrateFeatureUpdates.js`), which the Render build runs automatically.
+
+Do **not** run `npm run prisma:push` against production. Some constraints exist only in SQL because Prisma cannot express them, for example the partial unique index `attendance_event_user_unique` that allows one check-in per member per event. `prisma db push` would drop them.

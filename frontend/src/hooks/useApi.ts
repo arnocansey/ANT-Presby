@@ -507,6 +507,157 @@ export const useMinistries = () => {
   });
 };
 
+export type GroupSummary = {
+  id: number;
+  name: string;
+  description: string | null;
+  meeting_day: string | null;
+  meeting_time: string | null;
+  location: string | null;
+  capacity: number | null;
+  ministry_id: number | null;
+  ministry_name: string | null;
+  is_active: boolean;
+  member_count: number;
+  leaders: Array<{ user_id: number; first_name: string; last_name: string }>;
+  my_status: 'pending' | 'active' | null;
+  my_role: 'leader' | 'member' | null;
+};
+
+export type GroupDetail = GroupSummary & {
+  members: Array<{ user_id: number; first_name: string; last_name: string; role: 'leader' | 'member' }> | null;
+};
+
+export type GroupJoinRequest = { user_id: number; first_name: string; last_name: string; email: string; requested_at: string };
+
+const invalidateGroups = (qc: ReturnType<typeof useQueryClient>) => {
+  qc.invalidateQueries({ queryKey: ['groups'] });
+  qc.invalidateQueries({ queryKey: ['admin', 'groups'] });
+};
+
+export const useGroups = () =>
+  useQuery({
+    queryKey: ['groups', 'list'],
+    queryFn: async (): Promise<GroupSummary[]> => {
+      const response = await apiClient.get('/groups');
+      return response.data?.data ?? [];
+    },
+  });
+
+export const useGroup = (id?: number) =>
+  useQuery({
+    queryKey: ['groups', 'detail', id],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<GroupDetail> => {
+      const response = await apiClient.get(`/groups/${id}`);
+      return response.data?.data;
+    },
+  });
+
+export const useJoinGroup = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (groupId: number) => {
+      await apiClient.post(`/groups/${groupId}/join`);
+    },
+    onSuccess: () => toast.success('Request sent to the group leaders'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not send your request')),
+    onSettled: () => invalidateGroups(qc),
+  });
+};
+
+export const useLeaveGroup = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (groupId: number) => {
+      const response = await apiClient.delete(`/groups/${groupId}/membership`);
+      return response.data?.message as string | undefined;
+    },
+    onSuccess: (message) => toast.success(message || 'Done'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not leave the group')),
+    onSettled: () => invalidateGroups(qc),
+  });
+};
+
+export const useGroupRequests = (groupId?: number, enabled = true) =>
+  useQuery({
+    queryKey: ['groups', 'requests', groupId],
+    enabled: Boolean(groupId) && enabled,
+    queryFn: async (): Promise<GroupJoinRequest[]> => {
+      const response = await apiClient.get(`/groups/${groupId}/requests`);
+      return response.data?.data ?? [];
+    },
+  });
+
+export const useDecideGroupRequest = (groupId?: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, decision }: { userId: number; decision: 'approve' | 'decline' }) => {
+      await apiClient.post(`/groups/${groupId}/requests/${userId}/${decision}`);
+    },
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not update the request')),
+    onSettled: () => invalidateGroups(qc),
+  });
+};
+
+export type GroupInput = {
+  name: string;
+  description: string | null;
+  meetingDay: string | null;
+  meetingTime: string | null;
+  location: string | null;
+  capacity: number | null;
+  ministryId: number | null;
+  isActive?: boolean;
+};
+
+export const useAdminGroups = () =>
+  useQuery({
+    queryKey: ['admin', 'groups'],
+    queryFn: async (): Promise<GroupSummary[]> => {
+      const response = await apiClient.get('/admin/groups');
+      return response.data?.data ?? [];
+    },
+  });
+
+export const useSaveGroup = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, input }: { id?: number; input: GroupInput }) => {
+      const response = id ? await apiClient.put(`/admin/groups/${id}`, input) : await apiClient.post('/admin/groups', input);
+      return response.data?.data as GroupSummary;
+    },
+    onSuccess: (_data, { id }) => toast.success(id ? 'Group updated' : 'Group created'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not save the group')),
+    onSettled: () => invalidateGroups(qc),
+  });
+};
+
+export const useDeactivateGroup = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (groupId: number) => {
+      await apiClient.delete(`/admin/groups/${groupId}`);
+    },
+    onSuccess: () => toast.success('Group deactivated'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not deactivate the group')),
+    onSettled: () => invalidateGroups(qc),
+  });
+};
+
+export const useSetGroupLeaders = (groupId?: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userIds: number[]) => {
+      const response = await apiClient.put(`/admin/groups/${groupId}/leaders`, { userIds });
+      return response.data?.data as GroupSummary;
+    },
+    onSuccess: () => toast.success('Leaders updated'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not update leaders')),
+    onSettled: () => invalidateGroups(qc),
+  });
+};
+
 export const useMinistry = (id: number) => {
   return useQuery({
     queryKey: ['ministry', id],
@@ -676,6 +827,94 @@ export const useAdminEvents = () => {
     queryFn: async () => {
       const response = await apiClient.get('/admin/events');
       return response.data.data;
+    },
+  });
+};
+
+export type AttendancePerson = { user_id: number; first_name: string; last_name: string; email: string };
+
+export type EventAttendance = {
+  event: { id: number; name: string; event_date: string; location: string; status: string };
+  registered: Array<AttendancePerson & { checked_in: boolean; record_id: number | null; checked_in_at: string | null }>;
+  walk_in_members: Array<AttendancePerson & { record_id: number; checked_in_at: string }>;
+  guests: Array<{ record_id: number; guest_name: string; checked_in_at: string }>;
+  totals: { registered: number; checked_in_members: number; guests: number; total: number };
+};
+
+export type AttendanceSummaryRow = {
+  event_id: number;
+  name: string;
+  event_date: string;
+  registered: number;
+  members: number;
+  guests: number;
+  total: number;
+};
+
+export type MemberSearchResult = { id: number; first_name: string; last_name: string; email: string };
+
+export type CheckInEvent = { id: number; name: string; event_date: string; location: string; status: string };
+
+// Events two weeks either side of today (not cancelled), soonest first.
+export const useCheckInEvents = () =>
+  useQuery({
+    queryKey: ['admin', 'attendance', 'events'],
+    queryFn: async (): Promise<CheckInEvent[]> => {
+      const response = await apiClient.get('/admin/attendance/events');
+      return response.data?.data ?? [];
+    },
+  });
+
+export const useEventAttendance = (eventId?: number) =>
+  useQuery({
+    queryKey: ['admin', 'attendance', 'event', eventId],
+    enabled: Boolean(eventId),
+    queryFn: async (): Promise<EventAttendance> => {
+      const response = await apiClient.get(`/admin/attendance/events/${eventId}`);
+      return response.data?.data;
+    },
+  });
+
+export const useAttendanceSummary = () =>
+  useQuery({
+    queryKey: ['admin', 'attendance', 'summary'],
+    queryFn: async (): Promise<AttendanceSummaryRow[]> => {
+      const response = await apiClient.get('/admin/attendance/summary', { params: { limit: 12 } });
+      return response.data?.data ?? [];
+    },
+  });
+
+export const useCheckIn = (eventId?: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { userId: number } | { guestName: string }) => {
+      const response = await apiClient.post(`/admin/attendance/events/${eventId}/check-in`, input);
+      return response.data?.data;
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'attendance'] }),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not check in')),
+  });
+};
+
+export const useUndoCheckIn = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (recordId: number) => {
+      await apiClient.delete(`/admin/attendance/records/${recordId}`);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'attendance'] }),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not undo the check-in')),
+  });
+};
+
+export const useMemberSearch = (term: string) => {
+  const search = term.trim();
+  return useQuery({
+    queryKey: ['admin', 'users', 'search', search],
+    enabled: search.length >= 2,
+    queryFn: async (): Promise<MemberSearchResult[]> => {
+      const response = await apiClient.get('/admin/users', { params: { search, limit: 10 } });
+      return response.data?.data ?? [];
     },
   });
 };

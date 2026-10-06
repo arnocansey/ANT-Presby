@@ -67,3 +67,26 @@ Use this checklist for final smoke testing on web and Android.
 - [ ] Deleting a series keeps its sermons in the library
 - [ ] Series dates show the same day in any time zone
 - [ ] Mobile Sermons tab: tapping a series pill filters; "All" resets
+
+## Attendance
+
+- [ ] Admin opens an event on `/admin/attendance`; registered members are listed with Check in buttons
+- [ ] Checking in a registered member updates "present" and switches the button to Undo
+- [ ] Searching a member by name or email and checking them in lists them under Walk-ins as "member"
+- [ ] Adding a walk-in guest works; a blank name cannot be added
+- [ ] Checking the same member in twice (two tabs or a double tap) keeps one record
+- [ ] A cancelled event shows "check-in is closed"
+- [ ] Recent headcounts show members and guests for past events
+- [ ] Members (non-admins) cannot reach any attendance page or endpoint
+
+## Small Groups
+
+- [ ] Admin creates a group at `/admin/groups` with day, time, location, capacity and ministry; a duplicate name is refused
+- [ ] Admin assigns a leader by searching members; the leader is shown on the group card
+- [ ] A member asks to join on `/groups`; the button changes to "Request pending"; the leader gets a notification
+- [ ] The leader approves on `/groups/[id]`; the member gets a notification and now sees the member list
+- [ ] A non-member and a signed-out visitor do not see the member list
+- [ ] A full group shows "This group is full" and refuses approvals
+- [ ] The only leader cannot leave until another leader is assigned
+- [ ] A deactivated group disappears for members and can be reactivated by an admin
+- [ ] Mobile Small Groups screen: list, join, cancel, leader approve/decline

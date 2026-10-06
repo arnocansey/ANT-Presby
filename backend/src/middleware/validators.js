@@ -1,4 +1,5 @@
 ﻿const { validationResult, body } = require('express-validator');
+const { MAX_DB_ID } = require('../utils/helpers');
 
 /**
  * Middleware to handle validation errors
@@ -79,7 +80,7 @@ const validateSermonCreation = [
     .isISO8601()
     .withMessage('Invalid sermon date format'),
   body('ministryId')
-    .isInt({ min: 1 })
+    .isInt({ min: 1, max: MAX_DB_ID })
     .withMessage('Valid ministry ID is required'),
 ];
 
@@ -87,7 +88,7 @@ const validateSermonCreation = [
 const validateSermonSeriesLink = [
   body('seriesId')
     .optional({ values: 'null' })
-    .isInt({ min: 1 })
+    .isInt({ min: 1, max: MAX_DB_ID })
     .withMessage('seriesId must be a positive integer or null'),
 ];
 
@@ -121,6 +122,83 @@ const validateSermonSeries = [
     .withMessage('End date cannot be before the start date'),
 ];
 
+// Check-in body: exactly one of a member (userId) or a walk-in guest (guestName).
+const validateCheckIn = [
+  body('userId')
+    .optional({ values: 'null' })
+    .isInt({ min: 1, max: MAX_DB_ID })
+    .withMessage('userId must be a positive integer'),
+  body('guestName')
+    .optional({ values: 'null' })
+    .isString()
+    .withMessage('Guest name must be text')
+    .bail()
+    .trim()
+    .notEmpty()
+    .withMessage('Guest name cannot be blank')
+    .isLength({ max: 255 })
+    .withMessage('Guest name must be 255 characters or fewer'),
+  body().custom((value) => {
+    const hasMember = value?.userId !== undefined && value?.userId !== null;
+    const hasGuest = value?.guestName !== undefined && value?.guestName !== null;
+    if (hasMember === hasGuest) {
+      throw new Error('Send either userId or guestName');
+    }
+    return true;
+  }),
+];
+
+const MEETING_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+// Small group create/update. Optional fields accept null (clears them).
+const validateGroup = [
+  body('name')
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('Group name is required')
+    .isLength({ max: 255 })
+    .withMessage('Group name must be 255 characters or fewer'),
+  body('description')
+    .optional({ values: 'null' })
+    .isString()
+    .isLength({ max: 2000 })
+    .withMessage('Description must be 2000 characters or fewer'),
+  body('meetingDay')
+    .optional({ values: 'falsy' })
+    .isIn(MEETING_DAYS)
+    .withMessage(`Meeting day must be one of ${MEETING_DAYS.join(', ')}`),
+  body('meetingTime')
+    .optional({ values: 'falsy' })
+    .matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .withMessage('Meeting time must be HH:MM (24-hour)'),
+  body('location')
+    .optional({ values: 'null' })
+    .isString()
+    .isLength({ max: 255 })
+    .withMessage('Location must be 255 characters or fewer'),
+  body('capacity')
+    .optional({ values: 'null' })
+    .isInt({ min: 1, max: 1000 })
+    .withMessage('Capacity must be between 1 and 1000'),
+  body('ministryId')
+    .optional({ values: 'null' })
+    .isInt({ min: 1, max: MAX_DB_ID })
+    .withMessage('ministryId must be a positive integer or null'),
+  body('isActive').optional().isBoolean({ strict: true }).withMessage('isActive must be true or false'),
+];
+
+// Admin "set leaders": 0-10 distinct member ids.
+const validateGroupLeaders = [
+  body('userIds')
+    .isArray({ max: 10 })
+    .withMessage('userIds must be a list of at most 10 members')
+    .bail()
+    .custom((ids) => new Set(ids).size === ids.length)
+    .withMessage('userIds must not contain duplicates'),
+  body('userIds.*').isInt({ min: 1, max: MAX_DB_ID }).withMessage('Each userId must be a positive integer'),
+];
+
 // Event validation rules
 const validateEventCreation = [
   body('name').trim().notEmpty().withMessage('Event name is required'),
@@ -134,7 +212,7 @@ const validateEventCreation = [
   body('location').trim().notEmpty().withMessage('Location is required'),
   body('maxRegistrations')
     .optional()
-    .isInt({ min: 1 })
+    .isInt({ min: 1, max: MAX_DB_ID })
     .withMessage('Max registrations must be a positive integer'),
 ];
 
@@ -222,6 +300,9 @@ module.exports = {
   validateSermonCreation,
   validateSermonSeriesLink,
   validateSermonSeries,
+  validateCheckIn,
+  validateGroup,
+  validateGroupLeaders,
   validateEventCreation,
   validatePrayerRequest,
   validateDonation,

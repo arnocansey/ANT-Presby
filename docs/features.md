@@ -31,6 +31,7 @@
 - Donation initialization and history
 - Prayer request submission
 - Prayer wall (members only): share approved requests, pray for others, milestone notifications
+- Small groups: browse, ask to join, leave; group leaders approve requests
 - Notifications
 - Community posting, commenting, liking, and deletion of owned content
 
@@ -41,8 +42,10 @@
 - Dashboard
 - Users management
 - Ministries CRUD
+- Small groups management (create, edit, deactivate, assign leaders)
 - News CRUD
 - Events CRUD
+- Attendance check-in and headcount trend
 - Sermons CRUD
 - Sermon series CRUD with cover images
 - Donations review
@@ -128,3 +131,20 @@ Current media behavior:
 - Members see a Series strip on `/sermons`, each series at `/sermons/series/[id]` (sermons oldest first), and series filter pills on the mobile Sermons tab.
 - Deleting a series keeps its sermons; they simply lose the series label.
 - Series titles are unique; covers must be uploaded through the admin upload.
+
+## Attendance
+
+- Admins open an event at web `/admin/attendance` or the mobile Attendance screen and check in registered members, any member found by name or email, or walk-in guests by name.
+- A member can be checked in once per event (enforced in the database); checking in again returns the existing record. Check-ins can be undone.
+- Cancelled events are closed for check-in.
+- The headcount trend shows members, guests and total for recent past events.
+- Every check-in and undo is recorded in the audit log.
+
+## Small Groups
+
+- Members browse active groups at web `/groups` or the mobile Small Groups screen and ask to join; requests are pending until a group leader or an admin approves.
+- Groups can have a capacity (active members only); full groups refuse new requests and approvals.
+- Only active members and admins see a group's member list; others see details, leaders and member count.
+- Members can leave or cancel a request; the last leader must hand over leadership first.
+- Leaders are notified of join requests; members are notified when approved.
+- Admins create, edit, deactivate/reactivate groups and assign leaders at `/admin/groups` (audited).

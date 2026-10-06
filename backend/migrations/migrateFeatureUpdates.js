@@ -377,6 +377,91 @@ async function migrateFeatureUpdates() {
       ON sermons(series_id);
     `);
 
+    // Attendance (phase 3)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS attendance_records (
+        id SERIAL PRIMARY KEY,
+        event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        guest_name VARCHAR(255),
+        checked_in_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        checked_in_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT attendance_member_or_guest CHECK ((user_id IS NULL) <> (guest_name IS NULL))
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_attendance_event
+      ON attendance_records(event_id);
+    `);
+
+    // A member can be checked in to an event only once; guests are unlimited.
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS attendance_event_user_unique
+      ON attendance_records(event_id, user_id)
+      WHERE user_id IS NOT NULL;
+    `);
+
+    // Small groups (phase 4)
+    await client.query(`
+      DO $$
+      BEGIN
+        CREATE TYPE group_role AS ENUM ('leader', 'member');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    await client.query(`
+      DO $$
+      BEGIN
+        CREATE TYPE membership_status AS ENUM ('pending', 'active');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS small_groups (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        meeting_day VARCHAR(20),
+        meeting_time VARCHAR(20),
+        location VARCHAR(255),
+        capacity INTEGER,
+        ministry_id INTEGER REFERENCES ministries(id) ON DELETE SET NULL,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT small_groups_name_key UNIQUE (name),
+        CONSTRAINT small_groups_capacity_positive CHECK (capacity IS NULL OR capacity > 0)
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_small_groups_ministry
+      ON small_groups(ministry_id);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS group_memberships (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES small_groups(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role group_role NOT NULL DEFAULT 'member',
+        status membership_status NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT group_memberships_group_user_unique UNIQUE (group_id, user_id)
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_group_memberships_user
+      ON group_memberships(user_id);
+    `);
+
     await client.query('COMMIT');
     console.log('Feature update migration completed successfully.');
     process.exit(0);

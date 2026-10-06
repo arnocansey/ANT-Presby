@@ -274,6 +274,83 @@ export const useMinistries = (enabled = true) =>
     },
   });
 
+export type GroupSummary = {
+  id: number;
+  name: string;
+  description: string | null;
+  meeting_day: string | null;
+  meeting_time: string | null;
+  location: string | null;
+  capacity: number | null;
+  ministry_name: string | null;
+  is_active: boolean;
+  member_count: number;
+  leaders: { user_id: number; first_name: string; last_name: string }[];
+  my_status: 'pending' | 'active' | null;
+  my_role: 'leader' | 'member' | null;
+};
+
+export type GroupDetail = GroupSummary & {
+  members: { user_id: number; first_name: string; last_name: string; role: 'leader' | 'member' }[] | null;
+};
+
+export type GroupJoinRequest = { user_id: number; first_name: string; last_name: string; email: string; requested_at: string };
+
+const invalidateGroups = () => queryClient.invalidateQueries({ queryKey: ['groups'] });
+
+export const useGroups = () =>
+  useQuery({
+    queryKey: ['groups', 'list'],
+    queryFn: async (): Promise<GroupSummary[]> => {
+      const response = await apiClient.get('/groups');
+      return response.data?.data || [];
+    },
+  });
+
+export const useGroup = (id?: number) =>
+  useQuery({
+    queryKey: ['groups', 'detail', id],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<GroupDetail> => {
+      const response = await apiClient.get(`/groups/${id}`);
+      return response.data?.data;
+    },
+  });
+
+export const useJoinGroup = () =>
+  useMutation({
+    mutationFn: async (groupId: number) => {
+      await apiClient.post(`/groups/${groupId}/join`);
+    },
+    onSettled: invalidateGroups,
+  });
+
+export const useLeaveGroup = () =>
+  useMutation({
+    mutationFn: async (groupId: number) => {
+      await apiClient.delete(`/groups/${groupId}/membership`);
+    },
+    onSettled: invalidateGroups,
+  });
+
+export const useGroupRequests = (groupId?: number, enabled = true) =>
+  useQuery({
+    queryKey: ['groups', 'requests', groupId],
+    enabled: Boolean(groupId) && enabled,
+    queryFn: async (): Promise<GroupJoinRequest[]> => {
+      const response = await apiClient.get(`/groups/${groupId}/requests`);
+      return response.data?.data || [];
+    },
+  });
+
+export const useDecideGroupRequest = (groupId?: number) =>
+  useMutation({
+    mutationFn: async ({ userId, decision }: { userId: number; decision: 'approve' | 'decline' }) => {
+      await apiClient.post(`/groups/${groupId}/requests/${userId}/${decision}`);
+    },
+    onSettled: invalidateGroups,
+  });
+
 export const useMinistrySermons = (ministryId?: number | string, enabled = true) =>
   useQuery({
     queryKey: ['ministries', ministryId, 'sermons'],

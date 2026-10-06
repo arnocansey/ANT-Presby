@@ -91,6 +91,17 @@ Use this checklist for final smoke testing on web and Android.
 - [ ] A deactivated group disappears for members and can be reactivated by an admin
 - [ ] Mobile Small Groups screen: list, join, cancel, leader approve/decline
 
+## Announcements and Push
+
+- [ ] (Dev/store build) After sign-in the app asks for notification permission; a row appears in `push_tokens`
+- [ ] Admin sends to Everyone on `/admin/announcements`; members get an in-app notification and a phone push
+- [ ] A group leader sends from `/groups/[id]`; only that group's members receive it
+- [ ] A leader cannot send to another group or to everyone
+- [ ] An event announcement reaches registered and checked-in members once each
+- [ ] Tapping a push opens the right screen (prayer, group, event, devotional, notifications)
+- [ ] After sign-out the device's token is removed and it no longer receives pushes
+- [ ] With push failing (airplane mode on the server side / Expo down), actions still succeed and in-app notifications still appear
+
 ## Daily Devotionals
 
 - [ ] Admin saves a draft for today on `/admin/devotionals`; it does not appear on `/devotionals` yet

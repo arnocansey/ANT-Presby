@@ -2,13 +2,24 @@ describe('notificationService', () => {
   let notificationModel;
   let notificationService;
 
+  let pushTokenModel;
+  let pushService;
+
   beforeEach(() => {
     jest.resetModules();
     notificationModel = {
       createNotificationsForUsers: jest.fn().mockResolvedValue(2),
       createNotificationForAllUsers: jest.fn().mockResolvedValue(40),
     };
+    pushTokenModel = {
+      getTokensForUsers: jest.fn().mockResolvedValue([]),
+      getAllActiveTokens: jest.fn().mockResolvedValue([]),
+      deleteTokens: jest.fn().mockResolvedValue(0),
+    };
+    pushService = { sendPush: jest.fn().mockResolvedValue({ sent: 0, invalidTokens: [] }) };
     jest.doMock('../../src/models/notificationModel', () => notificationModel);
+    jest.doMock('../../src/models/pushTokenModel', () => pushTokenModel);
+    jest.doMock('../../src/services/pushService', () => pushService);
     notificationService = require('../../src/services/notificationService');
   });
 
@@ -62,4 +73,72 @@ describe('notificationService', () => {
     ).resolves.toEqual({ inApp: 0, push: 0 });
     warn.mockRestore();
   });
+
+  test('notify also pushes to the recipients\' devices', async () => {
+    pushTokenModel.getTokensForUsers.mockResolvedValue(['ExponentPushToken[a]', 'ExponentPushToken[b]']);
+    pushService.sendPush.mockResolvedValue({ sent: 2, invalidTokens: [] });
+
+    const result = await notificationService.notify({
+      userIds: [7, 9],
+      title: 'Hello',
+      message: 'World',
+      type: 'group',
+      entityType: 'group',
+      entityId: 5,
+    });
+
+    expect(pushTokenModel.getTokensForUsers).toHaveBeenCalledWith([7, 9]);
+    expect(pushService.sendPush).toHaveBeenCalledWith(['ExponentPushToken[a]', 'ExponentPushToken[b]'], {
+      title: 'Hello',
+      body: 'World',
+      data: { type: 'group', entityType: 'group', entityId: 5 },
+    });
+    expect(result).toEqual({ inApp: 2, push: 2 });
+  });
+
+  test('dead device tokens are removed', async () => {
+    pushTokenModel.getTokensForUsers.mockResolvedValue(['ExponentPushToken[gone]']);
+    pushService.sendPush.mockResolvedValue({ sent: 0, invalidTokens: ['ExponentPushToken[gone]'] });
+
+    await notificationService.notify({ userIds: [7], title: 't', message: 'm', type: 'x' });
+
+    expect(pushTokenModel.deleteTokens).toHaveBeenCalledWith(['ExponentPushToken[gone]']);
+  });
+
+  test('a push failure keeps the in-app notification and never throws', async () => {
+    pushTokenModel.getTokensForUsers.mockRejectedValue(new Error('db down'));
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await expect(notificationService.notify({ userIds: [7], title: 't', message: 'm', type: 'x' })).resolves.toEqual({
+      inApp: 2,
+      push: 0,
+    });
+
+    warn.mockRestore();
+  });
+
+  test('notifyAll pushes to every active device', async () => {
+    pushTokenModel.getAllActiveTokens.mockResolvedValue(['ExponentPushToken[a]']);
+    pushService.sendPush.mockResolvedValue({ sent: 1, invalidTokens: [] });
+
+    const result = await notificationService.notifyAll({ title: 't', message: 'm', type: 'devotional', entityType: 'devotional', entityId: 3 });
+
+    expect(result).toEqual({ inApp: 40, push: 1 });
+  });
+test('a hanging push service does not hold up the action: notify returns after the push deadline', async () => {
+    jest.useFakeTimers();
+    try {
+      pushTokenModel.getTokensForUsers.mockResolvedValue(['ExponentPushToken[a]']);
+      pushService.sendPush.mockReturnValue(new Promise(() => {}));
+
+      const pending = notificationService.notify({ userIds: [7], title: 't', message: 'm', type: 'x' });
+      await jest.advanceTimersByTimeAsync(notificationService.PUSH_DEADLINE_MS);
+
+      await expect(pending).resolves.toEqual({ inApp: 2, push: 0 });
+      expect(notificationService.PUSH_DEADLINE_MS).toBeLessThan(15000);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
+

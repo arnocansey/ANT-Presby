@@ -6,7 +6,9 @@ import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
-import { useDecideGroupRequest, useGroup, useGroupRequests, useJoinGroup, useLeaveGroup } from '@/hooks/useApi';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useDecideGroupRequest, useGroup, useGroupRequests, useJoinGroup, useLeaveGroup, useSendAnnouncement } from '@/hooks/useApi';
 import { isGroupFull, meetingLine } from '@/lib/groups';
 import { useAuthStore } from '@/lib/store';
 import { formatDateTime } from '@/lib/utils';
@@ -30,6 +32,9 @@ export default function GroupDetailPage() {
   const canManage = Boolean(isAdmin || isLeader);
   const { data: requests } = useGroupRequests(groupId, canManage);
   const decide = useDecideGroupRequest(groupId);
+  const sendMessage = useSendAnnouncement();
+  const [messageTitle, setMessageTitle] = React.useState('');
+  const [messageBody, setMessageBody] = React.useState('');
 
   if (!groupId || (error as any)?.response?.status === 404) {
     return (
@@ -132,6 +137,37 @@ export default function GroupDetailPage() {
                 ))}
               </ul>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {canManage && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Message the group</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form
+              className="space-y-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                sendMessage.mutate(
+                  { audience: 'group', groupId: group.id, title: messageTitle.trim(), message: messageBody.trim() },
+                  {
+                    onSuccess: () => {
+                      setMessageTitle('');
+                      setMessageBody('');
+                    },
+                  }
+                );
+              }}
+            >
+              <Input value={messageTitle} onChange={(event) => setMessageTitle(event.target.value)} placeholder="Title" maxLength={255} required />
+              <Textarea value={messageBody} onChange={(event) => setMessageBody(event.target.value)} placeholder="Message" rows={3} maxLength={2000} required />
+              <Button type="submit" disabled={sendMessage.isPending || !messageTitle.trim() || !messageBody.trim()}>
+                Send to members
+              </Button>
+            </form>
           </CardContent>
         </Card>
       )}

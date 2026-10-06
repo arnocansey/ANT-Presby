@@ -495,6 +495,59 @@ async function migrateFeatureUpdates() {
       ON devotionals(status, publish_date DESC);
     `);
 
+    // Announcements and push tokens (phase 6)
+    await client.query(`
+      DO $$
+      BEGIN
+        CREATE TYPE announcement_audience AS ENUM ('everyone', 'group', 'event');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS push_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token VARCHAR(255) NOT NULL,
+        platform VARCHAR(10) NOT NULL,
+        last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT push_tokens_token_key UNIQUE (token)
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_push_tokens_user
+      ON push_tokens(user_id);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS announcements (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        audience announcement_audience NOT NULL,
+        group_id INTEGER REFERENCES small_groups(id) ON DELETE SET NULL,
+        event_id INTEGER REFERENCES events(id) ON DELETE SET NULL,
+        sent_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        recipient_count INTEGER NOT NULL DEFAULT 0,
+        push_count INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_announcements_created_at
+      ON announcements(created_at DESC);
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_announcements_group
+      ON announcements(group_id);
+    `);
+
     await client.query('COMMIT');
     console.log('Feature update migration completed successfully.');
     process.exit(0);

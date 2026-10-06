@@ -760,6 +760,47 @@ export const useSetGroupLeaders = (groupId?: number) => {
   });
 };
 
+export type AnnouncementInput =
+  | { title: string; message: string; audience: 'everyone' }
+  | { title: string; message: string; audience: 'group'; groupId: number }
+  | { title: string; message: string; audience: 'event'; eventId: number };
+
+export type Announcement = {
+  id: number;
+  title: string;
+  message: string;
+  audience: 'everyone' | 'group' | 'event';
+  group_name?: string | null;
+  event_name?: string | null;
+  sender_name?: string | null;
+  recipient_count: number;
+  push_count: number;
+  created_at: string;
+};
+
+export const useSentAnnouncements = (enabled = true) =>
+  useQuery({
+    queryKey: ['announcements', 'sent'],
+    enabled,
+    queryFn: async (): Promise<Announcement[]> => {
+      const response = await apiClient.get('/announcements/sent');
+      return response.data?.data ?? [];
+    },
+  });
+
+export const useSendAnnouncement = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: AnnouncementInput) => {
+      const response = await apiClient.post('/announcements', input);
+      return response.data?.data as Announcement;
+    },
+    onSuccess: (data) => toast.success(`Sent to ${data?.recipient_count ?? 0} people`),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not send the announcement')),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['announcements'] }),
+  });
+};
+
 export const useMinistry = (id: number) => {
   return useQuery({
     queryKey: ['ministry', id],

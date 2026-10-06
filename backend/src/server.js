@@ -35,6 +35,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const prismaRoutes = require('./routes/prismaRoutes');
 const communityFeedRoutes = require('./routes/communityFeedRoutes');
+const groupRoutes = require('./routes/groupRoutes');
 
 // Initialize Express app
 const app = express();
@@ -183,6 +184,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/prisma', prismaRoutes);
 app.use('/api/community', communityFeedRoutes);
+app.use('/api/groups', groupRoutes);
 
 // 404 handler
 app.use(notFoundHandler);

@@ -16,15 +16,17 @@ Notifications.setNotificationHandler({
 });
 
 let registeredToken: string | null = null;
+let pendingRegistration: Promise<string | null> | null = null;
 
 const getProjectId = () =>
   (Constants.expoConfig?.extra?.eas?.projectId as string | undefined) ?? Constants.easConfig?.projectId;
 
 // Returns this device's Expo push token, or null when push isn't possible (web, simulator, permission denied).
-const getExpoPushToken = async (): Promise<string | null> => {
+// With askPermission false it never prompts: used on sign-out to find a token registered on an earlier launch.
+const getExpoPushToken = async (askPermission = true): Promise<string | null> => {
   if (Platform.OS === 'web' || !Device.isDevice) return null;
 
-  if (Platform.OS === 'android') {
+  if (askPermission && Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
       name: 'default',
       importance: Notifications.AndroidImportance.MAX,
@@ -32,7 +34,7 @@ const getExpoPushToken = async (): Promise<string | null> => {
   }
 
   const existing = await Notifications.getPermissionsAsync();
-  const permission = existing.granted ? existing : await Notifications.requestPermissionsAsync();
+  const permission = existing.granted || !askPermission ? existing : await Notifications.requestPermissionsAsync();
   if (!permission.granted) return null;
 
   const projectId = getProjectId();
@@ -42,7 +44,7 @@ const getExpoPushToken = async (): Promise<string | null> => {
   return data;
 };
 
-export const registerForPushNotifications = async (): Promise<string | null> => {
+const register = async (): Promise<string | null> => {
   try {
     const token = await getExpoPushToken();
     if (!token) return null;
@@ -54,13 +56,24 @@ export const registerForPushNotifications = async (): Promise<string | null> => 
   }
 };
 
+export const registerForPushNotifications = (): Promise<string | null> => {
+  const registration = register().finally(() => {
+    if (pendingRegistration === registration) pendingRegistration = null;
+  });
+  pendingRegistration = registration;
+  return registration;
+};
+
+// Runs before sign-out clears the session. Waits for an in-flight registration so it can't land afterwards,
+// and falls back to the device's token when this launch never registered (e.g. it started offline).
 export const unregisterPushNotifications = async (): Promise<void> => {
-  if (!registeredToken) return;
-  try {
-    await apiClient.delete('/push-tokens', { data: { token: registeredToken } });
-  } finally {
-    registeredToken = null;
+  if (pendingRegistration) {
+    await pendingRegistration;
   }
+  const token = registeredToken ?? (await getExpoPushToken(false).catch(() => null));
+  registeredToken = null;
+  if (!token) return;
+  await apiClient.delete('/push-tokens', { data: { token } });
 };
 
 type NotificationData = { type?: string; entityType?: string | null; entityId?: number | null };

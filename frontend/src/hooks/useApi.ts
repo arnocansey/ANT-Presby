@@ -507,6 +507,99 @@ export const useMinistries = () => {
   });
 };
 
+export type GroupSummary = {
+  id: number;
+  name: string;
+  description: string | null;
+  meeting_day: string | null;
+  meeting_time: string | null;
+  location: string | null;
+  capacity: number | null;
+  ministry_id: number | null;
+  ministry_name: string | null;
+  is_active: boolean;
+  member_count: number;
+  leaders: Array<{ user_id: number; first_name: string; last_name: string }>;
+  my_status: 'pending' | 'active' | null;
+  my_role: 'leader' | 'member' | null;
+};
+
+export type GroupDetail = GroupSummary & {
+  members: Array<{ user_id: number; first_name: string; last_name: string; role: 'leader' | 'member' }> | null;
+};
+
+export type GroupJoinRequest = { user_id: number; first_name: string; last_name: string; email: string; requested_at: string };
+
+const invalidateGroups = (qc: ReturnType<typeof useQueryClient>) => {
+  qc.invalidateQueries({ queryKey: ['groups'] });
+  qc.invalidateQueries({ queryKey: ['admin', 'groups'] });
+};
+
+export const useGroups = () =>
+  useQuery({
+    queryKey: ['groups', 'list'],
+    queryFn: async (): Promise<GroupSummary[]> => {
+      const response = await apiClient.get('/groups');
+      return response.data?.data ?? [];
+    },
+  });
+
+export const useGroup = (id?: number) =>
+  useQuery({
+    queryKey: ['groups', 'detail', id],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<GroupDetail> => {
+      const response = await apiClient.get(`/groups/${id}`);
+      return response.data?.data;
+    },
+  });
+
+export const useJoinGroup = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (groupId: number) => {
+      await apiClient.post(`/groups/${groupId}/join`);
+    },
+    onSuccess: () => toast.success('Request sent to the group leaders'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not send your request')),
+    onSettled: () => invalidateGroups(qc),
+  });
+};
+
+export const useLeaveGroup = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (groupId: number) => {
+      const response = await apiClient.delete(`/groups/${groupId}/membership`);
+      return response.data?.message as string | undefined;
+    },
+    onSuccess: (message) => toast.success(message || 'Done'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not leave the group')),
+    onSettled: () => invalidateGroups(qc),
+  });
+};
+
+export const useGroupRequests = (groupId?: number, enabled = true) =>
+  useQuery({
+    queryKey: ['groups', 'requests', groupId],
+    enabled: Boolean(groupId) && enabled,
+    queryFn: async (): Promise<GroupJoinRequest[]> => {
+      const response = await apiClient.get(`/groups/${groupId}/requests`);
+      return response.data?.data ?? [];
+    },
+  });
+
+export const useDecideGroupRequest = (groupId?: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, decision }: { userId: number; decision: 'approve' | 'decline' }) => {
+      await apiClient.post(`/groups/${groupId}/requests/${userId}/${decision}`);
+    },
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not update the request')),
+    onSettled: () => invalidateGroups(qc),
+  });
+};
+
 export const useMinistry = (id: number) => {
   return useQuery({
     queryKey: ['ministry', id],

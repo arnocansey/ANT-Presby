@@ -57,6 +57,7 @@ export default function Footer() {
               {[
                 ['Give', '/donate'],
                 ['Ministries', '/ministries'],
+                ['Small Groups', '/groups'],
                 ['Contact', '/contact'],
                 ['Privacy', '/privacy'],
                 ['Terms', '/terms'],

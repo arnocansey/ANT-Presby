@@ -74,6 +74,14 @@ enum MembershipStatus {
   @@map("membership_status")
 }
 
+enum AnnouncementAudience {
+  everyone
+  group
+  event
+
+  @@map("announcement_audience")
+}
+
 enum DonationType {
   tithe
   offering
@@ -127,6 +135,8 @@ model User {
   attendanceRecords    AttendanceRecord[]  @relation("AttendanceMember")
   attendanceCheckIns   AttendanceRecord[]  @relation("AttendanceCheckedInBy")
   groupMemberships     GroupMembership[]
+  pushTokens           PushToken[]
+  announcementsSent    Announcement[]      @relation("AnnouncementSender")
 
   @@index([role], map: "idx_users_role")
   @@index([createdAt], map: "idx_users_created_at")
@@ -207,6 +217,7 @@ model Event {
   updatedAt        DateTime            @updatedAt @map("updated_at")
   registrations    EventRegistration[]
   attendance       AttendanceRecord[]
+  announcements    Announcement[]
 
   @@index([eventDate(sort: Desc)], map: "idx_events_date")
   @@index([status], map: "idx_events_status")
@@ -259,6 +270,7 @@ model SmallGroup {
   updatedAt   DateTime          @updatedAt @map("updated_at")
   ministry    Ministry?         @relation(fields: [ministryId], references: [id], onDelete: SetNull)
   memberships GroupMembership[]
+  announcements Announcement[]
 
   @@index([ministryId], map: "idx_small_groups_ministry")
   @@map("small_groups")
@@ -278,6 +290,40 @@ model GroupMembership {
   @@unique([groupId, userId], map: "group_memberships_group_user_unique")
   @@index([userId], map: "idx_group_memberships_user")
   @@map("group_memberships")
+}
+
+model PushToken {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  token      String   @unique @db.VarChar(255)
+  platform   String   @db.VarChar(10)
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_push_tokens_user")
+  @@map("push_tokens")
+}
+
+model Announcement {
+  id             Int                  @id @default(autoincrement())
+  title          String               @db.VarChar(255)
+  message        String
+  audience       AnnouncementAudience
+  groupId        Int?                 @map("group_id")
+  eventId        Int?                 @map("event_id")
+  sentBy         Int?                 @map("sent_by")
+  recipientCount Int                  @default(0) @map("recipient_count")
+  pushCount      Int                  @default(0) @map("push_count")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  group          SmallGroup?          @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  event          Event?               @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  sender         User?                @relation("AnnouncementSender", fields: [sentBy], references: [id], onDelete: SetNull)
+
+  @@index([createdAt(sort: Desc)], map: "idx_announcements_created_at")
+  @@index([groupId], map: "idx_announcements_group")
+  @@map("announcements")
 }
 
 model PrayerRequest {

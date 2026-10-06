@@ -31,6 +31,7 @@
 - Donation initialization and history
 - Prayer request submission
 - Prayer wall (members only): share approved requests, pray for others, milestone notifications
+- Small groups: browse, ask to join, leave; group leaders approve requests
 - Notifications
 - Community posting, commenting, liking, and deletion of owned content
 
@@ -41,6 +42,7 @@
 - Dashboard
 - Users management
 - Ministries CRUD
+- Small groups management (create, edit, deactivate, assign leaders)
 - News CRUD
 - Events CRUD
 - Attendance check-in and headcount trend
@@ -137,3 +139,12 @@ Current media behavior:
 - Cancelled events are closed for check-in.
 - The headcount trend shows members, guests and total for recent past events.
 - Every check-in and undo is recorded in the audit log.
+
+## Small Groups
+
+- Members browse active groups at web `/groups` or the mobile Small Groups screen and ask to join; requests are pending until a group leader or an admin approves.
+- Groups can have a capacity (active members only); full groups refuse new requests and approvals.
+- Only active members and admins see a group's member list; others see details, leaders and member count.
+- Members can leave or cancel a request; the last leader must hand over leadership first.
+- Leaders are notified of join requests; members are notified when approved.
+- Admins create, edit, deactivate/reactivate groups and assign leaders at `/admin/groups` (audited).

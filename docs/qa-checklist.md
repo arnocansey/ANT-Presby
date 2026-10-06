@@ -78,3 +78,15 @@ Use this checklist for final smoke testing on web and Android.
 - [ ] A cancelled event shows "check-in is closed"
 - [ ] Recent headcounts show members and guests for past events
 - [ ] Members (non-admins) cannot reach any attendance page or endpoint
+
+## Small Groups
+
+- [ ] Admin creates a group at `/admin/groups` with day, time, location, capacity and ministry; a duplicate name is refused
+- [ ] Admin assigns a leader by searching members; the leader is shown on the group card
+- [ ] A member asks to join on `/groups`; the button changes to "Request pending"; the leader gets a notification
+- [ ] The leader approves on `/groups/[id]`; the member gets a notification and now sees the member list
+- [ ] A non-member and a signed-out visitor do not see the member list
+- [ ] A full group shows "This group is full" and refuses approvals
+- [ ] The only leader cannot leave until another leader is assigned
+- [ ] A deactivated group disappears for members and can be reactivated by an admin
+- [ ] Mobile Small Groups screen: list, join, cancel, leader approve/decline

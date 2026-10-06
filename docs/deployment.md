@@ -166,3 +166,13 @@ Use:
 Schema changes are applied by `npm run migrate:features` (idempotent SQL in `backend/migrations/migrateFeatureUpdates.js`), which the Render build runs automatically.
 
 Do **not** run `npm run prisma:push` against production. Some constraints exist only in SQL because Prisma cannot express them, for example the partial unique index `attendance_event_user_unique` that allows one check-in per member per event. `prisma db push` would drop them.
+
+## Push notifications (mobile)
+
+Push uses Expo's push service. To make it work in production:
+
+1. **Android credentials (FCM v1):** in the Firebase console create (or reuse) a project for package `com.antpress.mobile`, generate a service-account key for FCM v1, and upload it with `eas credentials` (Android → Push Notifications: FCM V1). Never commit the key file.
+2. **New native build:** `expo-notifications` is a native module, so ship a new development/store build with EAS Build. An over-the-air update is not enough, and Expo Go cannot receive push on Android.
+3. **Optional `EXPO_ACCESS_TOKEN`:** only if "Enhanced Push Security" is enabled for the Expo project. Set it in the Render dashboard (it is declared in `render.yaml` with `sync: false`); never commit it.
+
+Devices register their push token after sign-in and remove it on sign-out. Tokens for uninstalled apps are deleted automatically when Expo reports them as `DeviceNotRegistered`.

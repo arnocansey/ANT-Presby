@@ -44,6 +44,7 @@
 - Ministries CRUD
 - Small groups management (create, edit, deactivate, assign leaders)
 - News CRUD
+- Announcements to everyone, a small group or an event's attendees (with push)
 - Events CRUD
 - Attendance check-in and headcount trend
 - Sermons CRUD
@@ -148,3 +149,10 @@ Current media behavior:
 - Members can leave or cancel a request; the last leader must hand over leadership first.
 - Leaders are notified of join requests; members are notified when approved.
 - Admins create, edit, deactivate/reactivate groups and assign leaders at `/admin/groups` (audited).
+
+## Announcements and Push Notifications
+
+- Admins send announcements to everyone, a small group, or an event's attendees (registered plus checked in) from web `/admin/announcements` or the mobile Send Announcement screen; group leaders can message their own group from `/groups/[id]`.
+- Every notification the platform sends (prayer milestones, group requests and approvals, devotionals, announcements) is created in-app and also pushed to members' phones.
+- Phones register for push after sign-in and unregister on sign-out; tapping a push opens the related screen.
+- The website uses in-app notifications only.

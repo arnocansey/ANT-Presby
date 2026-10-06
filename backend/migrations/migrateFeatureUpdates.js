@@ -462,6 +462,39 @@ async function migrateFeatureUpdates() {
       ON group_memberships(user_id);
     `);
 
+    // Daily devotionals (phase 5)
+    await client.query(`
+      DO $$
+      BEGIN
+        CREATE TYPE devotional_status AS ENUM ('draft', 'published');
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS devotionals (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        scripture_reference VARCHAR(255) NOT NULL,
+        scripture_text TEXT NOT NULL,
+        body TEXT NOT NULL,
+        prayer TEXT,
+        publish_date DATE NOT NULL,
+        status devotional_status NOT NULL DEFAULT 'draft',
+        author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        notified_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT devotionals_publish_date_key UNIQUE (publish_date)
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_devotionals_status_date
+      ON devotionals(status, publish_date DESC);
+    `);
+
     await client.query('COMMIT');
     console.log('Feature update migration completed successfully.');
     process.exit(0);

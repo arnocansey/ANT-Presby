@@ -74,6 +74,13 @@ enum MembershipStatus {
   @@map("membership_status")
 }
 
+enum DevotionalStatus {
+  draft
+  published
+
+  @@map("devotional_status")
+}
+
 enum DonationType {
   tithe
   offering
@@ -127,6 +134,7 @@ model User {
   attendanceRecords    AttendanceRecord[]  @relation("AttendanceMember")
   attendanceCheckIns   AttendanceRecord[]  @relation("AttendanceCheckedInBy")
   groupMemberships     GroupMembership[]
+  authoredDevotionals  Devotional[]
 
   @@index([role], map: "idx_users_role")
   @@index([createdAt], map: "idx_users_created_at")
@@ -474,4 +482,23 @@ model CommunityLike {
   @@index([userId], map: "idx_community_likes_user")
   @@index([postId], map: "idx_community_likes_post")
   @@map("community_likes")
+}
+
+model Devotional {
+  id                 Int              @id @default(autoincrement())
+  title              String           @db.VarChar(255)
+  scriptureReference String           @map("scripture_reference") @db.VarChar(255)
+  scriptureText      String           @map("scripture_text")
+  body               String
+  prayer             String?
+  publishDate        DateTime         @unique @map("publish_date") @db.Date
+  status             DevotionalStatus @default(draft)
+  authorId           Int?             @map("author_id")
+  notifiedAt         DateTime?        @map("notified_at")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+  author             User?            @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([status, publishDate(sort: Desc)], map: "idx_devotionals_status_date")
+  @@map("devotionals")
 }

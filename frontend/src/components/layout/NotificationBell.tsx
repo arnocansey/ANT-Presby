@@ -71,6 +71,10 @@ export default function NotificationBell() {
       router.push(`/news/${notification.entity_id}`);
       return;
     }
+    if (notification.entity_type === 'devotional' && notification.entity_id) {
+      router.push(`/devotionals/${notification.entity_id}`);
+      return;
+    }
     if (notification.entity_type === 'group' && notification.entity_id) {
       router.push(`/groups/${notification.entity_id}`);
       return;

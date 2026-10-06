@@ -90,3 +90,12 @@ Use this checklist for final smoke testing on web and Android.
 - [ ] The only leader cannot leave until another leader is assigned
 - [ ] A deactivated group disappears for members and can be reactivated by an admin
 - [ ] Mobile Small Groups screen: list, join, cancel, leader approve/decline
+
+## Daily Devotionals
+
+- [ ] Admin saves a draft for today on `/admin/devotionals`; it does not appear on `/devotionals` yet
+- [ ] "Publish" for today's devotional shows it to members and sends one notification; pressing again sends nothing
+- [ ] A devotional dated tomorrow is published without a notification and is not visible until tomorrow
+- [ ] A second devotional on a taken date is refused with a clear message
+- [ ] With no devotional today, members see the latest past one labelled with its date
+- [ ] Home page card and mobile home card open the devotional

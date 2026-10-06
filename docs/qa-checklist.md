@@ -101,3 +101,12 @@ Use this checklist for final smoke testing on web and Android.
 - [ ] Tapping a push opens the right screen (prayer, group, event, devotional, notifications)
 - [ ] After sign-out the device's token is removed and it no longer receives pushes
 - [ ] With push failing (airplane mode on the server side / Expo down), actions still succeed and in-app notifications still appear
+
+## Daily Devotionals
+
+- [ ] Admin saves a draft for today on `/admin/devotionals`; it does not appear on `/devotionals` yet
+- [ ] "Publish" for today's devotional shows it to members and sends one notification; pressing again sends nothing
+- [ ] A devotional dated tomorrow is published without a notification and is not visible until tomorrow
+- [ ] A second devotional on a taken date is refused with a clear message
+- [ ] With no devotional today, members see the latest past one labelled with its date
+- [ ] Home page card and mobile home card open the devotional

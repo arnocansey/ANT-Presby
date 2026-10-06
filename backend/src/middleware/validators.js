@@ -199,6 +199,24 @@ const validateGroupLeaders = [
   body('userIds.*').isInt({ min: 1, max: MAX_DB_ID }).withMessage('Each userId must be a positive integer'),
 ];
 
+// Devotional create/update. publishDate is a real calendar date in YYYY-MM-DD.
+const validateDevotional = [
+  body('title').isString().trim().notEmpty().withMessage('Title is required').isLength({ max: 255 }),
+  body('scriptureReference')
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('Scripture reference is required')
+    .isLength({ max: 255 }),
+  body('scriptureText').isString().trim().notEmpty().withMessage('Scripture text is required').isLength({ max: 5000 }),
+  body('body').isString().trim().notEmpty().withMessage('Reflection is required').isLength({ max: 20000 }),
+  body('prayer').optional({ values: 'null' }).isString().isLength({ max: 5000 }),
+  body('publishDate')
+    .isDate({ format: 'YYYY-MM-DD', strictMode: true, delimiters: ['-'] })
+    .withMessage('Publish date must be a real date in YYYY-MM-DD format'),
+  body('status').optional().isIn(['draft', 'published']).withMessage('Status must be draft or published'),
+];
+
 // Event validation rules
 const validateEventCreation = [
   body('name').trim().notEmpty().withMessage('Event name is required'),
@@ -336,6 +354,7 @@ module.exports = {
   validateCheckIn,
   validateGroup,
   validateGroupLeaders,
+  validateDevotional,
   validateEventCreation,
   validatePrayerRequest,
   validateDonation,

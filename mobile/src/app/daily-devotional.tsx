@@ -1,32 +1,31 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { BrandButton, BrandCard, BrandScreen } from '@/components/brand-ui';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
-import { useNews, useSermons } from '@/hooks/use-api';
+import { useDevotionalArchive, useTodayDevotional, type Devotional } from '@/hooks/use-api';
 import { useTheme } from '@/hooks/use-theme';
+
+// publish_date is YYYY-MM-DD; format in UTC so it never shifts a day.
+const formatDay = (ymd: string) =>
+  new Date(`${ymd}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
 
 export default function DailyDevotionalScreen() {
   const theme = useTheme();
-  const newsQuery = useNews();
-  const sermonsQuery = useSermons(1, 1);
-  const latestNews = Array.isArray(newsQuery.data) ? newsQuery.data[0] : null;
-  const latestSermon = Array.isArray(sermonsQuery.data) ? sermonsQuery.data[0] : null;
-  const title = latestNews?.title || latestSermon?.title || 'Daily reflection';
-  const body =
-    latestNews?.excerpt ||
-    latestNews?.content ||
-    latestSermon?.description ||
-    'A fresh reflection from ANT PRESS will appear here as new content is published.';
+  const todayQuery = useTodayDevotional();
+  const archiveQuery = useDevotionalArchive();
+  const [selected, setSelected] = React.useState<Devotional | null>(null);
+  const devotional = selected ?? todayQuery.data ?? null;
+  const archive = (archiveQuery.data ?? []).filter((item) => item.id !== devotional?.id);
 
   return (
     <BrandScreen>
       <View style={styles.headerRow}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => (selected ? setSelected(null) : router.back())}
           style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: theme.border }]}>
           <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
         </Pressable>
@@ -35,86 +34,74 @@ export default function DailyDevotionalScreen() {
             Daily Devotional
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            {new Date().toDateString()}
+            {devotional ? formatDay(devotional.publish_date) : ''}
+            {devotional && devotional.is_today === false && !selected ? ' · latest' : ''}
           </ThemedText>
         </View>
-        <Pressable
-          style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: theme.border }]}>
-          <Ionicons name="bookmark-outline" size={16} color={theme.textSecondary} />
-        </Pressable>
       </View>
 
-      <View style={styles.streakCard}>
-        <View style={styles.streakHeader}>
-          <Ionicons name="flame-outline" size={16} color="#FB923C" />
-          <ThemedText type="defaultSemiBold">Fresh mercy for today</ThemedText>
-        </View>
-        <ThemedText type="small" themeColor="textSecondary">
-          Use the newest sermon and news content as a reflection point each day.
-        </ThemedText>
-      </View>
+      {todayQuery.isLoading ? (
+        <ActivityIndicator color={theme.tint} />
+      ) : todayQuery.isError ? (
+        <BrandCard>
+          <ThemedText type="small">Could not load the devotional.</ThemedText>
+          <BrandButton label="Try again" onPress={() => todayQuery.refetch()} />
+        </BrandCard>
+      ) : !devotional ? (
+        <BrandCard>
+          <ThemedText type="small" themeColor="textSecondary">
+            No devotional has been published yet.
+          </ThemedText>
+        </BrandCard>
+      ) : (
+        <>
+          <ThemedText type="title" style={styles.title}>
+            {devotional.title}
+          </ThemedText>
+          <View style={[styles.scripture, { borderColor: theme.tint }]}>
+            <ThemedText style={styles.scriptureText}>{devotional.scripture_text}</ThemedText>
+            <ThemedText type="smallBold">{devotional.scripture_reference}</ThemedText>
+          </View>
+          <BrandCard>
+            <ThemedText>{devotional.body}</ThemedText>
+          </BrandCard>
+          {devotional.prayer ? (
+            <BrandCard>
+              <ThemedText type="smallBold" themeColor="textSecondary">
+                Prayer
+              </ThemedText>
+              <ThemedText>{devotional.prayer}</ThemedText>
+            </BrandCard>
+          ) : null}
+        </>
+      )}
 
-      <BrandCard>
-        <ThemedText type="title" style={styles.titleText}>
-          {title}
-        </ThemedText>
-        <ThemedText type="default" style={styles.bodyText}>
-          {String(body).slice(0, 500)}
-        </ThemedText>
-        {latestNews?.id ? (
-          <BrandButton label="Open Related Update" onPress={() => router.push(`/news/${latestNews.id}` as never)} />
-        ) : latestSermon?.id ? (
-          <BrandButton label="Open Related Sermon" onPress={() => router.push(`/sermons/${latestSermon.id}` as never)} />
-        ) : null}
-      </BrandCard>
-
-      <BrandCard>
-        <ThemedText type="defaultSemiBold">Reflection</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          What truth from today’s content should shape how you move through this day?
-        </ThemedText>
-        <BrandButton label="Browse News" onPress={() => router.push('/news' as never)} variant="outline" />
-      </BrandCard>
+      {archive.length > 0 ? (
+        <BrandCard>
+          <ThemedText type="defaultSemiBold">Earlier devotionals</ThemedText>
+          {archive.map((item) => (
+            <Pressable key={item.id} onPress={() => setSelected(item)} style={styles.archiveRow}>
+              <ThemedText type="small" style={styles.archiveTitle} numberOfLines={1}>
+                {item.title}
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {formatDay(item.publish_date)}
+              </ThemedText>
+            </Pressable>
+          ))}
+        </BrandCard>
+      ) : null}
     </BrandScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  headerCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: Radius.pill,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  streakCard: {
-    borderRadius: Radius.large,
-    padding: Spacing.four,
-    backgroundColor: 'rgba(245,158,11,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.18)',
-    gap: Spacing.two,
-  },
-  streakHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  titleText: {
-    fontSize: 28,
-    lineHeight: 32,
-  },
-  bodyText: {
-    lineHeight: 24,
-  },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  headerCopy: { flex: 1, gap: 2 },
+  iconButton: { width: 38, height: 38, borderRadius: Radius.pill, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 26, lineHeight: 32 },
+  scripture: { borderLeftWidth: 4, paddingLeft: Spacing.three, gap: Spacing.one },
+  scriptureText: { fontStyle: 'italic' },
+  archiveRow: { gap: 2, paddingVertical: Spacing.one },
+  archiveTitle: { fontWeight: '600' },
 });

@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useLatestNews, useRecentSermons, useUpcomingEvents } from '@/hooks/useApi';
 import { formatDate } from '@/lib/utils';
+import TodayDevotionalCard from '@/components/devotionals/TodayDevotionalCard';
 
 const sermonGradients = [
   'from-indigo-600 to-purple-600',
@@ -86,6 +87,10 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="container-max mb-12">
+        <TodayDevotionalCard />
       </section>
 
       <section className="container-max mb-12 grid grid-cols-1 gap-4 sm:grid-cols-3">

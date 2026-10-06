@@ -245,6 +245,108 @@ export const useRecentSermons = () => {
   });
 };
 
+export type Devotional = {
+  id: number;
+  title: string;
+  scripture_reference: string;
+  scripture_text: string;
+  body: string;
+  prayer: string | null;
+  publish_date: string;
+  status: 'draft' | 'published';
+  notified_at: string | null;
+  is_today?: boolean;
+};
+
+export type DevotionalInput = {
+  title: string;
+  scriptureReference: string;
+  scriptureText: string;
+  body: string;
+  prayer: string | null;
+  publishDate: string;
+};
+
+const invalidateDevotionals = (qc: ReturnType<typeof useQueryClient>) => {
+  qc.invalidateQueries({ queryKey: ['devotionals'] });
+  qc.invalidateQueries({ queryKey: ['admin', 'devotionals'] });
+};
+
+export const useTodayDevotional = () =>
+  useQuery({
+    queryKey: ['devotionals', 'today'],
+    queryFn: async (): Promise<Devotional | null> => {
+      const response = await apiClient.get('/devotionals/today');
+      return response.data?.data ?? null;
+    },
+  });
+
+export const useDevotionalArchive = (page = 1) =>
+  useQuery({
+    queryKey: ['devotionals', 'archive', page],
+    queryFn: async (): Promise<{ data: Devotional[]; hasMore: boolean }> => {
+      const response = await apiClient.get('/devotionals', { params: { page, limit: 10 } });
+      return { data: response.data?.data ?? [], hasMore: Boolean(response.data?.meta?.has_more) };
+    },
+  });
+
+export const useDevotional = (id?: number) =>
+  useQuery({
+    queryKey: ['devotionals', 'detail', id],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<Devotional> => {
+      const response = await apiClient.get(`/devotionals/${id}`);
+      return response.data?.data;
+    },
+  });
+
+export const useAdminDevotionals = () =>
+  useQuery({
+    queryKey: ['admin', 'devotionals'],
+    queryFn: async (): Promise<Devotional[]> => {
+      const response = await apiClient.get('/admin/devotionals');
+      return response.data?.data ?? [];
+    },
+  });
+
+export const useSaveDevotional = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, input }: { id?: number; input: DevotionalInput }) => {
+      const response = id ? await apiClient.put(`/admin/devotionals/${id}`, input) : await apiClient.post('/admin/devotionals', input);
+      return response.data?.data as Devotional;
+    },
+    onSuccess: (_data, { id }) => toast.success(id ? 'Devotional updated' : 'Devotional saved as draft'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not save the devotional')),
+    onSettled: () => invalidateDevotionals(qc),
+  });
+};
+
+export const useDeleteDevotional = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await apiClient.delete(`/admin/devotionals/${id}`);
+    },
+    onSuccess: () => toast.success('Devotional deleted'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not delete the devotional')),
+    onSettled: () => invalidateDevotionals(qc),
+  });
+};
+
+export const usePublishDevotional = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiClient.post(`/admin/devotionals/${id}/publish`);
+      return response.data?.data as { devotional: Devotional; notified: boolean };
+    },
+    onSuccess: (data) => toast.success(data?.notified ? 'Published and everyone was notified' : 'Published'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not publish')),
+    onSettled: () => invalidateDevotionals(qc),
+  });
+};
+
 export type SermonSeriesSummary = {
   id: number;
   title: string;

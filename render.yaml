@@ -68,6 +68,8 @@ services:
         value: 20
       - key: EXPO_ACCESS_TOKEN
         sync: false
+      - key: CHURCH_TIMEZONE
+        value: Africa/Accra
       - key: PRISMA_CONNECTION_LIMIT
         value: 15
       - key: PRISMA_POOL_TIMEOUT

@@ -10,6 +10,7 @@
 - News listing and detail pages
 - Sermons listing and detail pages
 - Sermon series (browse series and their sermons in order)
+- Daily devotional (today's scripture, reflection and prayer, plus an archive)
 - Events listing and detail pages
 - Donate page
 - Community feed
@@ -49,6 +50,7 @@
 - Attendance check-in and headcount trend
 - Sermons CRUD
 - Sermon series CRUD with cover images
+- Daily devotional authoring with publish & notify
 - Donations review
 - Settings
 - Audit / operational areas
@@ -156,3 +158,10 @@ Current media behavior:
 - Every notification the platform sends (prayer milestones, group requests and approvals, devotionals, announcements) is created in-app and also pushed to members' phones.
 - Phones register for push after sign-in and unregister on sign-out; tapping a push opens the related screen.
 - The website uses in-app notifications only.
+
+## Daily Devotionals
+
+- One devotional per day (scripture reference and text, reflection, optional prayer), written by admins on web `/admin/devotionals` or the mobile Devotionals screen.
+- "Today" follows the church time zone (`CHURCH_TIMEZONE`, default Africa/Accra). Members see today's devotional on `/devotionals`, the home page card and the mobile Daily Devotional screen; if none is published for today they see the latest past one.
+- Drafts and future-dated devotionals are never shown to members.
+- "Publish" on the devotional's own day notifies everyone, exactly once; a future-dated devotional is published silently and can be notified on its day.

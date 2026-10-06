@@ -600,6 +600,64 @@ export const useDecideGroupRequest = (groupId?: number) => {
   });
 };
 
+export type GroupInput = {
+  name: string;
+  description: string | null;
+  meetingDay: string | null;
+  meetingTime: string | null;
+  location: string | null;
+  capacity: number | null;
+  ministryId: number | null;
+  isActive?: boolean;
+};
+
+export const useAdminGroups = () =>
+  useQuery({
+    queryKey: ['admin', 'groups'],
+    queryFn: async (): Promise<GroupSummary[]> => {
+      const response = await apiClient.get('/admin/groups');
+      return response.data?.data ?? [];
+    },
+  });
+
+export const useSaveGroup = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, input }: { id?: number; input: GroupInput }) => {
+      const response = id ? await apiClient.put(`/admin/groups/${id}`, input) : await apiClient.post('/admin/groups', input);
+      return response.data?.data as GroupSummary;
+    },
+    onSuccess: (_data, { id }) => toast.success(id ? 'Group updated' : 'Group created'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not save the group')),
+    onSettled: () => invalidateGroups(qc),
+  });
+};
+
+export const useDeactivateGroup = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (groupId: number) => {
+      await apiClient.delete(`/admin/groups/${groupId}`);
+    },
+    onSuccess: () => toast.success('Group deactivated'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not deactivate the group')),
+    onSettled: () => invalidateGroups(qc),
+  });
+};
+
+export const useSetGroupLeaders = (groupId?: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userIds: number[]) => {
+      const response = await apiClient.put(`/admin/groups/${groupId}/leaders`, { userIds });
+      return response.data?.data as GroupSummary;
+    },
+    onSuccess: () => toast.success('Leaders updated'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not update leaders')),
+    onSettled: () => invalidateGroups(qc),
+  });
+};
+
 export const useMinistry = (id: number) => {
   return useQuery({
     queryKey: ['ministry', id],

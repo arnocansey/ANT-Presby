@@ -351,6 +351,88 @@ export const useDecideGroupRequest = (groupId?: number) =>
     onSettled: invalidateGroups,
   });
 
+export type Devotional = {
+  id: number;
+  title: string;
+  scripture_reference: string;
+  scripture_text: string;
+  body: string;
+  prayer: string | null;
+  publish_date: string;
+  status: 'draft' | 'published';
+  notified_at: string | null;
+  is_today?: boolean;
+};
+
+export type DevotionalInput = {
+  title: string;
+  scriptureReference: string;
+  scriptureText: string;
+  body: string;
+  prayer: string | null;
+  publishDate: string;
+};
+
+const invalidateDevotionals = () =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['devotionals'] }),
+    queryClient.invalidateQueries({ queryKey: ['admin', 'devotionals'] }),
+  ]);
+
+export const useTodayDevotional = () =>
+  useQuery({
+    queryKey: ['devotionals', 'today'],
+    queryFn: async (): Promise<Devotional | null> => {
+      const response = await apiClient.get('/devotionals/today');
+      return response.data?.data ?? null;
+    },
+  });
+
+export const useDevotionalArchive = () =>
+  useQuery({
+    queryKey: ['devotionals', 'archive'],
+    queryFn: async (): Promise<Devotional[]> => {
+      const response = await apiClient.get('/devotionals', { params: { limit: 20 } });
+      return response.data?.data || [];
+    },
+  });
+
+export const useAdminDevotionals = (enabled = true) =>
+  useQuery({
+    queryKey: ['admin', 'devotionals'],
+    enabled,
+    queryFn: async (): Promise<Devotional[]> => {
+      const response = await apiClient.get('/admin/devotionals');
+      return response.data?.data || [];
+    },
+  });
+
+export const useSaveDevotional = () =>
+  useMutation({
+    mutationFn: async ({ id, input }: { id?: number; input: DevotionalInput }) => {
+      const response = id ? await apiClient.put(`/admin/devotionals/${id}`, input) : await apiClient.post('/admin/devotionals', input);
+      return response.data?.data as Devotional;
+    },
+    onSettled: invalidateDevotionals,
+  });
+
+export const useDeleteDevotional = () =>
+  useMutation({
+    mutationFn: async (id: number) => {
+      await apiClient.delete(`/admin/devotionals/${id}`);
+    },
+    onSettled: invalidateDevotionals,
+  });
+
+export const usePublishDevotional = () =>
+  useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiClient.post(`/admin/devotionals/${id}/publish`);
+      return response.data?.data as { devotional: Devotional; notified: boolean };
+    },
+    onSettled: invalidateDevotionals,
+  });
+
 export const useMinistrySermons = (ministryId?: number | string, enabled = true) =>
   useQuery({
     queryKey: ['ministries', ministryId, 'sermons'],

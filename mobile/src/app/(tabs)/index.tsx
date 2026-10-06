@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { BrandScreen } from '@/components/brand-ui';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
-import { useSermons, useUpcomingEvents } from '@/hooks/use-api';
+import { useSermons, useTodayDevotional, useUpcomingEvents } from '@/hooks/use-api';
 import { useTheme } from '@/hooks/use-theme';
 import { APP_NAME } from '@/lib/config';
 import { useAuthStore } from '@/store/auth';
@@ -16,6 +16,7 @@ export default function HomeScreen() {
   const user = useAuthStore((state) => state.user);
   const { data } = useSermons(1, 1);
   const upcomingEventsQuery = useUpcomingEvents();
+  const devotionalQuery = useTodayDevotional();
   const latestSermon = Array.isArray(data) ? data[0] : null;
   const nextEvent = Array.isArray(upcomingEventsQuery.data) ? upcomingEventsQuery.data[0] : null;
   const greeting = getGreeting();
@@ -44,6 +45,20 @@ export default function HomeScreen() {
           </View>
         </Pressable>
       </View>
+
+      {devotionalQuery.data ? (
+        <Pressable
+          onPress={() => router.push('/daily-devotional' as never)}
+          style={[styles.devotionalCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+          <ThemedText type="smallBold" style={{ color: theme.tint, textTransform: 'uppercase', letterSpacing: 1 }}>
+            {devotionalQuery.data.is_today ? "Today's devotional" : 'Latest devotional'}
+          </ThemedText>
+          <ThemedText type="defaultSemiBold">{devotionalQuery.data.title}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {devotionalQuery.data.scripture_reference}
+          </ThemedText>
+        </Pressable>
+      ) : null}
 
       <View style={[styles.liveCard, { backgroundColor: theme.tint }]}>
         <View style={styles.liveBadge}>
@@ -388,4 +403,5 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: 4,
   },
+  devotionalCard: { borderWidth: 1, borderRadius: Radius.large, padding: Spacing.three, gap: 4 },
 });

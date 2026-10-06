@@ -245,6 +245,7 @@ export default function AdminScreen() {
         <QuickAction icon="bar-chart-outline" label="Analytics" color="#FB7185" onPress={() => router.push('/admin-analytics' as never)} />
         <QuickAction icon="checkmark-done-outline" label="Attendance" color="#22C55E" onPress={() => router.push('/admin-attendance' as never)} />
         <QuickAction icon="albums-outline" label="Series" color="#A855F7" onPress={() => router.push('/admin-series' as never)} />
+        <QuickAction icon="book-outline" label="Devotionals" color="#F59E0B" onPress={() => router.push('/admin-devotionals' as never)} />
       </View>
 
       <View style={styles.sectionRow}>

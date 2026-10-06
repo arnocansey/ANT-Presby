@@ -3,13 +3,14 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Calendar, ClipboardCheck, DollarSign, Heart, History, Home, Layers, Megaphone, Newspaper, Settings, UserRoundCog, Users } from 'lucide-react';
+import { BookOpen, Calendar, ClipboardCheck, DollarSign, Heart, History, Home, Layers, Megaphone, Newspaper, Settings, UserRoundCog, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: Home },
   { href: '/admin/sermons', label: 'Sermons', icon: Megaphone },
   { href: '/admin/series', label: 'Sermon Series', icon: Layers },
+  { href: '/admin/devotionals', label: 'Devotionals', icon: BookOpen },
   { href: '/admin/events', label: 'Events', icon: Calendar },
   { href: '/admin/attendance', label: 'Attendance', icon: ClipboardCheck },
   { href: '/admin/ministries', label: 'Ministries', icon: UserRoundCog },

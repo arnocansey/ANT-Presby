@@ -464,12 +464,12 @@ async function migrateFeatureUpdates() {
 
     // Daily devotionals (phase 5)
     await client.query(`
-      DO $
+      DO $$
       BEGIN
         CREATE TYPE devotional_status AS ENUM ('draft', 'published');
       EXCEPTION
         WHEN duplicate_object THEN NULL;
-      END $;
+      END $$;
     `);
 
     await client.query(`

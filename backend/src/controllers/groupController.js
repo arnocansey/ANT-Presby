@@ -97,11 +97,16 @@ const joinGroup = async (req, res, next) => {
       throw error;
     }
 
+    // A group without a leader yet (e.g. just created) routes requests to the church admins.
     const leaderIds = await groupModel.getLeaderIds(id);
+    const recipients = leaderIds.length > 0 ? leaderIds : await userModel.getActiveAdminIds();
     await notify({
-      userIds: leaderIds,
+      userIds: recipients,
       title: 'New request to join',
-      message: `${displayName(req.user)} asked to join ${group.name}.`,
+      message:
+        leaderIds.length > 0
+          ? `${displayName(req.user)} asked to join ${group.name}.`
+          : `${displayName(req.user)} asked to join ${group.name}, which has no leader yet.`,
       type: 'group',
       entityType: 'group',
       entityId: id,
@@ -177,8 +182,12 @@ const approveJoinRequest = async (req, res, next) => {
       return fail(res, 409, 'This group is full');
     }
 
-    const approved = await groupModel.approveRequest(group.id, userId);
-    if (!approved) {
+    // Re-checked under a row lock so two simultaneous approvals cannot over-fill the group.
+    const outcome = await groupModel.approveRequestWithinCapacity(group.id, userId);
+    if (outcome === 'full') {
+      return fail(res, 409, 'This group is full');
+    }
+    if (outcome !== 'approved') {
       return fail(res, 404, 'No pending request from this member');
     }
 

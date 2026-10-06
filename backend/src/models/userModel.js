@@ -142,6 +142,16 @@ const getAllUserIds = async () => {
   return users.map((row) => row.id);
 };
 
+// Active admin IDs (fallback recipients when a group has no leader yet)
+const getActiveAdminIds = async () => {
+  const admins = await prisma.user.findMany({
+    where: { isActive: true, role: 'admin' },
+    select: { id: true },
+  });
+
+  return admins.map((row) => row.id);
+};
+
 // Count total users
 const countUsers = async (search = '') => {
   return prisma.user.count({ where: buildUserSearchWhere(search) });
@@ -357,6 +367,7 @@ module.exports = {
   findUserByGoogleId,
   getAllUsers,
   getAllUserIds,
+  getActiveAdminIds,
   countUsers,
   updateUser,
   updateUserProfileImage,

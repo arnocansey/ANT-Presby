@@ -108,12 +108,32 @@ const createJoinRequest = (groupId, userId) =>
     data: { groupId: Number(groupId), userId: Number(userId), role: 'member', status: 'pending' },
   });
 
-const approveRequest = async (groupId, userId) => {
-  const result = await prisma.groupMembership.updateMany({
-    where: { groupId: Number(groupId), userId: Number(userId), status: 'pending' },
-    data: { status: 'active' },
+// Approve a pending request without ever exceeding capacity. The group row is locked
+// (SELECT ... FOR UPDATE) so concurrent approvals for the same group run one at a time.
+// Returns 'approved', 'full', or 'none' (no such group or no pending request).
+const approveRequestWithinCapacity = async (groupId, userId) => {
+  const id = Number(groupId);
+  const memberId = Number(userId);
+
+  return prisma.$transaction(async (tx) => {
+    const [group] = await tx.$queryRaw`SELECT capacity FROM small_groups WHERE id = ${id} FOR UPDATE`;
+    if (!group) {
+      return 'none';
+    }
+
+    if (group.capacity !== null) {
+      const active = await tx.groupMembership.count({ where: { groupId: id, status: 'active' } });
+      if (active >= group.capacity) {
+        return 'full';
+      }
+    }
+
+    const result = await tx.groupMembership.updateMany({
+      where: { groupId: id, userId: memberId, status: 'pending' },
+      data: { status: 'active' },
+    });
+    return result.count ? 'approved' : 'none';
   });
-  return result.count;
 };
 
 const declineRequest = async (groupId, userId) => {
@@ -226,7 +246,7 @@ module.exports = {
   getGroupDetail,
   getMembership,
   createJoinRequest,
-  approveRequest,
+  approveRequestWithinCapacity,
   declineRequest,
   deleteMembership,
   countActiveLeaders,

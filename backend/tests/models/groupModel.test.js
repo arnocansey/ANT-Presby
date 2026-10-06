@@ -78,3 +78,52 @@ describe('toMemberItem', () => {
     });
   });
 });
+
+describe('approveRequestWithinCapacity', () => {
+  const load = (tx) => {
+    jest.resetModules();
+    jest.doMock('../../src/config/prisma', () => ({ $transaction: (fn) => fn(tx) }));
+    return require('../../src/models/groupModel');
+  };
+
+  const buildTx = ({ capacity, active, updated = 1 }) => ({
+    $queryRaw: jest.fn().mockResolvedValue(capacity === undefined ? [] : [{ capacity }]),
+    groupMembership: {
+      count: jest.fn().mockResolvedValue(active),
+      updateMany: jest.fn().mockResolvedValue({ count: updated }),
+    },
+  });
+
+  test('locks the group row, then approves while there is room', async () => {
+    const tx = buildTx({ capacity: 10, active: 9 });
+    const { approveRequestWithinCapacity } = load(tx);
+
+    await expect(approveRequestWithinCapacity(5, 9)).resolves.toBe('approved');
+    expect(tx.$queryRaw).toHaveBeenCalled();
+    expect(tx.groupMembership.updateMany).toHaveBeenCalledWith({
+      where: { groupId: 5, userId: 9, status: 'pending' },
+      data: { status: 'active' },
+    });
+  });
+
+  test('refuses when the group is already full, without approving', async () => {
+    const tx = buildTx({ capacity: 10, active: 10 });
+    const { approveRequestWithinCapacity } = load(tx);
+
+    await expect(approveRequestWithinCapacity(5, 9)).resolves.toBe('full');
+    expect(tx.groupMembership.updateMany).not.toHaveBeenCalled();
+  });
+
+  test('a group without capacity skips the count', async () => {
+    const tx = buildTx({ capacity: null, active: 500 });
+    const { approveRequestWithinCapacity } = load(tx);
+
+    await expect(approveRequestWithinCapacity(5, 9)).resolves.toBe('approved');
+    expect(tx.groupMembership.count).not.toHaveBeenCalled();
+  });
+
+  test('reports none when there is no pending request or no group', async () => {
+    await expect(load(buildTx({ capacity: 10, active: 1, updated: 0 })).approveRequestWithinCapacity(5, 9)).resolves.toBe('none');
+    await expect(load(buildTx({ capacity: undefined, active: 0 })).approveRequestWithinCapacity(5, 9)).resolves.toBe('none');
+  });
+});

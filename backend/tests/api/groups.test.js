@@ -18,7 +18,7 @@ const buildModels = () => ({
     getGroupDetail: jest.fn().mockResolvedValue({ ...group(), my_status: null, members: [{ user_id: 2 }] }),
     getMembership: jest.fn().mockResolvedValue(null),
     createJoinRequest: jest.fn().mockResolvedValue({ id: 1 }),
-    approveRequest: jest.fn().mockResolvedValue(1),
+    approveRequestWithinCapacity: jest.fn().mockResolvedValue('approved'),
     declineRequest: jest.fn().mockResolvedValue(1),
     deleteMembership: jest.fn().mockResolvedValue(1),
     countActiveLeaders: jest.fn().mockResolvedValue(2),
@@ -26,12 +26,14 @@ const buildModels = () => ({
     listPendingRequests: jest.fn().mockResolvedValue([{ user_id: 9, email: 'x@test.com' }]),
   },
   notificationService: { notify: jest.fn().mockResolvedValue({ inApp: 1, push: 0 }) },
+  userModel: { getActiveAdminIds: jest.fn().mockResolvedValue([1, 8]) },
 });
 
 const buildApp = (models) => {
   jest.resetModules();
   jest.doMock('../../src/models/groupModel', () => models.groupModel);
   jest.doMock('../../src/services/notificationService', () => models.notificationService);
+  jest.doMock('../../src/models/userModel', () => models.userModel);
   jest.doMock('../../src/models/auditLogModel', () => ({ createAuditLog: jest.fn() }));
 
   const app = express();
@@ -279,7 +281,7 @@ describe('Groups API (members)', () => {
       const response = await request(app).post('/api/groups/5/requests/9/approve').set('Authorization', as(2));
 
       expect(response.status).toBe(200);
-      expect(models.groupModel.approveRequest).toHaveBeenCalledWith(5, 9);
+      expect(models.groupModel.approveRequestWithinCapacity).toHaveBeenCalledWith(5, 9);
       expect(models.notificationService.notify).toHaveBeenCalledWith(
         expect.objectContaining({ userIds: [9], type: 'group', entityId: 5 })
       );
@@ -291,11 +293,11 @@ describe('Groups API (members)', () => {
       const response = await request(app).post('/api/groups/5/requests/9/approve').set('Authorization', as(1, 'admin'));
 
       expect(response.status).toBe(409);
-      expect(models.groupModel.approveRequest).not.toHaveBeenCalled();
+      expect(models.groupModel.approveRequestWithinCapacity).not.toHaveBeenCalled();
     });
 
     test('approving when there is no pending request returns 404', async () => {
-      models.groupModel.approveRequest.mockResolvedValue(0);
+      models.groupModel.approveRequestWithinCapacity.mockResolvedValue('none');
 
       const response = await request(app).post('/api/groups/5/requests/9/approve').set('Authorization', as(1, 'admin'));
 
@@ -307,14 +309,14 @@ describe('Groups API (members)', () => {
       const response = await request(app).post('/api/groups/5/requests/9/approve').set('Authorization', as(7));
 
       expect(response.status).toBe(403);
-      expect(models.groupModel.approveRequest).not.toHaveBeenCalled();
+      expect(models.groupModel.approveRequestWithinCapacity).not.toHaveBeenCalled();
     });
 
     test('a malformed user id returns 404 without querying', async () => {
       const response = await request(app).post('/api/groups/5/requests/abc/approve').set('Authorization', as(1, 'admin'));
 
       expect(response.status).toBe(404);
-      expect(models.groupModel.approveRequest).not.toHaveBeenCalled();
+      expect(models.groupModel.approveRequestWithinCapacity).not.toHaveBeenCalled();
     });
 
     test('a leader declines a request', async () => {
@@ -344,5 +346,37 @@ describe('Group routes are mounted in the server', () => {
     const response = await request(server).get('/api/groups');
 
     expect(response.status).toBe(200);
+  });
+});
+
+describe('Review fixes', () => {
+  let models;
+  let app;
+
+  beforeEach(() => {
+    models = buildModels();
+    app = buildApp(models);
+  });
+
+  test('a concurrent approval that finds the group full inside the transaction returns 409', async () => {
+    models.groupModel.approveRequestWithinCapacity.mockResolvedValue('full');
+
+    const response = await request(app).post('/api/groups/5/requests/9/approve').set('Authorization', as(1, 'admin'));
+
+    expect(response.status).toBe(409);
+    expect(response.body.message).toBe('This group is full');
+    expect(models.notificationService.notify).not.toHaveBeenCalled();
+  });
+
+  test('a join request to a group with no leaders notifies the admins', async () => {
+    models.groupModel.getLeaderIds.mockResolvedValue([]);
+
+    const response = await request(app).post('/api/groups/5/join').set('Authorization', as(7));
+
+    expect(response.status).toBe(201);
+    expect(models.userModel.getActiveAdminIds).toHaveBeenCalled();
+    expect(models.notificationService.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ userIds: [1, 8], entityType: 'group', entityId: 5 })
+    );
   });
 });

@@ -292,6 +292,39 @@ const validateNewsPost = [
     .withMessage('imageUrl must be a valid URL or uploaded asset path'),
 ];
 
+const EXPO_PUSH_TOKEN = /^Expo(nent)?PushToken\[[^\]]+\]$/;
+
+// Device registration for push notifications.
+const validatePushToken = [
+  body('token')
+    .isString()
+    .isLength({ max: 255 })
+    .matches(EXPO_PUSH_TOKEN)
+    .withMessage('token must be an Expo push token'),
+  body('platform').isIn(['ios', 'android']).withMessage('platform must be ios or android'),
+];
+
+// Announcement: audience-specific target ids are required only for that audience.
+const validateAnnouncement = [
+  body('title').isString().trim().notEmpty().withMessage('Title is required').isLength({ max: 255 }),
+  body('message')
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('Message is required')
+    .isLength({ max: 2000 })
+    .withMessage('Message must be 2000 characters or fewer'),
+  body('audience').isIn(['everyone', 'group', 'event']).withMessage('audience must be everyone, group or event'),
+  body('groupId')
+    .if(body('audience').equals('group'))
+    .isInt({ min: 1, max: MAX_DB_ID })
+    .withMessage('groupId is required for a group announcement'),
+  body('eventId')
+    .if(body('audience').equals('event'))
+    .isInt({ min: 1, max: MAX_DB_ID })
+    .withMessage('eventId is required for an event announcement'),
+];
+
 module.exports = {
   handleValidationErrors,
   validateUserRegistration,
@@ -308,5 +341,7 @@ module.exports = {
   validateDonation,
   validateContactMessage,
   validateNewsPost,
+  validatePushToken,
+  validateAnnouncement,
 };
 

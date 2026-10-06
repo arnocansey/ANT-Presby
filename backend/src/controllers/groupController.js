@@ -1,6 +1,8 @@
 const { apiResponse, parseId } = require('../utils/helpers');
 const groupModel = require('../models/groupModel');
 const { notify } = require('../services/notificationService');
+const userModel = require('../models/userModel');
+const auditLogModel = require('../models/auditLogModel');
 
 /**
  * Small Group Controller
@@ -214,7 +216,116 @@ const declineJoinRequest = async (req, res, next) => {
   }
 };
 
+// ---- Admin ----
+
+const audit = (req, action, entityId, summary, metadata = {}) =>
+  auditLogModel.createAuditLog({
+    actorUserId: req.user.userId,
+    entityType: 'small_group',
+    entityId,
+    action,
+    summary,
+    metadata,
+  });
+
+const pickGroupInput = (body) => ({
+  name: body.name,
+  description: body.description,
+  meetingDay: body.meetingDay,
+  meetingTime: body.meetingTime,
+  location: body.location,
+  capacity: body.capacity,
+  ministryId: body.ministryId,
+  isActive: body.isActive,
+});
+
+// Prisma errors from create/update: duplicate name, unknown ministry.
+const groupWriteError = (res, error) => {
+  if (error?.code === 'P2002') return fail(res, 409, 'A group with this name already exists');
+  if (error?.code === 'P2003') return fail(res, 400, 'Ministry not found');
+  return null;
+};
+
+const adminListGroups = async (req, res, next) => {
+  try {
+    const groups = await groupModel.listAllGroups();
+    res.json(apiResponse(true, groups, 'Groups retrieved'));
+  } catch (error) {
+    next(error);
+  }
+};
+
+const adminCreateGroup = async (req, res, next) => {
+  try {
+    const group = await groupModel.createGroup(pickGroupInput(req.body));
+    await audit(req, 'create', group.id, `Created small group "${group.name}"`);
+    res.status(201).json(apiResponse(true, group, 'Group created'));
+  } catch (error) {
+    if (!groupWriteError(res, error)) next(error);
+  }
+};
+
+const adminUpdateGroup = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    const group = id ? await groupModel.updateGroup(id, pickGroupInput(req.body)) : undefined;
+
+    if (!group) {
+      return fail(res, 404, GROUP_NOT_FOUND);
+    }
+
+    await audit(req, 'update', id, `Updated small group "${group.name}"`);
+    res.json(apiResponse(true, group, 'Group updated'));
+  } catch (error) {
+    if (!groupWriteError(res, error)) next(error);
+  }
+};
+
+const adminDeactivateGroup = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    const changed = id ? await groupModel.deactivateGroup(id) : 0;
+
+    if (!changed) {
+      return fail(res, 404, GROUP_NOT_FOUND);
+    }
+
+    await audit(req, 'deactivate', id, `Deactivated small group #${id}`);
+    res.json(apiResponse(true, null, 'Group deactivated'));
+  } catch (error) {
+    next(error);
+  }
+};
+
+const adminSetLeaders = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    const group = id ? await groupModel.getGroupById(id) : undefined;
+
+    if (!group) {
+      return fail(res, 404, GROUP_NOT_FOUND);
+    }
+
+    const userIds = req.body.userIds.map(Number);
+    const users = await Promise.all(userIds.map((userId) => userModel.findUserById(userId)));
+    if (users.some((user) => !user)) {
+      return fail(res, 404, 'Member not found');
+    }
+
+    const updated = await groupModel.setLeaders(id, userIds);
+    await audit(req, 'set_leaders', id, `Set leaders of small group "${group.name}"`, { userIds });
+    res.json(apiResponse(true, updated, 'Leaders updated'));
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
+  adminListGroups,
+  adminCreateGroup,
+  adminUpdateGroup,
+  adminDeactivateGroup,
+  adminSetLeaders,
   canManageGroup,
   listGroups,
   listMyGroups,

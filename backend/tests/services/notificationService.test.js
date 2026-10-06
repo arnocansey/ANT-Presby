@@ -125,4 +125,20 @@ describe('notificationService', () => {
 
     expect(result).toEqual({ inApp: 40, push: 1 });
   });
+test('a hanging push service does not hold up the action: notify returns after the push deadline', async () => {
+    jest.useFakeTimers();
+    try {
+      pushTokenModel.getTokensForUsers.mockResolvedValue(['ExponentPushToken[a]']);
+      pushService.sendPush.mockReturnValue(new Promise(() => {}));
+
+      const pending = notificationService.notify({ userIds: [7], title: 't', message: 'm', type: 'x' });
+      await jest.advanceTimersByTimeAsync(notificationService.PUSH_DEADLINE_MS);
+
+      await expect(pending).resolves.toEqual({ inApp: 2, push: 0 });
+      expect(notificationService.PUSH_DEADLINE_MS).toBeLessThan(15000);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
+

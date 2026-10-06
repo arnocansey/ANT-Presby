@@ -7,8 +7,12 @@ const pushService = require('./pushService');
  * These functions never throw: a failed notification must not fail the action that caused it.
  */
 
+// Longest a caller waits for push; slower deliveries finish in the background and report 0.
+// Kept well under the apps' 15 s request timeout so a slow Expo never makes an action look failed.
+const PUSH_DEADLINE_MS = 5000;
+
 // Best-effort push to the given devices; removes tokens Expo reports as no longer registered.
-const pushTo = async (loadTokens, { title, message, type, entityType, entityId }) => {
+const deliverPush = async (loadTokens, { title, message, type, entityType, entityId }) => {
   try {
     const tokens = await loadTokens();
     const { sent, invalidTokens } = await pushService.sendPush(tokens, {
@@ -24,6 +28,14 @@ const pushTo = async (loadTokens, { title, message, type, entityType, entityId }
     console.warn('Push skipped:', error.message);
     return 0;
   }
+};
+
+const pushTo = (loadTokens, content) => {
+  let timer;
+  const deadline = new Promise((resolve) => {
+    timer = setTimeout(() => resolve(0), PUSH_DEADLINE_MS);
+  });
+  return Promise.race([deliverPush(loadTokens, content), deadline]).finally(() => clearTimeout(timer));
 };
 
 const toRecipientIds = (userIds = []) => [
@@ -78,6 +90,7 @@ const notifyAll = async ({ title, message, type, entityType = null, entityId = n
 };
 
 module.exports = {
+  PUSH_DEADLINE_MS,
   notify,
   notifyAll,
 };

@@ -1,69 +1,28 @@
-const fs = require('fs');
-const path = require('path');
 const multer = require('multer');
 
-// The stored extension comes from this map, never from the client's filename, so an upload can't
-// become an .html/.js/.svg file served from our origin.
-const ALLOWED_IMAGE_TYPES = {
-  'image/jpeg': '.jpg',
-  'image/png': '.png',
-  'image/webp': '.webp',
-  'image/gif': '.gif',
-};
+// Only these image types are accepted. Files are held in memory and stored by services/imageStorage,
+// which chooses the stored extension from the mimetype, never from the client's filename.
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
-const ensureDir = (dirPath) => {
-  fs.mkdirSync(dirPath, { recursive: true });
-  return dirPath;
-};
-
-const createImageUpload = ({ directoryName, filePrefix }) => {
-  const uploadDir = ensureDir(path.join(__dirname, '..', '..', 'uploads', directoryName));
-
-  const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-      const safeExt = ALLOWED_IMAGE_TYPES[file.mimetype];
-      const actorId = Number(req.user?.userId) || 'system';
-      const fileName = `${filePrefix}-${actorId}-${Date.now()}${safeExt}`;
-      cb(null, fileName);
-    },
-  });
-
-  return multer({
-    storage,
-    fileFilter: (req, file, cb) => {
-      if (!Object.prototype.hasOwnProperty.call(ALLOWED_IMAGE_TYPES, file.mimetype)) {
-        const error = new Error('Only JPEG, PNG, WebP, or GIF images are allowed');
-        error.statusCode = 400;
-        return cb(error);
-      }
-      cb(null, true);
-    },
-    limits: {
-      fileSize: 5 * 1024 * 1024,
-    },
-  });
-};
-
-const profilePhotoUpload = createImageUpload({
-  directoryName: 'profile-images',
-  filePrefix: 'user',
-});
-
-const newsImageUpload = createImageUpload({
-  directoryName: 'news-images',
-  filePrefix: 'news',
-});
-
-const seriesImageUpload = createImageUpload({
-  directoryName: 'series-images',
-  filePrefix: 'series',
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
+      const error = new Error('Only JPEG, PNG, WebP, or GIF images are allowed');
+      error.statusCode = 400;
+      return cb(error);
+    }
+    cb(null, true);
+  },
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
 });
 
 module.exports = {
-  profilePhotoUpload,
-  newsImageUpload,
-  seriesImageUpload,
+  imageUpload,
+  profilePhotoUpload: imageUpload,
+  newsImageUpload: imageUpload,
+  seriesImageUpload: imageUpload,
+  eventImageUpload: imageUpload,
 };

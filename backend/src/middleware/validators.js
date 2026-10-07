@@ -1,5 +1,6 @@
 ﻿const { validationResult, body } = require('express-validator');
 const { MAX_DB_ID } = require('../utils/helpers');
+const { isOwnImageUrl } = require('../services/imageStorage');
 
 /**
  * Middleware to handle validation errors
@@ -92,9 +93,6 @@ const validateSermonSeriesLink = [
     .withMessage('seriesId must be a positive integer or null'),
 ];
 
-// Covers can only be files we stored ourselves under /uploads/series-images/.
-const SERIES_COVER_PATTERN = /^\/uploads\/series-images\/[A-Za-z0-9_-]+\.(jpg|png|webp|gif)$/;
-
 const validateSermonSeries = [
   body('title')
     .isString()
@@ -104,9 +102,10 @@ const validateSermonSeries = [
     .isLength({ max: 255 })
     .withMessage('Series title must be 255 characters or fewer'),
   body('description').optional({ values: 'null' }).isString().withMessage('Description must be text'),
+  // Covers can only be images we stored ourselves: a series upload on disk or in our Cloudinary folder.
   body('coverImageUrl')
     .optional({ values: 'falsy' })
-    .matches(SERIES_COVER_PATTERN)
+    .custom((value) => isOwnImageUrl(value, 'series'))
     .withMessage('Cover image must be uploaded through the series image upload'),
   // Date-only values: a real calendar date in YYYY-MM-DD (rejects "20260901", "2026-02-30", timestamps).
   body('startDate')

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -13,6 +14,8 @@ import {
 } from '@/hooks/use-api';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/store/auth';
+import { formatCedis } from '@/lib/currency';
+import { resolveImageUrl } from '@/lib/media';
 
 const eventColors = [
   { bg: 'rgba(168,85,247,0.16)', text: '#C084FC' },
@@ -119,6 +122,10 @@ export default function EventsScreen() {
                 <ThemedText type="subtitle">{day}</ThemedText>
               </View>
 
+              {resolveImageUrl(item.image_url) ? (
+                <Image source={{ uri: resolveImageUrl(item.image_url) as string }} style={styles.eventThumb} contentFit="cover" />
+              ) : null}
+
               <View style={styles.eventBody}>
                 <View style={[styles.typePill, { backgroundColor: palette.bg }]}>
                   <ThemedText type="smallBold" style={{ color: palette.text }}>
@@ -177,12 +184,12 @@ export default function EventsScreen() {
           </View>
         </View>
         <View style={styles.amountRow}>
-          {['$25', '$50', '$100'].map((amount) => (
+          {[25, 50, 100].map((amount) => (
             <Pressable
               key={amount}
-              onPress={() => router.push(`/donate?amount=${encodeURIComponent(amount.replace('$', ''))}` as never)}
+              onPress={() => router.push(`/donate?amount=${amount}` as never)}
               style={[styles.amountButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-              <ThemedText type="defaultSemiBold">{amount}</ThemedText>
+              <ThemedText type="defaultSemiBold">{formatCedis(amount, 0)}</ThemedText>
             </Pressable>
           ))}
         </View>
@@ -310,6 +317,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
+  eventThumb: { width: 56, height: 56, borderRadius: Radius.medium },
   eventCard: {
     flexDirection: 'row',
     gap: Spacing.three,

@@ -548,6 +548,11 @@ async function migrateFeatureUpdates() {
       ON announcements(group_id);
     `);
 
+    // Event cover images (phase 7a)
+    await client.query(`
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);
+    `);
+
     await client.query('COMMIT');
     console.log('Feature update migration completed successfully.');
     process.exit(0);

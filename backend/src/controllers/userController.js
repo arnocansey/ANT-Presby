@@ -1,6 +1,7 @@
 const { sanitizeUser, apiResponse, getPagination, buildPaginationMeta } = require('../utils/helpers');
 const userModel = require('../models/userModel');
 const auditLogModel = require('../models/auditLogModel');
+const imageStorage = require('../services/imageStorage');
 
 // Get user profile
 const getProfile = async (req, res, next) => {
@@ -48,8 +49,14 @@ const uploadProfilePhoto = async (req, res, next) => {
       return res.status(400).json(apiResponse(false, null, 'No photo uploaded'));
     }
 
-    const photoUrl = `/uploads/profile-images/${req.file.filename}`;
-    const updatedUser = await userModel.updateUserProfileImage(userId, photoUrl);
+    const current = await userModel.findUserById(userId);
+    const { url } = await imageStorage.uploadImage(req.file, { kind: 'profile', actorId: userId });
+    const updatedUser = await userModel.updateUserProfileImage(userId, url);
+
+    // Only remove the old photo once the new one is saved.
+    if (current?.profile_image_url && current.profile_image_url !== url) {
+      await imageStorage.deleteImage(current.profile_image_url);
+    }
 
     res.json(apiResponse(true, sanitizeUser(updatedUser), 'Profile photo uploaded'));
   } catch (error) {

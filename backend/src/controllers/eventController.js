@@ -1,6 +1,8 @@
-const { apiResponse, getPagination, buildPaginationMeta } = require('../utils/helpers');
+const { apiResponse, getPagination, buildPaginationMeta, parseId } = require('../utils/helpers');
 const eventModel = require('../models/eventModel');
 const notificationModel = require('../models/notificationModel');
+const auditLogModel = require('../models/auditLogModel');
+const imageStorage = require('../services/imageStorage');
 
 /**
  * Event Controller - Handles event operations
@@ -119,6 +121,74 @@ const deleteEvent = async (req, res, next) => {
   }
 };
 
+const findEventForImage = async (req, res) => {
+  const id = parseId(req.params.id);
+  const event = id ? await eventModel.getEventById(id) : undefined;
+  if (!event) {
+    res.status(404).json(apiResponse(false, null, 'Event not found'));
+    return null;
+  }
+  return { id, event };
+};
+
+// Upload or replace an event's cover image (admin only)
+const uploadEventImage = async (req, res, next) => {
+  try {
+    const found = await findEventForImage(req, res);
+    if (!found) return undefined;
+
+    if (!req.file) {
+      return res.status(400).json(apiResponse(false, null, 'No image uploaded'));
+    }
+
+    const { url } = await imageStorage.uploadImage(req.file, { kind: 'events', actorId: req.user.userId });
+    await eventModel.setEventImage(found.id, url);
+
+    // Only remove the old image once the new one is saved.
+    if (found.event.image_url && found.event.image_url !== url) {
+      await imageStorage.deleteImage(found.event.image_url);
+    }
+
+    await auditLogModel.createAuditLog({
+      actorUserId: req.user.userId,
+      entityType: 'event',
+      entityId: found.id,
+      action: 'update_image',
+      summary: `Updated the image for event "${found.event.name}"`,
+      metadata: { url },
+    });
+
+    res.json(apiResponse(true, { image_url: url }, 'Event image updated'));
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Remove an event's cover image (admin only)
+const removeEventImage = async (req, res, next) => {
+  try {
+    const found = await findEventForImage(req, res);
+    if (!found) return undefined;
+
+    await eventModel.setEventImage(found.id, null);
+    if (found.event.image_url) {
+      await imageStorage.deleteImage(found.event.image_url);
+    }
+
+    await auditLogModel.createAuditLog({
+      actorUserId: req.user.userId,
+      entityType: 'event',
+      entityId: found.id,
+      action: 'remove_image',
+      summary: `Removed the image from event "${found.event.name}"`,
+    });
+
+    res.json(apiResponse(true, { image_url: null }, 'Event image removed'));
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Register for event
 const registerForEvent = async (req, res, next) => {
   try {
@@ -205,6 +275,8 @@ module.exports = {
   getUpcomingEvents,
   updateEvent,
   deleteEvent,
+  uploadEventImage,
+  removeEventImage,
   registerForEvent,
   getUserRegistrations,
   cancelEventRegistration,

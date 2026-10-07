@@ -40,6 +40,7 @@ const getAllEvents = async (offset, limit, filters = {}) => {
       eventDate: true,
       location: true,
       maxRegistrations: true,
+      imageUrl: true,
       status: true,
       createdAt: true,
     },
@@ -118,6 +119,15 @@ const updateEvent = async (eventId, updates) => {
   return toSnakeCaseObject(event);
 };
 
+// Set or clear an event's cover image; returns how many events changed (0 when the event is gone).
+const setEventImage = async (eventId, imageUrl) => {
+  const updated = await prisma.event.updateMany({
+    where: { id: Number(eventId) },
+    data: { imageUrl },
+  });
+  return updated.count;
+};
+
 // Delete event
 const deleteEvent = async (eventId) => {
   const id = Number(eventId);
@@ -148,6 +158,7 @@ const getUpcomingEvents = async (limit = 10) => {
       eventDate: true,
       location: true,
       maxRegistrations: true,
+      imageUrl: true,
       status: true,
       createdAt: true,
     },
@@ -191,6 +202,7 @@ const searchEvents = async (searchTerm, offset = 0, limit = 10) => {
       eventDate: true,
       location: true,
       maxRegistrations: true,
+      imageUrl: true,
       status: true,
       createdAt: true,
     },
@@ -315,6 +327,7 @@ module.exports = {
   countEvents,
   getEventById,
   updateEvent,
+  setEventImage,
   deleteEvent,
   getUpcomingEvents,
   searchEvents,

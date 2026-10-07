@@ -21,4 +21,8 @@ describe('feature migration SQL', () => {
       expect(source).toContain(`CREATE TABLE IF NOT EXISTS ${table} (`)
     );
   });
+
+  test('adds the event image column', () => {
+    expect(source).toContain('ALTER TABLE events ADD COLUMN IF NOT EXISTS image_url VARCHAR(500)');
+  });
 });

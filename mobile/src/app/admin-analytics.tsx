@@ -14,6 +14,7 @@ import {
 } from '@/hooks/use-api';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/store/auth';
+import { formatCedis } from '@/lib/currency';
 
 export default function AdminAnalyticsScreen() {
   const theme = useTheme();
@@ -47,7 +48,7 @@ export default function AdminAnalyticsScreen() {
     { label: 'Active Members', value: String(activeMembers), color: '#60A5FA', icon: 'people-outline' as const },
     { label: 'Sermon Library', value: String(sermonCount), color: '#C084FC', icon: 'play-circle-outline' as const },
     { label: 'Event RSVPs', value: String(registrationsLast30Days), color: '#4ADE80', icon: 'calendar-outline' as const },
-    { label: 'Total Giving', value: `$${totalGiving.toLocaleString()}`, color: '#FBBF24', icon: 'cash-outline' as const },
+    { label: 'Total Giving', value: formatCedis(totalGiving), color: '#FBBF24', icon: 'cash-outline' as const },
   ];
 
   return (

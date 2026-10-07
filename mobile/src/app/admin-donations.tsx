@@ -10,6 +10,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useAdminDonations, useUpdateDonationStatus } from '@/hooks/use-api';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/store/auth';
+import { formatCedis } from '@/lib/currency';
 
 export default function AdminDonationsScreen() {
   const user = useAuthStore((state) => state.user);
@@ -77,7 +78,7 @@ export default function AdminDonationsScreen() {
           Total Received
         </ThemedText>
         <ThemedText type="title" style={{ color: '#FFFFFF' }}>
-          ${totalAmount.toLocaleString()}
+          {formatCedis(totalAmount)}
         </ThemedText>
         <View style={styles.totalMeta}>
           <View>
@@ -127,7 +128,7 @@ export default function AdminDonationsScreen() {
                 <BrandPill>{status}</BrandPill>
               </View>
               <ThemedText type="small">
-                Amount: {typeof donation?.amount === 'number' ? donation.amount.toLocaleString() : donation?.amount || 0}
+                Amount: {formatCedis(donation?.amount)}
               </ThemedText>
               <ThemedText type="small">
                 Type: {donation?.type || donation?.donation_type || 'general'} | Method: {donation?.payment_method || 'unknown'}

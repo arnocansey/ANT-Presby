@@ -964,6 +964,42 @@ export const useUploadSeriesCover = () =>
     onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not upload the image')),
   });
 
+const invalidateEventImages = (qc: ReturnType<typeof useQueryClient>) =>
+  Promise.all([
+    qc.invalidateQueries({ queryKey: ['event'] }),
+    qc.invalidateQueries({ queryKey: ['events'] }),
+    qc.invalidateQueries({ queryKey: ['admin', 'events'] }),
+  ]);
+
+export const useUploadEventImage = (eventId?: number | string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File): Promise<{ image_url: string }> => {
+      const formData = new FormData();
+      formData.append('image', file);
+      const response = await apiClient.post(`/admin/events/${eventId}/image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data.data;
+    },
+    onSuccess: () => toast.success('Event image updated'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not upload the image')),
+    onSettled: () => invalidateEventImages(qc),
+  });
+};
+
+export const useRemoveEventImage = (eventId?: number | string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await apiClient.delete(`/admin/events/${eventId}/image`);
+    },
+    onSuccess: () => toast.success('Event image removed'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not remove the image')),
+    onSettled: () => invalidateEventImages(qc),
+  });
+};
+
 export const useAdminEvents = () => {
   return useQuery({
     queryKey: ['admin', 'events'],

@@ -871,6 +871,39 @@ export const useUpdateAdminEvent = () =>
     },
   });
 
+type PickedImage = { uri: string; mimeType?: string | null; fileName?: string | null };
+
+const invalidateEventImageQueries = () =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['admin', 'events'] }),
+    queryClient.invalidateQueries({ queryKey: ['events'] }),
+  ]);
+
+export const useUploadEventImage = (eventId?: number) =>
+  useMutation({
+    mutationFn: async (image: PickedImage) => {
+      const formData = new FormData();
+      formData.append('image', {
+        uri: image.uri,
+        name: image.fileName || 'event.jpg',
+        type: image.mimeType || 'image/jpeg',
+      } as any);
+      const response = await apiClient.post(`/admin/events/${eventId}/image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data?.data as { image_url: string };
+    },
+    onSettled: invalidateEventImageQueries,
+  });
+
+export const useRemoveEventImage = (eventId?: number) =>
+  useMutation({
+    mutationFn: async () => {
+      await apiClient.delete(`/admin/events/${eventId}/image`);
+    },
+    onSettled: invalidateEventImageQueries,
+  });
+
 export const useDeleteAdminEvent = () =>
   useMutation({
     mutationFn: async (id: number) => {

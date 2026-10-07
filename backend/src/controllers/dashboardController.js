@@ -1,5 +1,5 @@
 const prisma = require('../config/prisma');
-const { apiResponse } = require('../utils/helpers');
+const { apiResponse, formatCedis } = require('../utils/helpers');
 const donationModel = require('../models/donationModel');
 const prayerRequestModel = require('../models/prayerRequestModel');
 const auditLogModel = require('../models/auditLogModel');
@@ -104,7 +104,7 @@ const getRecentActivities = async (req, res, next) => {
       ...donations.map((donation) => ({
         type: 'donation',
         created_at: donation.createdAt,
-        description: `Donation: GHS ${decimalToString(donation.amount)}`,
+        description: `Donation: ${formatCedis(decimalToString(donation.amount))}`,
       })),
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 20);
 

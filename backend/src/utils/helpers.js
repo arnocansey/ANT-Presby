@@ -143,9 +143,17 @@ const parseId = (value) => {
   return Number.isInteger(id) && id > 0 && id <= MAX_DB_ID && String(id) === String(value) ? id : null;
 };
 
+// Money text for activity feeds and emails, matching the apps: "GH₵ 1,250.00".
+const formatCedis = (amount) => {
+  const value = Number(amount ?? 0);
+  const safe = Number.isFinite(value) ? value : 0;
+  return `GH₵ ${safe.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
 module.exports = {
   MAX_DB_ID,
   parseId,
+  formatCedis,
   hashPassword,
   comparePassword,
   generateId,

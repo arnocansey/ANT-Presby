@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { formatCurrency } from '@/lib/utils';
 import {
   useDashboardContentStats,
   useDashboardEngagementStats,
@@ -65,7 +66,7 @@ export default function AdminDashboardPage() {
           ['Total Users', totalUsers, 'Members and admins currently in the system', 'from-sky-600 to-blue-600'],
           ['Events', totalEvents, `Upcoming active events: ${upcomingEvents}`, 'from-emerald-600 to-green-600'],
           ['Sermons', totalSermons, 'Published sermon records in the system', 'from-violet-600 to-purple-600'],
-          ['Revenue', `GHS ${revenueThisYear.toLocaleString()}`, 'Completed donations in the last 12 months', 'from-amber-500 to-orange-500'],
+          ['Revenue', formatCurrency(revenueThisYear), 'Completed donations in the last 12 months', 'from-amber-500 to-orange-500'],
         ].map(([label, value, text, gradient]) => (
           <div key={label} className={`rounded-[1.5rem] bg-gradient-to-br p-6 text-white shadow-lg ${gradient}`}>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/80">{label}</p>
@@ -118,7 +119,7 @@ export default function AdminDashboardPage() {
                 <div key={`${item.month}-${total}`} className="space-y-1">
                   <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
                     <span className="text-ui-muted">{formatMonth(item.month)}</span>
-                    <span className="font-semibold">GHS {total.toLocaleString()}</span>
+                    <span className="font-semibold">{formatCurrency(total)}</span>
                   </div>
                   <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800">
                     <div className="h-2 rounded-full bg-violet-600 dark:bg-violet-400" style={{ width }} />
@@ -175,7 +176,7 @@ export default function AdminDashboardPage() {
                     </p>
                     <p className="text-xs text-ui-subtle">{item.count} completed donation{item.count === 1 ? '' : 's'}</p>
                   </div>
-                  <p className="text-lg font-black">GHS {toNumber(item.total_amount).toLocaleString()}</p>
+                  <p className="text-lg font-black">{formatCurrency(toNumber(item.total_amount))}</p>
                 </div>
               </div>
             ))}

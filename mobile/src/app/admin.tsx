@@ -15,6 +15,7 @@ import {
 } from '@/hooks/use-api';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/store/auth';
+import { formatCedis } from '@/lib/currency';
 
 const statPalettes = [
   { bg: ['#2563EB', '#1D4ED8'], icon: 'people-outline' as const },
@@ -315,8 +316,7 @@ const formatMetric = (value: unknown) => {
 };
 
 const formatCurrency = (value: unknown) => {
-  const number = toFiniteNumber(value);
-  return Number.isFinite(number) ? `$${number.toLocaleString()}` : '$0';
+  return formatCedis(toFiniteNumber(value));
 };
 
 const toFiniteNumber = (value: unknown) => {

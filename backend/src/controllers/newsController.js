@@ -3,6 +3,7 @@ const newsModel = require('../models/newsModel');
 const notificationModel = require('../models/notificationModel');
 const mediaAssetModel = require('../models/mediaAssetModel');
 const auditLogModel = require('../models/auditLogModel');
+const imageStorage = require('../services/imageStorage');
 
 const shouldNotifyForPublication = (post, payload = {}) =>
   post.status === 'published' && (
@@ -178,12 +179,13 @@ const uploadNewsImage = async (req, res, next) => {
       return res.status(400).json(apiResponse(false, null, 'No image uploaded'));
     }
 
+    const stored = await imageStorage.uploadImage(req.file, { kind: 'news', actorId: req.user.userId });
     const asset = await mediaAssetModel.createMediaAsset({
-      fileName: req.file.filename,
+      fileName: stored.fileName,
       originalName: req.file.originalname,
       mimeType: req.file.mimetype,
       fileSize: req.file.size,
-      url: `/uploads/news-images/${req.file.filename}`,
+      url: stored.url,
       uploadedBy: req.user.userId,
     });
 

@@ -38,6 +38,7 @@ const initializePayment = async ({ email, amount, reference, callbackUrl, metada
   const payload = {
     email,
     amount: toMinorUnits(amount),
+    currency: 'GHS',
     reference,
     callback_url: callbackUrl,
     metadata,

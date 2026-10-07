@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useEvents, useUserEventRegistrations } from '@/hooks/useApi';
 import { useAuthStore } from '@/lib/store';
+import { resolveAssetUrl } from '@/lib/utils';
 
 const badgeColors = [
   'bg-amber-500',
@@ -99,6 +100,14 @@ export default function EventsPage() {
                   </span>
                   <span className="text-2xl font-black text-white">{eventDate.getDate()}</span>
                 </div>
+                {event.image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={resolveAssetUrl(event.image_url)}
+                    alt=""
+                    className="h-16 w-24 shrink-0 rounded-2xl object-cover"
+                  />
+                )}
 
                 <div className="min-w-0 flex-1">
                   <div className="mb-2 flex flex-wrap items-center gap-2">

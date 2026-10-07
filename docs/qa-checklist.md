@@ -119,3 +119,18 @@ Use this checklist for final smoke testing on web and Android.
 - [ ] (Dev/store build) Add an event image from the phone's photo library
 - [ ] Every amount on the donate pages, donation history and admin screens shows `GH₵`; no `$` anywhere
 - [ ] A test donation opens Paystack checkout in GHS
+
+## Photo Albums
+
+- [ ] Create a draft album on web, drop in 15 photos (one over 10 MB); the over-size one is skipped and the rest show "14 of 14 uploaded"
+- [ ] A draft album's public link shows "Album not found"
+- [ ] Publish the album; one notification arrives, and tapping it opens the album (web bell and phone push)
+- [ ] Unpublish and republish; no second notification
+- [ ] Set a different cover; the gallery card updates
+- [ ] Arrow keys move between photos in the web viewer; Escape closes it
+- [ ] Download one photo, then "Download all"; the zip contains every photo
+- [ ] "Open folder" opens the outside link; "Share" copies the album link
+- [ ] Link an album to an event; the event page shows "View photos"
+- [ ] (Dev/store build) Save a photo to the phone's photo library; denying the permission shows a clear message
+- [ ] (Dev/store build) Upload several photos from the phone as an admin
+- [ ] Delete a photo and then the album; both disappear from the Cloudinary `antpresby/albums/` folder

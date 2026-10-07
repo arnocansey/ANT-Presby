@@ -104,7 +104,7 @@ const getRecentActivities = async (req, res, next) => {
       ...donations.map((donation) => ({
         type: 'donation',
         created_at: donation.createdAt,
-        description: `Donation: GHS ${decimalToString(donation.amount)}`,
+        description: `Donation: GH₵ ${decimalToString(donation.amount)}`,
       })),
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 20);
 

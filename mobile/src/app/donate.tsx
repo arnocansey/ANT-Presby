@@ -13,6 +13,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useInitializeDonationPayment, useVerifyDonationPayment } from '@/hooks/use-api';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/store/auth';
+import { formatCedis } from '@/lib/currency';
 
 const donationSchema = z.object({
   amount: z.coerce.number().min(0.01, 'Enter an amount greater than 0'),
@@ -198,7 +199,7 @@ export default function DonateScreen() {
                 });
               }}
               style={[styles.amountButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: theme.border }]}>
-              <ThemedText type="defaultSemiBold">${amount}</ThemedText>
+              <ThemedText type="defaultSemiBold">{formatCedis(amount, 0)}</ThemedText>
             </Pressable>
           ))}
         </View>

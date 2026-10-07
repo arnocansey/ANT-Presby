@@ -13,6 +13,7 @@ import {
 } from '@/hooks/use-api';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/store/auth';
+import { formatCedis } from '@/lib/currency';
 
 const eventColors = [
   { bg: 'rgba(168,85,247,0.16)', text: '#C084FC' },
@@ -177,12 +178,12 @@ export default function EventsScreen() {
           </View>
         </View>
         <View style={styles.amountRow}>
-          {['$25', '$50', '$100'].map((amount) => (
+          {[25, 50, 100].map((amount) => (
             <Pressable
               key={amount}
-              onPress={() => router.push(`/donate?amount=${encodeURIComponent(amount.replace('$', ''))}` as never)}
+              onPress={() => router.push(`/donate?amount=${amount}` as never)}
               style={[styles.amountButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-              <ThemedText type="defaultSemiBold">{amount}</ThemedText>
+              <ThemedText type="defaultSemiBold">{formatCedis(amount, 0)}</ThemedText>
             </Pressable>
           ))}
         </View>

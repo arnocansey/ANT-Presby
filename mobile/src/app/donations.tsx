@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useMyDonations } from '@/hooks/use-api';
 import { useAuthStore } from '@/store/auth';
 import { Spacing } from '@/constants/theme';
+import { formatCedis } from '@/lib/currency';
 
 export default function DonationsScreen() {
   const user = useAuthStore((state) => state.user);
@@ -56,7 +57,7 @@ export default function DonationsScreen() {
         donations.map((item: any) => (
           <BrandCard key={item.id}>
             <BrandPill>{item.status || 'pending'}</BrandPill>
-            <ThemedText type="defaultSemiBold">{`$${Number(item.amount || 0).toFixed(2)}`}</ThemedText>
+            <ThemedText type="defaultSemiBold">{formatCedis(item.amount)}</ThemedText>
             <ThemedText type="small">{item.donation_type || item.donationType || 'general'}</ThemedText>
             <ThemedText type="small">{item.payment_method || item.paymentMethod || 'payment'}</ThemedText>
             <ThemedText type="small">

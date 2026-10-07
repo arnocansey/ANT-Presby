@@ -6,6 +6,7 @@ import { useAdminDonations, useUpdateDonationStatus } from '@/hooks/useApi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { formatCurrency } from '@/lib/utils';
 
 type Donation = {
   id: number;
@@ -90,7 +91,7 @@ export default function AdminDonationsPage() {
             {
               key: 'amount',
               header: 'Amount',
-              render: (donation: Donation) => `GHS ${Number(donation.amount || 0).toLocaleString()}`,
+              render: (donation: Donation) => formatCurrency(donation.amount),
             },
             {
               key: 'status',

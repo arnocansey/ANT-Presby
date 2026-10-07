@@ -45,13 +45,12 @@ export const formatDateOnly = (value?: string | null): string => {
 };
 
 /**
- * Format currency
+ * Format an amount in Ghana cedis, e.g. "GH₵ 1,250.00" (decimals = 0 for quick-amount chips).
  */
-export const formatCurrency = (amount: number, currency: string = 'GHS'): string => {
-  return new Intl.NumberFormat('en-GH', {
-    style: 'currency',
-    currency,
-  }).format(amount);
+export const formatCurrency = (amount: number | string | null | undefined, decimals = 2): string => {
+  const value = Number(amount ?? 0);
+  const safe = Number.isFinite(value) ? value : 0;
+  return `GH₵ ${safe.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 };
 
 /**

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useInitializeDonationPayment } from '@/hooks/useApi';
 import apiClient from '@/lib/api';
+import { formatCurrency } from '@/lib/utils';
 
 type DonationForm = {
   amount: string;
@@ -152,18 +153,18 @@ function DonateContent() {
                       : 'border border-slate-200 bg-white text-slate-600 hover:text-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:text-white'
                   }`}
                 >
-                  ${quickAmount}
+                  {formatCurrency(quickAmount, 0)}
                 </button>
               ))}
             </div>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-ui-subtle">$</span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-ui-subtle">GH₵</span>
               <Input
                 type="number"
                 step="0.01"
                 min="0"
                 placeholder="Other amount"
-                className="h-12 rounded-xl border-slate-200 bg-white pl-8 text-lg font-bold dark:border-slate-800 dark:bg-slate-950"
+                className="h-12 rounded-xl border-slate-200 bg-white pl-14 text-lg font-bold dark:border-slate-800 dark:bg-slate-950"
                 {...register('amount')}
               />
             </div>
@@ -218,7 +219,7 @@ function DonateContent() {
           >
             {initializePayment.isPending
               ? 'Processing...'
-              : `Give ${amount ? `$${Number(amount || 0).toFixed(2)}` : 'Now'}`}
+              : `Give ${amount ? formatCurrency(amount) : 'Now'}`}
           </Button>
 
           <div className="flex items-center justify-center gap-2 text-xs text-ui-subtle">

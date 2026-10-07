@@ -203,6 +203,7 @@ export default function AccountScreen() {
         <UtilityButton label="Community Feed" onPress={() => router.push('/community' as never)} />
         <UtilityButton label="Prayer Wall" onPress={() => router.push('/prayer-wall' as never)} />
         <UtilityButton label="Daily Devotional" onPress={() => router.push('/daily-devotional' as never)} />
+        <UtilityButton label="Photo Gallery" onPress={() => router.push('/gallery' as never)} />
         <UtilityButton label="News & Updates" onPress={() => router.push('/news' as never)} />
         <UtilityButton label="Open Dashboard" onPress={() => router.push('/dashboard')} />
         {user.role === 'admin' ? <UtilityButton label="Open Admin Console" onPress={() => router.push('/admin')} /> : null}

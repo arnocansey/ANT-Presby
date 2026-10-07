@@ -89,6 +89,8 @@ export const routeForNotification = (data: NotificationData | undefined): string
       return data.entityId ? `/events/${data.entityId}` : '/notifications';
     case 'devotional':
       return '/daily-devotional';
+    case 'album':
+      return data.entityId ? `/gallery/${data.entityId}` : '/gallery';
     case 'news':
       return data.entityId ? `/news/${data.entityId}` : '/notifications';
     default:

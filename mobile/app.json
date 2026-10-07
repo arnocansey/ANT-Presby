@@ -50,6 +50,15 @@
         }
       ],
       [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow ANT PRESS to choose photos for events and albums.",
+          "savePhotosPermission": "Allow ANT PRESS to save church photos to your photo library.",
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": ["photo"]
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#0f172a",

@@ -188,3 +188,7 @@ Uploaded images (profile photos, news, sermon series, events; later photo albums
 Without these settings (e.g. on a local machine) uploads are saved under `backend/uploads/` instead. Images uploaded before this change keep their `/uploads/...` links; re-upload any that no longer load.
 
 The mobile app's event image picker (`expo-image-picker`) is a native module: ship a new EAS build.
+
+## Livestream
+
+No new settings or packages. The `migrate:features` step in the Render build creates the single-row `live_stream` table. The mobile live card and admin screen use only built-in modules, so an over-the-air update is enough; no new EAS build is needed for this feature.

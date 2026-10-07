@@ -145,6 +145,7 @@ model User {
   pushTokens           PushToken[]
   announcementsSent    Announcement[]      @relation("AnnouncementSender")
   authoredDevotionals  Devotional[]
+  createdAlbums        PhotoAlbum[]        @relation("AlbumCreator")
 
   @@index([role], map: "idx_users_role")
   @@index([createdAt], map: "idx_users_created_at")
@@ -227,6 +228,7 @@ model Event {
   registrations    EventRegistration[]
   attendance       AttendanceRecord[]
   announcements    Announcement[]
+  albums           PhotoAlbum[]
 
   @@index([eventDate(sort: Desc)], map: "idx_events_date")
   @@index([status], map: "idx_events_status")
@@ -548,4 +550,43 @@ model Devotional {
 
   @@index([status, publishDate(sort: Desc)], map: "idx_devotionals_status_date")
   @@map("devotionals")
+}
+
+model PhotoAlbum {
+  id           Int          @id @default(autoincrement())
+  title        String       @db.VarChar(255)
+  description  String?
+  eventId      Int?         @map("event_id")
+  externalUrl  String?      @map("external_url") @db.VarChar(500)
+  // Plain column with no foreign key (avoids a cycle); checked in code to belong to this album.
+  coverPhotoId Int?         @map("cover_photo_id")
+  isPublished  Boolean      @default(false) @map("is_published")
+  notifiedAt   DateTime?    @map("notified_at")
+  createdBy    Int?         @map("created_by")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  creator      User?        @relation("AlbumCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  photos       AlbumPhoto[]
+
+  @@index([isPublished, createdAt(sort: Desc)], map: "idx_photo_albums_published_created")
+  @@index([eventId], map: "idx_photo_albums_event")
+  @@map("photo_albums")
+}
+
+model AlbumPhoto {
+  id        Int        @id @default(autoincrement())
+  albumId   Int        @map("album_id")
+  publicId  String     @unique @map("public_id") @db.VarChar(255)
+  url       String     @db.VarChar(500)
+  width     Int?
+  height    Int?
+  bytes     Int?
+  format    String?    @db.VarChar(10)
+  sortOrder Int        @default(0) @map("sort_order")
+  createdAt DateTime   @default(now()) @map("created_at")
+  album     PhotoAlbum @relation(fields: [albumId], references: [id], onDelete: Cascade)
+
+  @@index([albumId, sortOrder], map: "idx_album_photos_album_sort")
+  @@map("album_photos")
 }

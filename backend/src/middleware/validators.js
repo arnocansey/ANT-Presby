@@ -198,6 +198,45 @@ const validateGroupLeaders = [
   body('userIds.*').isInt({ min: 1, max: MAX_DB_ID }).withMessage('Each userId must be a positive integer'),
 ];
 
+// Photo album create/update. The outside folder link must be https (Google Drive or Photos).
+const validateAlbum = [
+  body('title')
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('Title is required')
+    .isLength({ max: 255 })
+    .withMessage('Title must be 255 characters or fewer'),
+  body('description')
+    .optional({ values: 'null' })
+    .isString()
+    .isLength({ max: 5000 })
+    .withMessage('Description must be 5000 characters or fewer'),
+  body('eventId')
+    .optional({ values: 'null' })
+    .isInt({ min: 1, max: MAX_DB_ID })
+    .withMessage('eventId must be a positive integer or null'),
+  body('externalUrl')
+    .optional({ values: 'falsy' })
+    .isString()
+    .isLength({ max: 500 })
+    .withMessage('External link must be 500 characters or fewer')
+    .bail()
+    .isURL({ protocols: ['https'], require_protocol: true, require_valid_protocol: true })
+    .withMessage('External link must be an https URL'),
+  body('isPublished').optional().isBoolean({ strict: true }).withMessage('isPublished must be true or false'),
+];
+
+// Recording uploaded album photos: 1-100 Cloudinary public ids per request.
+const validateAlbumPhotos = [
+  body('publicIds').isArray({ min: 1, max: 100 }).withMessage('publicIds must list 1 to 100 photos'),
+  body('publicIds.*').isString().isLength({ min: 1, max: 255 }).withMessage('Each publicId must be text'),
+];
+
+const validateAlbumCover = [
+  body('photoId').isInt({ min: 1, max: MAX_DB_ID }).withMessage('photoId must be a positive integer'),
+];
+
 // Devotional create/update. publishDate is a real calendar date in YYYY-MM-DD.
 const validateDevotional = [
   body('title').isString().trim().notEmpty().withMessage('Title is required').isLength({ max: 255 }),
@@ -353,6 +392,9 @@ module.exports = {
   validateCheckIn,
   validateGroup,
   validateGroupLeaders,
+  validateAlbum,
+  validateAlbumPhotos,
+  validateAlbumCover,
   validateDevotional,
   validateEventCreation,
   validatePrayerRequest,

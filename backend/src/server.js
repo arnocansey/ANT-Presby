@@ -41,6 +41,8 @@ const contactRoutes = require('./routes/contactRoutes');
 const prismaRoutes = require('./routes/prismaRoutes');
 const communityFeedRoutes = require('./routes/communityFeedRoutes');
 const groupRoutes = require('./routes/groupRoutes');
+const albumRoutes = require('./routes/albumRoutes');
+const adminAlbumRoutes = require('./routes/adminAlbumRoutes');
 
 // Initialize Express app
 const app = express();
@@ -184,6 +186,7 @@ app.use('/api/admin/donations', adminDonationRoutes);
 app.use('/api/admin/settings', adminSettingsRoutes);
 app.use('/api/admin/news', adminNewsRoutes);
 app.use('/api/admin/devotionals', adminDevotionalRoutes);
+app.use('/api/admin/albums', adminAlbumRoutes);
 app.use('/api/admin/audit-logs', adminAuditRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/news', newsRoutes);
@@ -195,6 +198,7 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/prisma', prismaRoutes);
 app.use('/api/community', communityFeedRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/albums', albumRoutes);
 
 // 404 handler
 app.use(notFoundHandler);

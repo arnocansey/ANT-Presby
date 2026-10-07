@@ -22,7 +22,11 @@ describe('imageStorage album helpers', () => {
           delete_resources_by_prefix: jest.fn().mockResolvedValue({ deleted: {} }),
           delete_folder: jest.fn().mockResolvedValue({ deleted: [] }),
         },
-        uploader: { destroy: jest.fn().mockResolvedValue({ result: 'ok' }) },
+        uploader: {
+          destroy: jest.fn().mockResolvedValue({ result: 'ok' }),
+          add_tag: jest.fn().mockResolvedValue({ public_ids: [] }),
+          remove_tag: jest.fn().mockResolvedValue({ public_ids: [] }),
+        },
       },
     };
     jest.doMock('cloudinary', () => cloudinary);
@@ -182,34 +186,57 @@ describe('imageStorage album helpers', () => {
     expect(cloudinary.v2.url).not.toHaveBeenCalled();
   });
 
-  test('the archive url lists the photos and is named after the album', () => {
+  test('the archive zips the album by its tag, so only recorded photos are included', () => {
     configure();
     const storage = load();
 
-    const url = storage.albumArchiveUrl(7, ['antpresby/albums/7/a1', 'antpresby/albums/7/a2'], 'Harvest Sunday: 2026!');
+    const url = storage.albumArchiveUrl(7, 'Harvest Sunday: 2026!');
 
     expect(url).toBe('https://api.cloudinary.com/v1_1/demo/image/generate_archive?signed=1');
     expect(cloudinary.v2.utils.download_zip_url).toHaveBeenCalledWith({
       resource_type: 'image',
       flatten_folders: true,
       target_public_id: 'harvest-sunday-2026',
-      public_ids: ['antpresby/albums/7/a1', 'antpresby/albums/7/a2'],
+      tags: 'antpresby-album-7',
     });
+    storage.albumArchiveUrl(7, '');
+    expect(cloudinary.v2.utils.download_zip_url).toHaveBeenLastCalledWith(expect.objectContaining({ target_public_id: 'album-7' }));
   });
 
-  test('a large album is archived by its folder prefix so the url stays short', () => {
+  test('recorded photos are tagged with their album, 1000 ids per call', async () => {
     configure();
     const storage = load();
-    const ids = Array.from({ length: 101 }, (_, i) => `antpresby/albums/7/p${i}`);
+    const ids = Array.from({ length: 1001 }, (_, i) => `antpresby/albums/7/p${i}`);
 
-    storage.albumArchiveUrl(7, ids, '');
+    await storage.tagAlbumPhotos(7, ids);
 
-    expect(cloudinary.v2.utils.download_zip_url).toHaveBeenCalledWith({
-      resource_type: 'image',
-      flatten_folders: true,
-      target_public_id: 'album-7',
-      prefixes: 'antpresby/albums/7/',
-    });
+    expect(cloudinary.v2.uploader.add_tag).toHaveBeenCalledTimes(2);
+    expect(cloudinary.v2.uploader.add_tag).toHaveBeenNthCalledWith(1, 'antpresby-album-7', ids.slice(0, 1000));
+    expect(cloudinary.v2.uploader.add_tag).toHaveBeenNthCalledWith(2, 'antpresby-album-7', ids.slice(1000));
+  });
+
+  test('a tagging failure is a 502, so the photos are not recorded', async () => {
+    configure();
+    const storage = load();
+    cloudinary.v2.uploader.add_tag.mockRejectedValue(new Error('rate limited'));
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await expect(storage.tagAlbumPhotos(7, ['antpresby/albums/7/a1'])).rejects.toMatchObject({ statusCode: 502 });
+
+    warn.mockRestore();
+  });
+
+  test('untagging takes a photo out of the album zip; a failure is a 502', async () => {
+    configure();
+    const storage = load();
+
+    await storage.untagAlbumPhoto(7, 'antpresby/albums/7/a1');
+    expect(cloudinary.v2.uploader.remove_tag).toHaveBeenCalledWith('antpresby-album-7', ['antpresby/albums/7/a1']);
+
+    cloudinary.v2.uploader.remove_tag.mockRejectedValue(new Error('down'));
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(storage.untagAlbumPhoto(7, 'antpresby/albums/7/a1')).rejects.toMatchObject({ statusCode: 502 });
+    warn.mockRestore();
   });
 
   test('deleteAlbumPhoto removes album photos only', async () => {

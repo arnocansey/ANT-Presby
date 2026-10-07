@@ -85,6 +85,8 @@ const buildModels = () => ({
     verifyAlbumAssets: jest.fn().mockResolvedValue({ verified: [verifiedPhoto(5)], rejected: [] }),
     deleteAlbumPhoto: jest.fn().mockResolvedValue(true),
     deleteAlbumFolder: jest.fn().mockResolvedValue(true),
+    tagAlbumPhotos: jest.fn().mockResolvedValue(undefined),
+    untagAlbumPhoto: jest.fn().mockResolvedValue(undefined),
   },
   notificationService: { notify: jest.fn(), notifyAll: jest.fn().mockResolvedValue({ inApp: 40, push: 12 }) },
   auditLogModel: { createAuditLog: jest.fn().mockResolvedValue({}) },
@@ -172,7 +174,7 @@ describe('Albums API (public)', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data).toEqual({ url: 'https://api.cloudinary.com/v1_1/demo/image/generate_archive?signed=1' });
-    expect(models.imageStorage.albumArchiveUrl).toHaveBeenCalledWith(3, [PID(1), PID(2)], 'Harvest Sunday');
+    expect(models.imageStorage.albumArchiveUrl).toHaveBeenCalledWith(3, 'Harvest Sunday');
   });
 
   test('downloading an empty album is 404 "No photos yet"', async () => {
@@ -370,6 +372,45 @@ describe('Albums API (admin)', () => {
     expect(response.status).toBe(502);
     expect(models.photoAlbumModel.addPhotos).not.toHaveBeenCalled();
     quiet.mockRestore();
+  });
+
+  test('recorded photos are tagged with their album before they are saved', async () => {
+    const response = await request(app).post('/api/admin/albums/3/photos').set('Authorization', admin()).send({ publicIds: [PID(5)] });
+
+    expect(response.status).toBe(200);
+    expect(models.imageStorage.tagAlbumPhotos).toHaveBeenCalledWith(3, [PID(5)]);
+    expect(models.imageStorage.tagAlbumPhotos.mock.invocationCallOrder[0]).toBeLessThan(
+      models.photoAlbumModel.addPhotos.mock.invocationCallOrder[0]
+    );
+  });
+
+  test('when tagging fails nothing is saved, so the photos never reach the album zip', async () => {
+    models.imageStorage.tagAlbumPhotos.mockRejectedValue(Object.assign(new Error('Image storage is unavailable, please try again'), { statusCode: 502 }));
+
+    const response = await request(app).post('/api/admin/albums/3/photos').set('Authorization', admin()).send({ publicIds: [PID(5)] });
+
+    expect(response.status).toBe(502);
+    expect(models.photoAlbumModel.addPhotos).not.toHaveBeenCalled();
+  });
+
+  test('a deleted photo leaves the album zip before its record is removed', async () => {
+    const response = await request(app).delete('/api/admin/albums/3/photos/2').set('Authorization', admin());
+
+    expect(response.status).toBe(200);
+    expect(models.imageStorage.untagAlbumPhoto).toHaveBeenCalledWith(3, PID(2));
+    expect(models.imageStorage.untagAlbumPhoto.mock.invocationCallOrder[0]).toBeLessThan(
+      models.photoAlbumModel.deletePhoto.mock.invocationCallOrder[0]
+    );
+  });
+
+  test('if the photo cannot be taken out of the zip, it is kept and the admin sees an error', async () => {
+    models.imageStorage.untagAlbumPhoto.mockRejectedValue(Object.assign(new Error('Image storage is unavailable, please try again'), { statusCode: 502 }));
+
+    const response = await request(app).delete('/api/admin/albums/3/photos/2').set('Authorization', admin());
+
+    expect(response.status).toBe(502);
+    expect(models.photoAlbumModel.deletePhoto).not.toHaveBeenCalled();
+    expect(models.imageStorage.deleteAlbumPhoto).not.toHaveBeenCalled();
   });
 
   test('deleting a photo removes the record, then the Cloudinary image', async () => {

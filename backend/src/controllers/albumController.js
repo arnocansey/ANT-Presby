@@ -89,7 +89,7 @@ const download = async (req, res, next) => {
     if (!album) return fail(res, 404, NOT_FOUND);
     if (album.photos.length === 0) return fail(res, 404, 'No photos yet');
     if (!imageStorage.isConfigured()) return fail(res, 503, 'Downloads need Cloudinary to be configured');
-    const url = imageStorage.albumArchiveUrl(album.id, album.photos.map((photo) => photo.public_id), album.title);
+    const url = imageStorage.albumArchiveUrl(album.id, album.title);
     res.json(apiResponse(true, { url }, 'Download ready'));
   } catch (error) {
     next(error);
@@ -214,6 +214,8 @@ const adminAddPhotos = async (req, res, next) => {
       return fail(res, 400, 'None of the photos could be added', { added: 0, rejected });
     }
 
+    // Tag first: only tagged photos go into the album zip, so a photo is never recorded untagged.
+    await imageStorage.tagAlbumPhotos(album.id, verified.map((photo) => photo.publicId));
     const added = await photoAlbumModel.addPhotos(album.id, verified);
     await audit(req, 'add_photos', album.id, `Added ${added} photo(s) to album "${album.title}"`, {
       added,
@@ -229,12 +231,18 @@ const adminAddPhotos = async (req, res, next) => {
   }
 };
 
-// The record goes first, so a Cloudinary hiccup can never leave a broken photo in the album.
+// The photo first leaves the album zip (its tag); if that fails nothing changes. Then the record goes,
+// so a Cloudinary hiccup during file cleanup can never leave a broken photo in the album or the zip.
 const adminDeletePhoto = async (req, res, next) => {
   try {
     const albumId = parseId(req.params.id);
     const photoId = parseId(req.params.photoId);
-    const photo = albumId && photoId ? await photoAlbumModel.deletePhoto(albumId, photoId) : undefined;
+    const album = albumId && photoId ? await photoAlbumModel.getById(albumId) : undefined;
+    const target = album?.photos?.find((item) => Number(item.id) === photoId);
+    if (!target) return fail(res, 404, 'Photo not found');
+
+    await imageStorage.untagAlbumPhoto(albumId, target.public_id);
+    const photo = await photoAlbumModel.deletePhoto(albumId, photoId);
     if (!photo) return fail(res, 404, 'Photo not found');
 
     await imageStorage.deleteAlbumPhoto(photo.public_id);

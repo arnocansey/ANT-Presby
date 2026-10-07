@@ -120,7 +120,6 @@ const deleteImage = async (url) => {
 
 const ALBUM_FORMATS = ['jpg', 'jpeg', 'png', 'webp', 'heic'];
 const ALBUM_MAX_BYTES = 10 * 1024 * 1024;
-const ALBUM_ARCHIVE_ID_LIMIT = 100;
 const ALBUM_PUBLIC_ID = /^antpresby\/albums\/(\d+)\/[A-Za-z0-9_-]+$/;
 
 const albumFolder = (albumId) => `${ROOT_FOLDER}/albums/${Number(albumId)}`;
@@ -211,21 +210,39 @@ const slugify = (text) =>
     .replace(/^-+|-+$/g, '')
     .slice(0, 60);
 
+// Every recorded photo carries its album's tag; uploads that were never recorded, and deleted photos, don't.
+const ALBUM_TAG_BATCH = 1000;
+const albumTag = (albumId) => `${ROOT_FOLDER}-album-${Number(albumId)}`;
+
+const tagAlbumPhotos = async (albumId, publicIds) => {
+  try {
+    for (let i = 0; i < publicIds.length; i += ALBUM_TAG_BATCH) {
+      await client().uploader.add_tag(albumTag(albumId), publicIds.slice(i, i + ALBUM_TAG_BATCH));
+    }
+  } catch (error) {
+    console.warn('Album photo tagging failed:', error.message);
+    throw storageUnavailable();
+  }
+};
+
+const untagAlbumPhoto = async (albumId, publicId) => {
+  try {
+    await client().uploader.remove_tag(albumTag(albumId), [publicId]);
+  } catch (error) {
+    console.warn('Album photo untagging failed:', error.message);
+    throw storageUnavailable();
+  }
+};
+
 // A signed link that makes Cloudinary build the zip on its side. Generated on request; never stored.
-// Up to 100 photos are listed by id; bigger albums use the folder prefix so the URL stays short.
-const albumArchiveUrl = (albumId, publicIds, title) => {
-  const options = {
+// Zipping by the album's tag keeps the URL short at any size and includes only recorded photos.
+const albumArchiveUrl = (albumId, title) =>
+  client().utils.download_zip_url({
     resource_type: 'image',
     flatten_folders: true,
     target_public_id: slugify(title) || `album-${Number(albumId)}`,
-  };
-  if (publicIds.length <= ALBUM_ARCHIVE_ID_LIMIT) {
-    options.public_ids = publicIds;
-  } else {
-    options.prefixes = `${albumFolder(albumId)}/`;
-  }
-  return client().utils.download_zip_url(options);
-};
+    tags: albumTag(albumId),
+  });
 
 // Best-effort removal of one album photo; never throws.
 const deleteAlbumPhoto = async (publicId) => {
@@ -274,6 +291,8 @@ module.exports = {
   thumbnailUrl,
   downloadUrl,
   albumArchiveUrl,
+  tagAlbumPhotos,
+  untagAlbumPhoto,
   deleteAlbumPhoto,
   deleteAlbumFolder,
 };

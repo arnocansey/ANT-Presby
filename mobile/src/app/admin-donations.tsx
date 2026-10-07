@@ -128,7 +128,7 @@ export default function AdminDonationsScreen() {
                 <BrandPill>{status}</BrandPill>
               </View>
               <ThemedText type="small">
-                Amount: {typeof donation?.amount === 'number' ? donation.amount.toLocaleString() : donation?.amount || 0}
+                Amount: {formatCedis(donation?.amount)}
               </ThemedText>
               <ThemedText type="small">
                 Type: {donation?.type || donation?.donation_type || 'general'} | Method: {donation?.payment_method || 'unknown'}

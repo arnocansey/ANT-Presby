@@ -44,7 +44,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow ANT PRESS to choose photos for events and albums."
+          "photosPermission": "Allow ANT PRESS to choose photos for events and albums.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ],
       [

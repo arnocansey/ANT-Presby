@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Banknote, BookOpen, Calendar, ClipboardCheck, Heart, History, Home, Layers, Megaphone, Newspaper, Settings, UserRoundCog, Users } from 'lucide-react';
+import { Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -17,6 +18,7 @@ const navItems = [
   { href: '/admin/groups', label: 'Small Groups', icon: Users },
   { href: '/admin/news', label: 'News', icon: Newspaper },
   { href: '/admin/announcements', label: 'Announcements', icon: Megaphone },
+  { href: '/admin/live', label: 'Livestream', icon: Radio },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/prayers', label: 'Prayer Requests', icon: Heart },
   { href: '/admin/donations', label: 'Donations', icon: Banknote },

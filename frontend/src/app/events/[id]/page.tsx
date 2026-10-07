@@ -75,6 +75,14 @@ export default function EventDetailPage() {
                     ? `${registeredCount}/${maxRegistrations} registered`
                     : `${registeredCount} registered`}
                 </p>
+                {data.album_id ? (
+                  <Link
+                    href={`/gallery/${data.album_id}`}
+                    className="font-semibold text-sky-700 hover:text-sky-800 dark:text-cyan-300 dark:hover:text-cyan-200"
+                  >
+                    View photos from this event
+                  </Link>
+                ) : null}
               </div>
             </div>
 

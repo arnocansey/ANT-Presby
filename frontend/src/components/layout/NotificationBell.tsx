@@ -71,6 +71,10 @@ export default function NotificationBell() {
       router.push(`/news/${notification.entity_id}`);
       return;
     }
+    if (notification.entity_type === 'album' && notification.entity_id) {
+      router.push(`/gallery/${notification.entity_id}`);
+      return;
+    }
     if (notification.entity_type === 'devotional' && notification.entity_id) {
       router.push(`/devotionals/${notification.entity_id}`);
       return;

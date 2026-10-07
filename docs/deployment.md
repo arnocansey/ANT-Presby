@@ -192,3 +192,12 @@ The mobile app's event image picker (`expo-image-picker`) is a native module: sh
 ## Livestream
 
 No new settings or packages. The `migrate:features` step in the Render build creates the single-row `live_stream` table. The mobile live card and admin screen use only built-in modules, so an over-the-air update is enough; no new EAS build is needed for this feature.
+
+## Photo albums
+
+Photo albums use the same Cloudinary account as the other images (the three `CLOUDINARY_*` settings above); without them, album uploads return 503 "Photo uploads need Cloudinary to be configured".
+
+- Album photos are uploaded by the browser or phone straight to Cloudinary under `antpresby/albums/<id>/`, using a signature the API issues. The API secret never leaves Render.
+- The API checks each uploaded photo with Cloudinary's Admin API before recording it. On the free plan the Admin API is rate limited (about 500 calls an hour), and each batch of up to 100 photos uses one call.
+- Run `migrate:features` to create the `photo_albums` and `album_photos` tables (the Render build already does this).
+- The mobile app adds `expo-media-library` and `expo-file-system` (native modules), so ship a new EAS build.

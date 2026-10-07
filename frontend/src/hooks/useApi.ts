@@ -1053,6 +1053,189 @@ export const useRemoveEventImage = (eventId?: number | string) => {
   });
 };
 
+export type AlbumSummary = {
+  id: number;
+  title: string;
+  description: string | null;
+  event_id: number | null;
+  event_name: string | null;
+  cover_url: string | null;
+  photo_count: number;
+  external_url: string | null;
+  created_at: string;
+};
+
+export type AlbumPhoto = {
+  id: number;
+  url: string;
+  thumb_url: string;
+  download_url: string;
+  width: number | null;
+  height: number | null;
+  format: string | null;
+};
+
+export type AlbumDetail = AlbumSummary & { photos: AlbumPhoto[] };
+
+export type AdminAlbum = AlbumSummary & {
+  is_published: boolean;
+  cover_photo_id: number | null;
+  notified_at: string | null;
+  updated_at: string;
+};
+
+export type AdminAlbumDetail = AdminAlbum & { photos: AlbumPhoto[] };
+
+export type AlbumInput = {
+  title: string;
+  description: string | null;
+  eventId: number | null;
+  externalUrl: string | null;
+  isPublished: boolean;
+};
+
+export type AlbumUploadSignature = {
+  cloudName: string;
+  apiKey: string;
+  timestamp: number;
+  signature: string;
+  folder: string;
+  allowedFormats: string;
+  maxFileSize: number;
+};
+
+export type RecordPhotosResult = { added: number; rejected: string[] };
+
+const invalidateAlbums = (qc: ReturnType<typeof useQueryClient>) =>
+  Promise.all([
+    qc.invalidateQueries({ queryKey: ['albums'] }),
+    qc.invalidateQueries({ queryKey: ['admin', 'albums'] }),
+    qc.invalidateQueries({ queryKey: ['event'] }),
+  ]);
+
+export const useAlbums = (page = 1) =>
+  useQuery({
+    queryKey: ['albums', 'list', page],
+    queryFn: async (): Promise<{ data: AlbumSummary[]; hasMore: boolean }> => {
+      const response = await apiClient.get('/albums', { params: { page, limit: 12 } });
+      return { data: response.data?.data ?? [], hasMore: Boolean(response.data?.meta?.has_more) };
+    },
+  });
+
+export const useAlbum = (id?: number) =>
+  useQuery({
+    queryKey: ['albums', 'detail', id],
+    enabled: Boolean(id),
+    retry: false,
+    queryFn: async (): Promise<AlbumDetail> => {
+      const response = await apiClient.get(`/albums/${id}`);
+      return response.data?.data;
+    },
+  });
+
+export const useAlbumDownload = () =>
+  useMutation({
+    mutationFn: async (id: number): Promise<string> => {
+      const response = await apiClient.get(`/albums/${id}/download`);
+      return response.data?.data?.url;
+    },
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not prepare the download')),
+  });
+
+export const useAdminAlbums = () =>
+  useQuery({
+    queryKey: ['admin', 'albums'],
+    queryFn: async (): Promise<AdminAlbum[]> => {
+      const response = await apiClient.get('/admin/albums');
+      return response.data?.data ?? [];
+    },
+  });
+
+export const useAdminAlbum = (id?: number) =>
+  useQuery({
+    queryKey: ['admin', 'albums', id],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<AdminAlbumDetail> => {
+      const response = await apiClient.get(`/admin/albums/${id}`);
+      return response.data?.data;
+    },
+  });
+
+export const useSaveAlbum = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, input }: { id?: number; input: AlbumInput }) => {
+      const response = id ? await apiClient.put(`/admin/albums/${id}`, input) : await apiClient.post('/admin/albums', input);
+      return { album: response.data?.data as AdminAlbumDetail, message: String(response.data?.message || '') };
+    },
+    onSuccess: ({ message }) => toast.success(message || 'Album saved'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not save the album')),
+    onSettled: () => invalidateAlbums(qc),
+  });
+};
+
+export const useDeleteAlbum = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await apiClient.delete(`/admin/albums/${id}`);
+    },
+    onSuccess: () => toast.success('Album deleted'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not delete the album')),
+    onSettled: () => invalidateAlbums(qc),
+  });
+};
+
+export const useAlbumUploadSignature = (albumId?: number) =>
+  useMutation({
+    mutationFn: async (): Promise<AlbumUploadSignature> => {
+      const response = await apiClient.post(`/admin/albums/${albumId}/upload-signature`);
+      return response.data?.data;
+    },
+  });
+
+export const useRecordAlbumPhotos = (albumId?: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (publicIds: string[]): Promise<RecordPhotosResult> => {
+      try {
+        const response = await apiClient.post(`/admin/albums/${albumId}/photos`, { publicIds });
+        return response.data?.data;
+      } catch (error: any) {
+        // "None of the photos could be added" still tells us which ones were rejected.
+        const data = error?.response?.data?.data;
+        if (error?.response?.status === 400 && Array.isArray(data?.rejected)) return data as RecordPhotosResult;
+        throw error;
+      }
+    },
+    onSettled: () => invalidateAlbums(qc),
+  });
+};
+
+export const useDeleteAlbumPhoto = (albumId?: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (photoId: number) => {
+      await apiClient.delete(`/admin/albums/${albumId}/photos/${photoId}`);
+    },
+    onSuccess: () => toast.success('Photo deleted'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not delete the photo')),
+    onSettled: () => invalidateAlbums(qc),
+  });
+};
+
+export const useSetAlbumCover = (albumId?: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (photoId: number) => {
+      await apiClient.patch(`/admin/albums/${albumId}/cover`, { photoId });
+    },
+    onSuccess: () => toast.success('Cover updated'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not set the cover')),
+    onSettled: () => invalidateAlbums(qc),
+  });
+};
+
 export const useAdminEvents = () => {
   return useQuery({
     queryKey: ['admin', 'events'],

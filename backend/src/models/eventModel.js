@@ -68,6 +68,12 @@ const getEventById = async (eventId) => {
       _count: {
         select: { registrations: true },
       },
+      albums: {
+        where: { isPublished: true },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        take: 1,
+        select: { id: true },
+      },
     },
   });
 
@@ -77,7 +83,9 @@ const getEventById = async (eventId) => {
 
   const mapped = toSnakeCaseObject(event);
   mapped.registered_count = event._count.registrations;
+  mapped.album_id = event.albums?.[0]?.id ?? null;
   delete mapped._count;
+  delete mapped.albums;
   return mapped;
 };
 

@@ -179,3 +179,10 @@ Current media behavior:
 - `/live` embeds the YouTube stream when the link contains a video ID (`watch?v=`, `youtu.be/`, `/live/`, `/embed/`), and offers "Watch on YouTube" and "Watch on Facebook" buttons. Facebook is never embedded. On mobile, the buttons open the YouTube or Facebook app.
 - Everyone is notified exactly once per stream, even if two admins press "Go live" together. Updating the links while live does not notify again.
 - "End" takes the banner and card down for everyone and is safe to press twice. Every start, update and end is in the audit log.
+
+## Photo Albums
+
+- Anyone with the link can browse published albums at `/gallery` (web) or Account → Photo Gallery (mobile), open photos full size, and download them one at a time or all at once as a zip.
+- Albums can link to an event (the event page shows "View photos") and to an outside folder such as Google Drive.
+- Admins manage albums at `/admin/gallery` or in the mobile admin console. They upload many photos at once (straight to Cloudinary, up to 10 MB each), choose a cover, and publish.
+- Everyone is notified once, the first time a published album has photos.

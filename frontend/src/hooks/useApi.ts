@@ -801,6 +801,59 @@ export const useSendAnnouncement = () => {
   });
 };
 
+export type LiveState = {
+  is_live: boolean;
+  title: string | null;
+  youtube_url: string | null;
+  facebook_url: string | null;
+  youtube_embed_url: string | null;
+  started_at: string | null;
+};
+
+export type LiveStartInput = { title: string; youtubeUrl?: string; facebookUrl?: string };
+
+type LiveResult<T> = { data: T; message: string };
+
+// Validation errors carry the useful text in details[0].message, not in "error".
+const getLiveErrorMessage = (error: any, fallback: string) =>
+  error?.response?.data?.details?.[0]?.message || getApiErrorMessage(error, fallback);
+
+export const useLiveStream = (refetchInterval?: number) =>
+  useQuery({
+    queryKey: ['live'],
+    queryFn: async (): Promise<LiveState | null> => {
+      const response = await apiClient.get('/live');
+      return response.data?.data ?? null;
+    },
+    refetchInterval,
+  });
+
+export const useStartLive = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: LiveStartInput) => {
+      const response = await apiClient.post('/admin/live/start', input);
+      return response.data as LiveResult<LiveState & { notified: boolean }>;
+    },
+    onSuccess: (result) => toast.success(result?.message || 'Livestream updated'),
+    onError: (error: any) => toast.error(getLiveErrorMessage(error, 'Could not start the livestream')),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['live'] }),
+  });
+};
+
+export const useEndLive = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post('/admin/live/end');
+      return response.data as LiveResult<LiveState>;
+    },
+    onSuccess: (result) => toast.success(result?.message || 'Livestream ended'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not end the livestream')),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['live'] }),
+  });
+};
+
 export const useMinistry = (id: number) => {
   return useQuery({
     queryKey: ['ministry', id],

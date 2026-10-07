@@ -119,3 +119,31 @@ Use this checklist for final smoke testing on web and Android.
 - [ ] (Dev/store build) Add an event image from the phone's photo library
 - [ ] Every amount on the donate pages, donation history and admin screens shows `GH₵`; no `$` anywhere
 - [ ] A test donation opens Paystack checkout in GHS
+
+## Livestream
+
+- [ ] On web `/admin/live`, enter a title and a YouTube `/live/<id>` link and press "Go live"; the toast says everyone was notified
+- [ ] The red banner appears on public pages within a minute; clicking it opens `/live` with the YouTube player
+- [ ] Members receive one in-app notification (and one push on phones); the web bell opens `/live` and a push tap opens the mobile home screen
+- [ ] Press "Go live" twice quickly (or from web and phone together): still only one notification
+- [ ] Change the YouTube link while live and press "Update links": the player changes and no new notification is sent
+- [ ] A Facebook-only stream shows the "Watch on Facebook" button and no player; on the phone it opens the Facebook app
+- [ ] A `http://` link, a non-YouTube/Facebook link, or no link at all is refused with a clear message
+- [ ] The mobile home live card appears when the app is reopened and its buttons open YouTube/Facebook
+- [ ] "End" removes the banner, the `/live` player ("We're not live right now") and the mobile card; pressing End again is harmless
+- [ ] The audit log shows the start, update and end entries
+
+## Photo Albums
+
+- [ ] Create a draft album on web, drop in 15 photos (one over 10 MB); the over-size one is skipped and the rest show "14 of 14 uploaded"
+- [ ] A draft album's public link shows "Album not found"
+- [ ] Publish the album; one notification arrives, and tapping it opens the album (web bell and phone push)
+- [ ] Unpublish and republish; no second notification
+- [ ] Set a different cover; the gallery card updates
+- [ ] Arrow keys move between photos in the web viewer; Escape closes it
+- [ ] Download one photo, then "Download all"; the zip contains every photo
+- [ ] "Open folder" opens the outside link; "Share" copies the album link
+- [ ] Link an album to an event; the event page shows "View photos"
+- [ ] (Dev/store build) Save a photo to the phone's photo library; denying the permission shows a clear message
+- [ ] (Dev/store build) Upload several photos from the phone as an admin
+- [ ] Delete a photo and then the album; both disappear from the Cloudinary `antpresby/albums/` folder

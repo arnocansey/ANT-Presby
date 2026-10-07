@@ -96,6 +96,10 @@ export default function EventDetailScreen() {
             <DetailLine icon="checkmark-circle-outline" text={`Status: ${data.status || 'active'}`} />
           </BrandCard>
 
+          {data.album_id ? (
+            <BrandButton label="View Event Photos" variant="outline" onPress={() => router.push(`/gallery/${data.album_id}` as never)} />
+          ) : null}
+
           <View style={styles.actionRow}>
             <Pressable style={[styles.reminderButton, { borderColor: theme.border, backgroundColor: 'rgba(255,255,255,0.05)' }]}>
               <Ionicons name="notifications-outline" size={18} color={theme.textSecondary} />

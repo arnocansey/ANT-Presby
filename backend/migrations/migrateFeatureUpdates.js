@@ -553,6 +553,74 @@ async function migrateFeatureUpdates() {
       ALTER TABLE events ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);
     `);
 
+    // Livestream status: a single row, id 1 (phase 7c)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS live_stream (
+        id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+        is_live BOOLEAN NOT NULL DEFAULT FALSE,
+        title VARCHAR(255),
+        youtube_url VARCHAR(500),
+        facebook_url VARCHAR(500),
+        started_at TIMESTAMP,
+        ended_at TIMESTAMP,
+        updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
+      INSERT INTO live_stream (id, is_live) VALUES (1, FALSE)
+      ON CONFLICT (id) DO NOTHING;
+    `);
+
+    // Photo albums (phase 7b)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS photo_albums (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        event_id INTEGER REFERENCES events(id) ON DELETE SET NULL,
+        external_url VARCHAR(500),
+        cover_photo_id INTEGER,
+        is_published BOOLEAN NOT NULL DEFAULT FALSE,
+        notified_at TIMESTAMP,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_photo_albums_published_created
+      ON photo_albums(is_published, created_at DESC);
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_photo_albums_event
+      ON photo_albums(event_id);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS album_photos (
+        id SERIAL PRIMARY KEY,
+        album_id INTEGER NOT NULL REFERENCES photo_albums(id) ON DELETE CASCADE,
+        public_id VARCHAR(255) NOT NULL,
+        url VARCHAR(500) NOT NULL,
+        width INTEGER,
+        height INTEGER,
+        bytes INTEGER,
+        format VARCHAR(10),
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT album_photos_public_id_key UNIQUE (public_id)
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_album_photos_album_sort
+      ON album_photos(album_id, sort_order);
+    `);
+
     await client.query('COMMIT');
     console.log('Feature update migration completed successfully.');
     process.exit(0);

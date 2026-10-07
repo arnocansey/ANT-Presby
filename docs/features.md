@@ -171,3 +171,18 @@ Current media behavior:
 - Uploaded images are stored on Cloudinary (local disk when Cloudinary isn't configured); replaced images are cleaned up.
 - Events can have a cover image, added on web `/admin/events/[id]/edit` or in the mobile admin event screen, and shown on event lists and pages.
 - All amounts are shown in Ghana cedis (`GH₵ 1,250.00`), and Paystack charges in GHS.
+
+## Livestream
+
+- Admins go live from web `/admin/live` or the mobile Livestream screen. They enter a title and a YouTube and/or Facebook link (https only; YouTube on youtube.com or youtu.be, Facebook on facebook.com or fb.watch).
+- Going live shows a red "We're live" banner on every web page (refreshed every minute) and a live card at the top of the mobile home screen (refreshed when the screen opens).
+- `/live` embeds the YouTube stream when the link contains a video ID (`watch?v=`, `youtu.be/`, `/live/`, `/embed/`), and offers "Watch on YouTube" and "Watch on Facebook" buttons. Facebook is never embedded. On mobile, the buttons open the YouTube or Facebook app.
+- Everyone is notified exactly once per stream, even if two admins press "Go live" together. Updating the links while live does not notify again.
+- "End" takes the banner and card down for everyone and is safe to press twice. Every start, update and end is in the audit log.
+
+## Photo Albums
+
+- Anyone with the link can browse published albums at `/gallery` (web) or Account → Photo Gallery (mobile), open photos full size, and download them one at a time or all at once as a zip.
+- Albums can link to an event (the event page shows "View photos") and to an outside folder such as Google Drive.
+- Admins manage albums at `/admin/gallery` or in the mobile admin console. They upload many photos at once (straight to Cloudinary, up to 10 MB each), choose a cover, and publish.
+- Everyone is notified once, the first time a published album has photos.

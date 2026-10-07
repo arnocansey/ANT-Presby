@@ -3,6 +3,7 @@ import { ReactNode } from 'react';
 import Providers from '@/components/app/Providers';
 import PwaRegistration from '@/components/app/PwaRegistration';
 import Header from '@/components/layout/Header';
+import LiveBanner from '@/components/layout/LiveBanner';
 import Footer from '@/components/layout/Footer';
 import { APP_NAME, APP_TAGLINE } from '@/lib/app-config';
 import '@/styles/globals.css';
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           >
             Skip to content
           </a>
+          <LiveBanner />
           <Header />
           <main id="main-content" tabIndex={-1} className="min-h-screen overflow-x-clip">
             {children}

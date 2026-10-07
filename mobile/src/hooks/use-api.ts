@@ -830,6 +830,50 @@ export const useSendAnnouncement = () =>
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['announcements'] }),
   });
 
+export type LiveState = {
+  is_live: boolean;
+  title: string | null;
+  youtube_url: string | null;
+  facebook_url: string | null;
+  youtube_embed_url: string | null;
+  started_at: string | null;
+};
+
+export type LiveStartInput = { title: string; youtubeUrl?: string; facebookUrl?: string };
+
+type LiveResult<T> = { data: T; message: string };
+
+// Validation errors carry the useful text in details[0].message, not in "error".
+export const getLiveErrorMessage = (error: any, fallback: string) =>
+  error?.response?.data?.details?.[0]?.message || getApiErrorMessage(error, fallback);
+
+export const useLiveStream = () =>
+  useQuery({
+    queryKey: ['live'],
+    queryFn: async (): Promise<LiveState | null> => {
+      const response = await apiClient.get('/live');
+      return response.data?.data ?? null;
+    },
+  });
+
+export const useStartLive = () =>
+  useMutation({
+    mutationFn: async (input: LiveStartInput) => {
+      const response = await apiClient.post('/admin/live/start', input);
+      return response.data as LiveResult<LiveState & { notified: boolean }>;
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['live'] }),
+  });
+
+export const useEndLive = () =>
+  useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post('/admin/live/end');
+      return response.data as LiveResult<LiveState>;
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['live'] }),
+  });
+
 export const useMemberSearch = (term: string, enabled = true) => {
   const search = term.trim();
   return useQuery({
@@ -902,6 +946,170 @@ export const useRemoveEventImage = (eventId?: number) =>
       await apiClient.delete(`/admin/events/${eventId}/image`);
     },
     onSettled: invalidateEventImageQueries,
+  });
+
+export type AlbumSummary = {
+  id: number;
+  title: string;
+  description: string | null;
+  event_id: number | null;
+  event_name: string | null;
+  cover_url: string | null;
+  photo_count: number;
+  external_url: string | null;
+  created_at: string;
+};
+
+export type AlbumPhoto = {
+  id: number;
+  url: string;
+  thumb_url: string;
+  download_url: string;
+  width: number | null;
+  height: number | null;
+  format: string | null;
+};
+
+export type AlbumDetail = AlbumSummary & { photos: AlbumPhoto[] };
+
+export type AdminAlbum = AlbumSummary & {
+  is_published: boolean;
+  cover_photo_id: number | null;
+  notified_at: string | null;
+  updated_at: string;
+};
+
+export type AdminAlbumDetail = AdminAlbum & { photos: AlbumPhoto[] };
+
+export type AlbumInput = {
+  title: string;
+  description: string | null;
+  eventId: number | null;
+  externalUrl: string | null;
+  isPublished: boolean;
+};
+
+export type AlbumUploadSignature = {
+  cloudName: string;
+  apiKey: string;
+  timestamp: number;
+  signature: string;
+  folder: string;
+  allowedFormats: string;
+  maxFileSize: number;
+};
+
+export type RecordPhotosResult = { added: number; rejected: string[] };
+
+const invalidateAlbums = () =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['albums'] }),
+    queryClient.invalidateQueries({ queryKey: ['admin', 'albums'] }),
+  ]);
+
+export const useAlbums = () =>
+  useQuery({
+    queryKey: ['albums', 'list'],
+    queryFn: async (): Promise<AlbumSummary[]> => {
+      const response = await apiClient.get('/albums', { params: { limit: 50 } });
+      return response.data?.data || [];
+    },
+  });
+
+export const useAlbum = (id?: number) =>
+  useQuery({
+    queryKey: ['albums', 'detail', id],
+    enabled: Boolean(id),
+    retry: false,
+    queryFn: async (): Promise<AlbumDetail> => {
+      const response = await apiClient.get(`/albums/${id}`);
+      return response.data?.data;
+    },
+  });
+
+export const useAlbumDownloadUrl = () =>
+  useMutation({
+    mutationFn: async (id: number): Promise<string> => {
+      const response = await apiClient.get(`/albums/${id}/download`);
+      return response.data?.data?.url;
+    },
+  });
+
+export const useAdminAlbums = (enabled = true) =>
+  useQuery({
+    queryKey: ['admin', 'albums'],
+    enabled,
+    queryFn: async (): Promise<AdminAlbum[]> => {
+      const response = await apiClient.get('/admin/albums');
+      return response.data?.data || [];
+    },
+  });
+
+export const useAdminAlbum = (id?: number, enabled = true) =>
+  useQuery({
+    queryKey: ['admin', 'albums', id],
+    enabled: enabled && Boolean(id),
+    queryFn: async (): Promise<AdminAlbumDetail> => {
+      const response = await apiClient.get(`/admin/albums/${id}`);
+      return response.data?.data;
+    },
+  });
+
+export const useSaveAlbum = () =>
+  useMutation({
+    mutationFn: async ({ id, input }: { id?: number; input: AlbumInput }) => {
+      const response = id ? await apiClient.put(`/admin/albums/${id}`, input) : await apiClient.post('/admin/albums', input);
+      return { album: response.data?.data as AdminAlbumDetail, message: String(response.data?.message || '') };
+    },
+    onSettled: invalidateAlbums,
+  });
+
+export const useDeleteAlbum = () =>
+  useMutation({
+    mutationFn: async (id: number) => {
+      await apiClient.delete(`/admin/albums/${id}`);
+    },
+    onSettled: invalidateAlbums,
+  });
+
+export const useAlbumUploadSignature = (albumId?: number) =>
+  useMutation({
+    mutationFn: async (): Promise<AlbumUploadSignature> => {
+      const response = await apiClient.post(`/admin/albums/${albumId}/upload-signature`);
+      return response.data?.data;
+    },
+  });
+
+export const useRecordAlbumPhotos = (albumId?: number) =>
+  useMutation({
+    mutationFn: async (publicIds: string[]): Promise<RecordPhotosResult> => {
+      try {
+        const response = await apiClient.post(`/admin/albums/${albumId}/photos`, { publicIds });
+        return response.data?.data;
+      } catch (error: any) {
+        // "None of the photos could be added" still tells us which ones were rejected.
+        const data = error?.response?.data?.data;
+        if (error?.response?.status === 400 && Array.isArray(data?.rejected)) return data as RecordPhotosResult;
+        throw error;
+      }
+    },
+    onSettled: invalidateAlbums,
+  });
+
+export const useDeleteAlbumPhoto = (albumId?: number) =>
+  useMutation({
+    mutationFn: async (photoId: number) => {
+      await apiClient.delete(`/admin/albums/${albumId}/photos/${photoId}`);
+    },
+    onSettled: invalidateAlbums,
+  });
+
+export const useSetAlbumCover = (albumId?: number) =>
+  useMutation({
+    mutationFn: async (photoId: number) => {
+      await apiClient.patch(`/admin/albums/${albumId}/cover`, { photoId });
+    },
+    onSettled: invalidateAlbums,
   });
 
 export const useDeleteAdminEvent = () =>

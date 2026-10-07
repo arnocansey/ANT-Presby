@@ -2,6 +2,7 @@
 const eventController = require('../controllers/eventController');
 const { verifyToken, requireRole } = require('../middleware/authMiddleware');
 const { handleValidationErrors, validateEventCreation } = require('../middleware/validators');
+const { eventImageUpload } = require('../middleware/uploadMiddleware');
 
 const router = express.Router();
 
@@ -12,5 +13,7 @@ router.get('/:id', eventController.getEventById);
 router.post('/', validateEventCreation, handleValidationErrors, eventController.createEvent);
 router.put('/:id', eventController.updateEvent);
 router.delete('/:id', eventController.deleteEvent);
+router.post('/:id/image', eventImageUpload.single('image'), eventController.uploadEventImage);
+router.delete('/:id/image', eventController.removeEventImage);
 
 module.exports = router;

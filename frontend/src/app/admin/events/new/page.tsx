@@ -29,9 +29,10 @@ export default function NewEventPage() {
 
   const onSubmit = async (data: EventForm) => {
     try {
-      await apiClient.post('/admin/events', data);
-      toast.success('Event created');
-      router.push('/admin/events');
+      const response = await apiClient.post('/admin/events', data);
+      const createdId = response.data?.data?.id;
+      toast.success(createdId ? 'Event created. You can add an image now.' : 'Event created');
+      router.push(createdId ? `/admin/events/${createdId}/edit` : '/admin/events');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to create event');
     }

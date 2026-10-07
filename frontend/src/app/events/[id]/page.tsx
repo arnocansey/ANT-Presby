@@ -6,6 +6,7 @@ import { ArrowLeft, CalendarDays, MapPin, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEvent, useRegisterEvent, useUserEventRegistrations } from '@/hooks/useApi';
 import { useAuthStore } from '@/lib/store';
+import { resolveAssetUrl } from '@/lib/utils';
 
 export default function EventDetailPage() {
   const params = useParams<{ id: string }>();
@@ -41,7 +42,12 @@ export default function EventDetailPage() {
 
       {data && (
         <article className="overflow-hidden rounded-[1.8rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
-          <div className="h-56 bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 sm:h-72" />
+          {data.image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={resolveAssetUrl(data.image_url)} alt={data.name} className="h-56 w-full object-cover sm:h-72" />
+          ) : (
+            <div className="h-56 bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 sm:h-72" />
+          )}
           <div className="grid gap-8 p-6 sm:p-10 lg:grid-cols-[1.15fr_0.85fr]">
             <div className="space-y-5">
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-600 dark:text-amber-300">

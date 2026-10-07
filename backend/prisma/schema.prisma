@@ -144,6 +144,7 @@ model User {
   groupMemberships     GroupMembership[]
   pushTokens           PushToken[]
   announcementsSent    Announcement[]      @relation("AnnouncementSender")
+  liveStreamUpdates    LiveStream[]        @relation("LiveStreamUpdater")
   authoredDevotionals  Devotional[]
 
   @@index([role], map: "idx_users_role")
@@ -333,6 +334,21 @@ model Announcement {
   @@index([createdAt(sort: Desc)], map: "idx_announcements_created_at")
   @@index([groupId], map: "idx_announcements_group")
   @@map("announcements")
+}
+
+model LiveStream {
+  id          Int       @id @default(1)
+  isLive      Boolean   @default(false) @map("is_live")
+  title       String?   @db.VarChar(255)
+  youtubeUrl  String?   @map("youtube_url") @db.VarChar(500)
+  facebookUrl String?   @map("facebook_url") @db.VarChar(500)
+  startedAt   DateTime? @map("started_at")
+  endedAt     DateTime? @map("ended_at")
+  updatedBy   Int?      @map("updated_by")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  updater     User?     @relation("LiveStreamUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@map("live_stream")
 }
 
 model PrayerRequest {

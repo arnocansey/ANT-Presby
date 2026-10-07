@@ -553,6 +553,26 @@ async function migrateFeatureUpdates() {
       ALTER TABLE events ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);
     `);
 
+    // Livestream status: a single row, id 1 (phase 7c)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS live_stream (
+        id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+        is_live BOOLEAN NOT NULL DEFAULT FALSE,
+        title VARCHAR(255),
+        youtube_url VARCHAR(500),
+        facebook_url VARCHAR(500),
+        started_at TIMESTAMP,
+        ended_at TIMESTAMP,
+        updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
+      INSERT INTO live_stream (id, is_live) VALUES (1, FALSE)
+      ON CONFLICT (id) DO NOTHING;
+    `);
+
     await client.query('COMMIT');
     console.log('Feature update migration completed successfully.');
     process.exit(0);

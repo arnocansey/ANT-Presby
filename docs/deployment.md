@@ -176,3 +176,15 @@ Push uses Expo's push service. To make it work in production:
 3. **Optional `EXPO_ACCESS_TOKEN`:** only if "Enhanced Push Security" is enabled for the Expo project. Set it in the Render dashboard (it is declared in `render.yaml` with `sync: false`); never commit it.
 
 Devices register their push token after sign-in and remove it on sign-out. Tokens for uninstalled apps are deleted automatically when Expo reports them as `DeviceNotRegistered`.
+
+## Image storage (Cloudinary)
+
+Uploaded images (profile photos, news, sermon series, events; later photo albums) are stored on Cloudinary so they survive redeploys.
+
+1. Create a Cloudinary account (the free plan is enough to start) and open **Settings → API Keys**.
+2. In the Render dashboard, set `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` (declared in `render.yaml` with `sync: false`). Never commit these values.
+3. Redeploy. New uploads go to the `antpresby/` folder in Cloudinary.
+
+Without these settings (e.g. on a local machine) uploads are saved under `backend/uploads/` instead. Images uploaded before this change keep their `/uploads/...` links; re-upload any that no longer load.
+
+The mobile app's event image picker (`expo-image-picker`) is a native module: ship a new EAS build.

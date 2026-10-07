@@ -110,3 +110,12 @@ Use this checklist for final smoke testing on web and Android.
 - [ ] A second devotional on a taken date is refused with a clear message
 - [ ] With no devotional today, members see the latest past one labelled with its date
 - [ ] Home page card and mobile home card open the devotional
+
+## Images and Cedis
+
+- [ ] With Cloudinary configured, upload a profile photo, a news image and a series cover; the image URLs start with `https://res.cloudinary.com/`
+- [ ] Replace a profile photo; the old image disappears from the Cloudinary `antpresby/profile` folder
+- [ ] Add, replace and remove an event image on web; the event list and event page update
+- [ ] (Dev/store build) Add an event image from the phone's photo library
+- [ ] Every amount on the donate pages, donation history and admin screens shows `GH₵`; no `$` anywhere
+- [ ] A test donation opens Paystack checkout in GHS

@@ -165,3 +165,9 @@ Current media behavior:
 - "Today" follows the church time zone (`CHURCH_TIMEZONE`, default Africa/Accra). Members see today's devotional on `/devotionals`, the home page card and the mobile Daily Devotional screen; if none is published for today they see the latest past one.
 - Drafts and future-dated devotionals are never shown to members.
 - "Publish" on the devotional's own day notifies everyone, exactly once; a future-dated devotional is published silently and can be notified on its day.
+
+## Images and Currency
+
+- Uploaded images are stored on Cloudinary (local disk when Cloudinary isn't configured); replaced images are cleaned up.
+- Events can have a cover image, added on web `/admin/events/[id]/edit` or in the mobile admin event screen, and shown on event lists and pages.
+- All amounts are shown in Ghana cedis (`GH₵ 1,250.00`), and Paystack charges in GHS.

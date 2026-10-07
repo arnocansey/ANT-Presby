@@ -42,6 +42,8 @@ export default function AdminAlbumPage() {
   const [form, setForm] = React.useState<FormState | null>(null);
   const [progress, setProgress] = React.useState<{ done: number; total: number } | null>(null);
   const [retryFiles, setRetryFiles] = React.useState<File[]>([]);
+  // Uploaded to Cloudinary but not yet recorded: retried by id, never uploaded twice.
+  const [retryIds, setRetryIds] = React.useState<string[]>([]);
   const [dragging, setDragging] = React.useState(false);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [pendingPhoto, setPendingPhoto] = React.useState<AlbumPhoto | null>(null);
@@ -78,50 +80,64 @@ export default function AdminAlbumPage() {
     });
   };
 
-  // Uploads straight to Cloudinary, 4 at a time, then records the uploaded ids (100 per request).
-  const uploadFiles = async (files: File[]) => {
-    if (files.length === 0 || progress) return;
+  // Records uploaded ids, 100 per request. Refused ids are final (wrong type or too big); ids whose
+  // request failed are returned so a retry can record them without uploading the files again.
+  const recordIds = async (publicIds: string[]) => {
+    let added = 0;
+    let refused = 0;
+    const unrecorded: string[] = [];
+    for (const ids of chunk(publicIds, 100)) {
+      try {
+        const result = await recordPhotos.mutateAsync(ids);
+        added += result.added;
+        refused += result.rejected.length;
+      } catch (error: any) {
+        const rejected = error?.response?.status === 400 ? error.response.data?.data?.rejected : undefined;
+        if (Array.isArray(rejected)) refused += rejected.length;
+        else unrecorded.push(...ids);
+      }
+    }
+    return { added, refused, unrecorded };
+  };
+
+  // Uploads straight to Cloudinary, 4 at a time, then records the uploaded ids (plus any left from a failed record).
+  const uploadFiles = async (files: File[], unrecordedIds: string[] = []) => {
+    if ((files.length === 0 && unrecordedIds.length === 0) || progress) return;
     const tooBig = files.filter((file) => file.size > MAX_ALBUM_PHOTO_BYTES);
     const ready = files.filter((file) => file.size <= MAX_ALBUM_PHOTO_BYTES);
     if (tooBig.length > 0) toast.error(`${tooBig.length} photo(s) are over 10 MB and were skipped`);
-    if (ready.length === 0) return;
+    if (ready.length === 0 && unrecordedIds.length === 0) return;
 
     setRetryFiles([]);
+    setRetryIds([]);
     setProgress({ done: 0, total: ready.length });
     try {
-      const signature = await getSignature.mutateAsync();
-      const results = await mapWithConcurrency(ready, 4, async (file) => {
-        try {
-          return await uploadToCloudinary(file, signature);
-        } finally {
-          setProgress((current) => (current ? { ...current, done: current.done + 1 } : current));
-        }
-      });
-
-      const fileById = new Map<string, File>();
-      const failed: File[] = [];
-      results.forEach((result, index) => {
-        if (result.status === 'fulfilled') fileById.set(result.value, ready[index]);
-        else failed.push(ready[index]);
-      });
-
-      let added = 0;
-      for (const ids of chunk([...fileById.keys()], 100)) {
-        try {
-          const result = await recordPhotos.mutateAsync(ids);
-          added += result.added;
-          result.rejected.forEach((publicId) => {
-            const file = fileById.get(publicId);
-            if (file) failed.push(file);
-          });
-        } catch {
-          ids.forEach((publicId) => failed.push(fileById.get(publicId) as File));
-        }
+      const uploadedIds = [...unrecordedIds];
+      const failedUploads: File[] = [];
+      if (ready.length > 0) {
+        const signature = await getSignature.mutateAsync();
+        const results = await mapWithConcurrency(ready, 4, async (file) => {
+          try {
+            return await uploadToCloudinary(file, signature);
+          } finally {
+            setProgress((current) => (current ? { ...current, done: current.done + 1 } : current));
+          }
+        });
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') uploadedIds.push(result.value);
+          else failedUploads.push(ready[index]);
+        });
       }
 
-      setRetryFiles(failed);
-      const message = `${added} of ${ready.length} uploaded`;
-      if (failed.length > 0) toast.error(`${message}. You can retry the failed photos.`);
+      const { added, refused, unrecorded } = await recordIds(uploadedIds);
+      setRetryFiles(failedUploads);
+      setRetryIds(unrecorded);
+
+      const total = ready.length + unrecordedIds.length;
+      const retryable = failedUploads.length + unrecorded.length;
+      const message = `${added} of ${total} added${refused > 0 ? `. ${refused} not accepted (wrong type or over 10 MB)` : ''}`;
+      if (retryable > 0) toast.error(`${message}. You can retry ${retryable} photo(s).`);
+      else if (refused > 0) toast.error(message);
       else toast.success(message);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Could not start the upload');
@@ -240,9 +256,9 @@ export default function AdminAlbumPage() {
               <Button type="button" variant="outline" disabled={Boolean(progress)} onClick={() => fileInput.current?.click()}>
                 Choose photos
               </Button>
-              {retryFiles.length > 0 && !progress && (
-                <Button type="button" onClick={() => uploadFiles(retryFiles)}>
-                  Retry {retryFiles.length} failed
+              {retryFiles.length + retryIds.length > 0 && !progress && (
+                <Button type="button" onClick={() => uploadFiles(retryFiles, retryIds)}>
+                  Retry {retryFiles.length + retryIds.length} failed
                 </Button>
               )}
             </div>

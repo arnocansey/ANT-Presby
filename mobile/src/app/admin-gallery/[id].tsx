@@ -44,6 +44,8 @@ export default function AdminAlbumScreen() {
   const [form, setForm] = React.useState<FormState | null>(null);
   const [progress, setProgress] = React.useState<{ done: number; total: number } | null>(null);
   const [retryPhotos, setRetryPhotos] = React.useState<PickedPhoto[]>([]);
+  // Uploaded to Cloudinary but not yet recorded: retried by id, never uploaded twice.
+  const [retryIds, setRetryIds] = React.useState<string[]>([]);
   const album = albumQuery.data;
 
   React.useEffect(() => {
@@ -84,49 +86,68 @@ export default function AdminAlbumScreen() {
     );
   };
 
-  // Uploads straight to Cloudinary, 3 at a time, then records the uploaded ids (100 per request).
-  const uploadPhotos = async (picked: PickedPhoto[]) => {
-    if (picked.length === 0 || progress) return;
+  // Records uploaded ids, 100 per request. Refused ids are final (wrong type or too big); ids whose
+  // request failed are returned so a retry can record them without uploading the photos again.
+  const recordIds = async (publicIds: string[]) => {
+    let added = 0;
+    let refused = 0;
+    const unrecorded: string[] = [];
+    for (const ids of chunk(publicIds, 100)) {
+      try {
+        const result = await recordPhotos.mutateAsync(ids);
+        added += result.added;
+        refused += result.rejected.length;
+      } catch (error: any) {
+        const rejected = error?.response?.status === 400 ? error.response.data?.data?.rejected : undefined;
+        if (Array.isArray(rejected)) refused += rejected.length;
+        else unrecorded.push(...ids);
+      }
+    }
+    return { added, refused, unrecorded };
+  };
+
+  // Uploads straight to Cloudinary, 3 at a time, then records the uploaded ids (plus any left from a failed record).
+  const uploadPhotos = async (picked: PickedPhoto[], unrecordedIds: string[] = []) => {
+    if ((picked.length === 0 && unrecordedIds.length === 0) || progress) return;
     const tooBig = picked.filter((photo) => (photo.fileSize ?? 0) > MAX_ALBUM_PHOTO_BYTES);
     const ready = picked.filter((photo) => (photo.fileSize ?? 0) <= MAX_ALBUM_PHOTO_BYTES);
     if (tooBig.length > 0) Alert.alert('Some photos skipped', `${tooBig.length} photo(s) are over 10 MB.`);
-    if (ready.length === 0) return;
+    if (ready.length === 0 && unrecordedIds.length === 0) return;
 
     setRetryPhotos([]);
+    setRetryIds([]);
     setProgress({ done: 0, total: ready.length });
     try {
-      const signature = await getSignature.mutateAsync();
-      const results = await mapWithConcurrency(ready, 3, async (photo) => {
-        try {
-          return await uploadPhotoToCloudinary(photo, signature);
-        } finally {
-          setProgress((current) => (current ? { ...current, done: current.done + 1 } : current));
-        }
-      });
-
-      const photoById = new Map<string, PickedPhoto>();
-      const failed: PickedPhoto[] = [];
-      results.forEach((result, index) => {
-        if (result.status === 'fulfilled') photoById.set(result.value, ready[index]);
-        else failed.push(ready[index]);
-      });
-
-      let added = 0;
-      for (const ids of chunk([...photoById.keys()], 100)) {
-        try {
-          const result = await recordPhotos.mutateAsync(ids);
-          added += result.added;
-          result.rejected.forEach((publicId) => {
-            const photo = photoById.get(publicId);
-            if (photo) failed.push(photo);
-          });
-        } catch {
-          ids.forEach((publicId) => failed.push(photoById.get(publicId) as PickedPhoto));
-        }
+      const uploadedIds = [...unrecordedIds];
+      const failedUploads: PickedPhoto[] = [];
+      if (ready.length > 0) {
+        const signature = await getSignature.mutateAsync();
+        const results = await mapWithConcurrency(ready, 3, async (photo) => {
+          try {
+            return await uploadPhotoToCloudinary(photo, signature);
+          } finally {
+            setProgress((current) => (current ? { ...current, done: current.done + 1 } : current));
+          }
+        });
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') uploadedIds.push(result.value);
+          else failedUploads.push(ready[index]);
+        });
       }
 
-      setRetryPhotos(failed);
-      Alert.alert(`${added} of ${ready.length} uploaded`, failed.length > 0 ? 'Tap "Retry failed" to try the rest again.' : '');
+      const { added, refused, unrecorded } = await recordIds(uploadedIds);
+      setRetryPhotos(failedUploads);
+      setRetryIds(unrecorded);
+
+      const total = ready.length + unrecordedIds.length;
+      const retryable = failedUploads.length + unrecorded.length;
+      const details = [
+        refused > 0 ? `${refused} not accepted (wrong type or over 10 MB).` : '',
+        retryable > 0 ? `Tap "Retry failed" to try ${retryable} again.` : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
+      Alert.alert(`${added} of ${total} added`, details);
     } catch (error) {
       showError('Could not start the upload')(error);
     } finally {
@@ -235,8 +256,12 @@ export default function AdminAlbumScreen() {
               {progress ? `Uploading ${progress.done} of ${progress.total}...` : 'Up to 10 MB each. Choose several at once.'}
             </ThemedText>
             <BrandButton label={progress ? 'Uploading...' : 'Add Photos'} onPress={() => !progress && pickPhotos()} />
-            {retryPhotos.length > 0 && !progress ? (
-              <BrandButton label={`Retry ${retryPhotos.length} failed`} variant="outline" onPress={() => uploadPhotos(retryPhotos)} />
+            {retryPhotos.length + retryIds.length > 0 && !progress ? (
+              <BrandButton
+                label={`Retry ${retryPhotos.length + retryIds.length} failed`}
+                variant="outline"
+                onPress={() => uploadPhotos(retryPhotos, retryIds)}
+              />
             ) : null}
             <View style={styles.grid}>
               {album.photos.map((photo) => {

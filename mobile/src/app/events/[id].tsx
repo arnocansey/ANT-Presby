@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -13,6 +14,7 @@ import {
   useRegisterForEvent,
 } from '@/hooks/use-api';
 import { useTheme } from '@/hooks/use-theme';
+import { resolveImageUrl } from '@/lib/media';
 import { useAuthStore } from '@/store/auth';
 
 export default function EventDetailScreen() {
@@ -41,6 +43,9 @@ export default function EventDetailScreen() {
       ) : (
         <>
           <View style={styles.heroCard}>
+            {resolveImageUrl(data.image_url) ? (
+              <Image source={{ uri: resolveImageUrl(data.image_url) as string }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            ) : null}
             <View style={styles.heroBar}>
               <Pressable
                 onPress={() => router.back()}

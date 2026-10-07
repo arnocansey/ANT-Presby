@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -14,6 +15,7 @@ import {
 import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/store/auth';
 import { formatCedis } from '@/lib/currency';
+import { resolveImageUrl } from '@/lib/media';
 
 const eventColors = [
   { bg: 'rgba(168,85,247,0.16)', text: '#C084FC' },
@@ -119,6 +121,10 @@ export default function EventsScreen() {
                 </ThemedText>
                 <ThemedText type="subtitle">{day}</ThemedText>
               </View>
+
+              {resolveImageUrl(item.image_url) ? (
+                <Image source={{ uri: resolveImageUrl(item.image_url) as string }} style={styles.eventThumb} contentFit="cover" />
+              ) : null}
 
               <View style={styles.eventBody}>
                 <View style={[styles.typePill, { backgroundColor: palette.bg }]}>
@@ -311,6 +317,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
+  eventThumb: { width: 56, height: 56, borderRadius: Radius.medium },
   eventCard: {
     flexDirection: 'row',
     gap: Spacing.three,

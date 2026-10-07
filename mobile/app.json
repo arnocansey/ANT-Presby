@@ -42,6 +42,12 @@
       "expo-secure-store",
       "expo-notifications",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow ANT PRESS to choose photos for events and albums."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#0f172a",

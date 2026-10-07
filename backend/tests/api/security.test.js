@@ -313,6 +313,7 @@ describe('Profile photo uploads', () => {
   beforeEach(() => {
     jest.resetModules();
     jest.doMock('../../src/models/userModel', () => ({
+      findUserById: jest.fn().mockResolvedValue({ id: 7, profile_image_url: null }),
       updateUserProfileImage: jest.fn((id, url) => Promise.resolve({ id, profile_image_url: url })),
     }));
     jest.doMock('../../src/models/auditLogModel', () => ({ createAuditLog: jest.fn() }));

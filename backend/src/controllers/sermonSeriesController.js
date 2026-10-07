@@ -2,6 +2,7 @@ const { apiResponse, parseId } = require('../utils/helpers');
 const sermonSeriesModel = require('../models/sermonSeriesModel');
 const auditLogModel = require('../models/auditLogModel');
 const mediaAssetModel = require('../models/mediaAssetModel');
+const imageStorage = require('../services/imageStorage');
 
 /**
  * Sermon Series Controller
@@ -114,9 +115,10 @@ const uploadSeriesImage = async (req, res, next) => {
       return res.status(400).json(apiResponse(false, null, 'No image uploaded'));
     }
 
-    const url = `/uploads/series-images/${req.file.filename}`;
+    const stored = await imageStorage.uploadImage(req.file, { kind: 'series', actorId: req.user.userId });
+    const { url } = stored;
     const asset = await mediaAssetModel.createMediaAsset({
-      fileName: req.file.filename,
+      fileName: stored.fileName,
       originalName: req.file.originalname,
       mimeType: req.file.mimetype,
       fileSize: req.file.size,

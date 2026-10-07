@@ -342,6 +342,38 @@ const validateAnnouncement = [
     .withMessage('eventId is required for an event announcement'),
 ];
 
+const { isYouTubeUrl, isFacebookUrl } = require('../utils/liveLinks');
+
+const hasText = (value) => typeof value === 'string' && value.trim() !== '';
+
+const validateLiveStart = [
+  body('title')
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('Title is required')
+    .isLength({ max: 255 })
+    .withMessage('Title must be 255 characters or fewer'),
+  body('youtubeUrl')
+    .optional({ values: 'falsy' })
+    .isString()
+    .trim()
+    .custom((value) => isYouTubeUrl(value))
+    .withMessage('The YouTube link must be an https link on youtube.com or youtu.be'),
+  body('facebookUrl')
+    .optional({ values: 'falsy' })
+    .isString()
+    .trim()
+    .custom((value) => isFacebookUrl(value))
+    .withMessage('The Facebook link must be an https link on facebook.com or fb.watch'),
+  body().custom((value) => {
+    if (!hasText(value?.youtubeUrl) && !hasText(value?.facebookUrl)) {
+      throw new Error('Add a YouTube or Facebook link');
+    }
+    return true;
+  }),
+];
+
 module.exports = {
   handleValidationErrors,
   validateUserRegistration,
@@ -361,5 +393,6 @@ module.exports = {
   validateNewsPost,
   validatePushToken,
   validateAnnouncement,
+  validateLiveStart,
 };
 

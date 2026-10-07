@@ -4,6 +4,7 @@ import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { BrandScreen } from '@/components/brand-ui';
+import { LiveCard } from '@/components/live-card';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useSermons, useTodayDevotional, useUpcomingEvents } from '@/hooks/use-api';
@@ -46,6 +47,8 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
+      <LiveCard />
+
       {devotionalQuery.data ? (
         <Pressable
           onPress={() => router.push('/daily-devotional' as never)}
@@ -59,29 +62,6 @@ export default function HomeScreen() {
           </ThemedText>
         </Pressable>
       ) : null}
-
-      <View style={[styles.liveCard, { backgroundColor: theme.tint }]}>
-        <View style={styles.liveBadge}>
-          <View style={styles.livePulse} />
-          <ThemedText type="smallBold" style={styles.liveBadgeText}>
-            Live now
-          </ThemedText>
-        </View>
-
-        <ThemedText type="subtitle" style={styles.liveTitle}>
-          Sunday Worship Service
-        </ThemedText>
-        <ThemedText type="default" style={styles.liveDescription}>
-          Join us as we worship together
-        </ThemedText>
-
-        <Pressable onPress={() => router.push('/sermons' as never)} style={styles.watchButton}>
-          <Ionicons name="play" size={16} color={theme.tint} />
-          <ThemedText type="defaultSemiBold" style={[styles.watchButtonText, { color: theme.tint }]}>
-            Watch Live
-          </ThemedText>
-        </Pressable>
-      </View>
 
       <Pressable
         onPress={() => router.push('/events')}
@@ -262,51 +242,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 10,
     lineHeight: 12,
-  },
-  liveCard: {
-    borderRadius: Radius.large,
-    padding: Spacing.four,
-    gap: Spacing.two,
-  },
-  liveBadge: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: Radius.pill,
-  },
-  livePulse: {
-    width: 8,
-    height: 8,
-    borderRadius: Radius.pill,
-    backgroundColor: '#D1FAE5',
-  },
-  liveBadgeText: {
-    color: '#FFFFFF',
-    textTransform: 'uppercase',
-  },
-  liveTitle: {
-    color: '#FFFFFF',
-  },
-  liveDescription: {
-    color: '#FFF3E2',
-  },
-  watchButton: {
-    marginTop: Spacing.one,
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    backgroundColor: '#FFFFFF',
-    borderRadius: Radius.pill,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  watchButtonText: {
-    fontWeight: '800',
   },
   nextServiceCard: {
     borderRadius: Radius.medium,

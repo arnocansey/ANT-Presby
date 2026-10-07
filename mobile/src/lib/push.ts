@@ -83,6 +83,8 @@ export const routeForNotification = (data: NotificationData | undefined): string
   switch (data?.entityType) {
     case 'prayer':
       return '/prayer-wall';
+    case 'live':
+      return '/';
     case 'group':
       return '/small-groups';
     case 'event':

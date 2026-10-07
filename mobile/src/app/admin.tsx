@@ -241,6 +241,7 @@ export default function AdminScreen() {
         <QuickAction icon="cloud-upload-outline" label="Upload Sermon" color="#C084FC" onPress={() => router.push('/admin-sermons' as never)} />
         <QuickAction icon="add-circle-outline" label="New Event" color="#4ADE80" onPress={() => router.push('/admin-events')} />
         <QuickAction icon="megaphone-outline" label="Announcement" color={theme.tint} onPress={() => router.push('/admin-announcements' as never)} />
+        <QuickAction icon="radio-outline" label="Livestream" color="#EF4444" onPress={() => router.push('/admin-live' as never)} />
         <QuickAction icon="cash-outline" label="View Giving" color="#34D399" onPress={() => router.push('/admin-donations' as never)} />
         <QuickAction icon="settings-outline" label="Settings" color="#94A3B8" onPress={() => router.push('/admin-settings' as never)} />
         <QuickAction icon="bar-chart-outline" label="Analytics" color="#FB7185" onPress={() => router.push('/admin-analytics' as never)} />

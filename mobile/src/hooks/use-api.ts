@@ -830,6 +830,50 @@ export const useSendAnnouncement = () =>
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['announcements'] }),
   });
 
+export type LiveState = {
+  is_live: boolean;
+  title: string | null;
+  youtube_url: string | null;
+  facebook_url: string | null;
+  youtube_embed_url: string | null;
+  started_at: string | null;
+};
+
+export type LiveStartInput = { title: string; youtubeUrl?: string; facebookUrl?: string };
+
+type LiveResult<T> = { data: T; message: string };
+
+// Validation errors carry the useful text in details[0].message, not in "error".
+export const getLiveErrorMessage = (error: any, fallback: string) =>
+  error?.response?.data?.details?.[0]?.message || getApiErrorMessage(error, fallback);
+
+export const useLiveStream = () =>
+  useQuery({
+    queryKey: ['live'],
+    queryFn: async (): Promise<LiveState | null> => {
+      const response = await apiClient.get('/live');
+      return response.data?.data ?? null;
+    },
+  });
+
+export const useStartLive = () =>
+  useMutation({
+    mutationFn: async (input: LiveStartInput) => {
+      const response = await apiClient.post('/admin/live/start', input);
+      return response.data as LiveResult<LiveState & { notified: boolean }>;
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['live'] }),
+  });
+
+export const useEndLive = () =>
+  useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post('/admin/live/end');
+      return response.data as LiveResult<LiveState>;
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['live'] }),
+  });
+
 export const useMemberSearch = (term: string, enabled = true) => {
   const search = term.trim();
   return useQuery({

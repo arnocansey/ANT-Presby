@@ -4,25 +4,7 @@ import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import {
-  Bell,
-  BookOpen,
-  Calendar,
-  Camera,
-  Gift,
-  Heart,
-  Info,
-  LogIn,
-  LogOut,
-  Mail,
-  Menu,
-  Newspaper,
-  Search,
-  Settings,
-  User,
-  Users,
-  X,
-} from 'lucide-react';
+import { Church, LayoutDashboard, LogIn, LogOut, Menu, Search, Settings, Shield, User, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -32,317 +14,255 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import ThemeToggle from '@/components/ui/theme-toggle';
 import { useLogout } from '@/hooks/useApi';
 import { APP_NAME } from '@/lib/app-config';
+import { GIVE_LINK, HUB_LINKS, PRIMARY_NAV, isActivePath } from '@/lib/navigation';
 import { useAuthStore } from '@/lib/store';
 import { cn, getUserFirstName, getUserFullName, resolveAssetUrl } from '@/lib/utils';
 import NotificationBell from './NotificationBell';
 
-const navLinks = [
-  { href: '/', label: 'Home', icon: null },
-  { href: '/sermons', label: 'Sermons', icon: BookOpen },
-  { href: '/events', label: 'Events', icon: Calendar },
-  { href: '/gallery', label: 'Gallery', icon: Camera },
-  { href: '/ministries', label: 'Ministries', icon: Users },
-  { href: '/news', label: 'News', icon: Newspaper },
-  { href: '/community', label: 'Community', icon: Users },
-  { href: '/prayer/wall', label: 'Prayer', icon: Heart },
-  { href: '/about', label: 'About', icon: Info },
-  { href: '/contact', label: 'Contact', icon: Mail },
-];
+function Wordmark() {
+  return (
+    <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label={`${APP_NAME} home`}>
+      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+        <Church className="h-5 w-5" aria-hidden="true" />
+      </span>
+      <span className="text-lg font-bold tracking-tight text-foreground">{APP_NAME}</span>
+    </Link>
+  );
+}
 
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuthStore();
   const logoutMutation = useLogout();
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [searchExpanded, setSearchExpanded] = React.useState(false);
+  const [menuOpen, setMenuOpen] = React.useState(false);
 
   React.useEffect(() => {
-    setMobileMenuOpen(false);
+    setMenuOpen(false);
   }, [pathname]);
 
-  const isActive = (href: string) =>
-    href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
+  // The phone menu: close on Escape and stop the page scrolling behind it.
+  React.useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
 
   const handleLogout = async () => {
     await logoutMutation.mutateAsync();
     logout();
+    setMenuOpen(false);
     router.push('/');
   };
 
-  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const query = searchQuery.trim();
-    if (!query) return;
-    router.push(`/search?q=${encodeURIComponent(query)}`);
-    setMobileMenuOpen(false);
-  };
-
-  const linkClass = (href: string, mobile = false) =>
-    cn(
-      mobile
-        ? 'flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium'
-        : 'flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium',
-      'transition-colors',
-      isActive(href)
-        ? 'bg-sky-700/10 text-sky-700 dark:bg-cyan-400/10 dark:text-cyan-300'
-        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white'
-    );
-
   const firstName = getUserFirstName(user);
   const fullName = getUserFullName(user) || 'Account';
-  const avatarUrl = resolveAssetUrl(
-    (user as any)?.profileImageUrl || (user as any)?.profile_image_url || null
-  );
+  const avatarUrl = resolveAssetUrl((user as any)?.profileImageUrl || (user as any)?.profile_image_url || null);
+  const isAdmin = user?.role === 'admin';
+
+  const navLinkClass = (href: string) =>
+    cn(
+      'relative inline-flex h-11 items-center px-3 text-sm font-semibold transition-colors',
+      isActivePath(pathname, href) ? 'text-primary' : 'text-muted hover:text-foreground'
+    );
+
+  const menuLinkClass = (href: string) =>
+    cn(
+      'flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold transition-colors',
+      isActivePath(pathname, href) ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-surface'
+    );
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-950/95">
-      <nav
-        aria-label="Main navigation"
-        className="flex w-full items-center gap-4 px-3 py-4 sm:px-4 lg:px-6"
-      >
-        <Link href="/" className="flex shrink-0 items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-orange-600 text-white shadow-lg shadow-amber-500/20">
-            <Bell className="h-5 w-5" />
-          </div>
-          <div className="hidden sm:block">
-            <span className="text-lg font-black tracking-tight text-slate-950 dark:text-white">
-              {APP_NAME}
-            </span>
-            <p className="text-xs uppercase tracking-[0.28em] text-amber-600 dark:text-amber-300">
-              Grace In Motion
-            </p>
-          </div>
-        </Link>
+    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
+      <nav aria-label="Main navigation" className="container-max flex h-16 items-center gap-4">
+        <Wordmark />
 
-        <div className="hidden min-w-0 flex-1 items-center gap-3 overflow-hidden lg:flex xl:gap-4">
-          <div className="flex min-w-0 shrink items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              return (
-                <Link key={link.href} href={link.href} className={linkClass(link.href)}>
-                  {Icon ? <Icon className="h-4 w-4" /> : null}
-                  {link.label}
-                </Link>
-              );
-            })}
-          </div>
-
-          <form
-            onSubmit={handleSearchSubmit}
-            className={cn(
-              'flex min-w-0 shrink-0 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 shadow-sm transition-[width,max-width,border-color,box-shadow] duration-300 ease-out dark:border-slate-800 dark:bg-slate-900',
-              searchExpanded || searchQuery.trim()
-                ? 'w-[14rem] border-sky-300 shadow-md shadow-sky-100/70 xl:w-[18rem] 2xl:w-[22rem] dark:border-cyan-500/40 dark:shadow-none'
-                : 'w-[11rem] xl:w-[13rem] 2xl:w-[15rem]'
-            )}
-          >
-            <Search className="h-4 w-4 text-ui-subtle" />
-            <input
-              aria-label="Search sermons and events"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setSearchExpanded(true)}
-              onBlur={() => {
-                if (!searchQuery.trim()) {
-                  setSearchExpanded(false);
-                }
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') {
-                  event.currentTarget.blur();
-                  if (!searchQuery.trim()) {
-                    setSearchExpanded(false);
-                  }
-                }
-              }}
-              placeholder="Search sermons, events, news..."
-              className="h-11 w-full bg-transparent px-2 text-sm text-slate-900 outline-none placeholder:text-ui-subtle dark:text-slate-50"
-            />
-          </form>
+        <div className="hidden items-center md:flex">
+          {PRIMARY_NAV.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={navLinkClass(link.href)}
+              aria-current={isActivePath(pathname, link.href) ? 'page' : undefined}
+            >
+              {link.label}
+              {isActivePath(pathname, link.href) && (
+                <span className="absolute inset-x-3 -bottom-[11px] h-0.5 rounded-full bg-primary" aria-hidden="true" />
+              )}
+            </Link>
+          ))}
         </div>
 
-        <div className="relative z-10 hidden shrink-0 items-center gap-2 lg:flex">
-          {!isAuthenticated && (
-            <Button
-              asChild
-              variant="ghost"
-              className="text-slate-600 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white"
-            >
-              <Link href="/login">
-                <LogIn className="mr-2 h-4 w-4" />
-                Sign In
-              </Link>
-            </Button>
-          )}
+        <div className="ml-auto flex items-center gap-1">
+          <Button asChild variant="ghost" size="icon" aria-label="Search">
+            <Link href="/search">
+              <Search className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div className="hidden sm:block">
+            <ThemeToggle />
+          </div>
+          {isAuthenticated && user ? <NotificationBell /> : null}
 
-          <Button asChild className="rounded-full bg-amber-500 text-slate-950 hover:bg-amber-400">
-            <Link href="/donate">
-              <Gift className="mr-2 h-4 w-4" />
-              Give
+          <Button asChild size="sm" className="ml-1">
+            <Link href={GIVE_LINK.href}>
+              <GIVE_LINK.icon className="h-4 w-4" aria-hidden="true" />
+              {GIVE_LINK.label}
             </Link>
           </Button>
 
           {isAuthenticated && user ? (
-            <>
-              <NotificationBell />
-              {user.role === 'admin' && (
-                <Button variant="outline" asChild className="rounded-full">
-                  <Link href="/admin">Admin</Link>
-                </Button>
-              )}
+            <div className="hidden md:block">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="rounded-full border-slate-300 p-0 dark:border-slate-600"
-                    aria-label="Open account menu"
-                  >
+                  <Button variant="ghost" size="icon" className="rounded-full" aria-label="Open account menu">
                     {avatarUrl ? (
-                      <Image
-                        src={avatarUrl}
-                        alt={fullName}
-                        width={42}
-                        height={42}
-                        unoptimized
-                        className="h-10 w-10 rounded-full object-cover"
-                      />
+                      <Image src={avatarUrl} alt="" width={36} height={36} unoptimized className="h-9 w-9 rounded-full object-cover" />
                     ) : (
-                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-900 dark:bg-slate-800 dark:text-white">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
                         {(firstName || 'U').charAt(0).toUpperCase()}
                       </span>
                     )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>{fullName}</DropdownMenuLabel>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="truncate">{fullName}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard" className="cursor-pointer">
-                      <User className="mr-2 h-4 w-4" />
-                      Dashboard
+                    <Link href="/dashboard" className="gap-2">
+                      <LayoutDashboard className="h-4 w-4" /> My dashboard
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/profile" className="cursor-pointer">
-                      <Settings className="mr-2 h-4 w-4" />
-                      Profile
+                    <Link href="/profile" className="gap-2">
+                      <Settings className="h-4 w-4" /> Profile
                     </Link>
                   </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin" className="gap-2">
+                        <Shield className="h-4 w-4" /> Admin
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Logout
+                  <DropdownMenuItem onClick={handleLogout} className="gap-2 text-danger">
+                    <LogOut className="h-4 w-4" /> Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </>
+            </div>
           ) : (
-            <Button asChild variant="outline" className="rounded-full">
-              <Link href="/register">Create Account</Link>
+            <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
+              <Link href="/login">
+                <LogIn className="h-4 w-4" aria-hidden="true" />
+                Sign in
+              </Link>
             </Button>
           )}
-        </div>
 
-        <button
-          type="button"
-          className="ml-auto rounded-xl p-2 text-slate-700 hover:bg-slate-100 hover:text-slate-950 lg:hidden dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-          aria-expanded={mobileMenuOpen}
-          aria-controls="mobile-nav-panel"
-        >
-          {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
+            aria-controls="mobile-nav-panel"
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+        </div>
       </nav>
 
-      {mobileMenuOpen && (
-        <div
-          id="mobile-nav-panel"
-          className="border-t border-slate-200 bg-white px-4 py-4 lg:hidden dark:border-slate-800 dark:bg-slate-950"
-        >
-          <div className="space-y-4">
-            <form
-              onSubmit={handleSearchSubmit}
-              className="flex items-center rounded-xl border border-slate-200 bg-slate-50 px-3 dark:border-slate-700 dark:bg-slate-900"
-            >
-              <Search className="h-4 w-4 text-ui-subtle" />
-              <input
-                aria-label="Search sermons and events"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search..."
-                className="h-11 w-full bg-transparent px-2 text-sm text-slate-900 outline-none placeholder:text-ui-subtle dark:text-slate-50"
-              />
-            </form>
-
-            <div className="grid gap-2">
-              {navLinks.map((link) => {
-                const Icon = link.icon;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={linkClass(link.href, true)}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {Icon ? <Icon className="h-4 w-4" /> : null}
-                    {link.label}
-                  </Link>
-                );
-              })}
+      {menuOpen && (
+        <div className="fixed inset-0 z-[60] md:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-foreground/40 animate-fade-in"
+            aria-label="Close menu"
+            onClick={() => setMenuOpen(false)}
+          />
+          <div
+            id="mobile-nav-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+            className="absolute inset-y-0 right-0 flex w-[min(20rem,88vw)] flex-col overflow-y-auto border-l border-border bg-background p-4 shadow-xl animate-slide-up"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <Wordmark />
+              <Button variant="ghost" size="icon" onClick={() => setMenuOpen(false)} aria-label="Close menu">
+                <X className="h-6 w-6" />
+              </Button>
             </div>
 
-            <div className="grid gap-2 border-t border-slate-200 pt-3 dark:border-slate-800">
-              <Link
-                href="/donate"
-                className="flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Gift className="h-4 w-4" />
-                Give Now
-              </Link>
+            <div className="grid gap-1">
+              {PRIMARY_NAV.map((link) => (
+                <Link key={link.href} href={link.href} className={menuLinkClass(link.href)}>
+                  <link.icon className="h-5 w-5" aria-hidden="true" />
+                  {link.label}
+                </Link>
+              ))}
+            </div>
 
+            <p className="mb-1 mt-5 px-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Explore</p>
+            <div className="grid gap-1">
+              {HUB_LINKS.map((link) => (
+                <Link key={link.href} href={link.href} className={menuLinkClass(link.href)}>
+                  <link.icon className="h-5 w-5" aria-hidden="true" />
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+
+            <div className="mt-5 grid gap-1 border-t border-border pt-4">
               {isAuthenticated && user ? (
                 <>
-                  {user.role === 'admin' && (
-                    <Link href="/admin" className={linkClass('/admin', true)} onClick={() => setMobileMenuOpen(false)}>
-                      <Settings className="h-4 w-4" />
-                      Admin
+                  <Link href="/dashboard" className={menuLinkClass('/dashboard')}>
+                    <LayoutDashboard className="h-5 w-5" aria-hidden="true" /> My dashboard
+                  </Link>
+                  <Link href="/profile" className={menuLinkClass('/profile')}>
+                    <User className="h-5 w-5" aria-hidden="true" /> Profile
+                  </Link>
+                  {isAdmin && (
+                    <Link href="/admin" className={menuLinkClass('/admin')}>
+                      <Shield className="h-5 w-5" aria-hidden="true" /> Admin
                     </Link>
                   )}
-                  <Link href="/dashboard" className={linkClass('/dashboard', true)} onClick={() => setMobileMenuOpen(false)}>
-                    <User className="h-4 w-4" />
-                    Dashboard
-                  </Link>
-                  <Link href="/profile" className={linkClass('/profile', true)} onClick={() => setMobileMenuOpen(false)}>
-                    <Settings className="h-4 w-4" />
-                    Profile
-                  </Link>
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/50"
+                    className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-semibold text-danger hover:bg-surface"
                   >
-                    <LogOut className="h-4 w-4" />
-                    Logout
+                    <LogOut className="h-5 w-5" aria-hidden="true" /> Sign out
                   </button>
                 </>
               ) : (
                 <>
-                  <Link href="/login" className={linkClass('/login', true)} onClick={() => setMobileMenuOpen(false)}>
-                    <LogIn className="h-4 w-4" />
-                    Sign In
+                  <Link href="/login" className={menuLinkClass('/login')}>
+                    <LogIn className="h-5 w-5" aria-hidden="true" /> Sign in
                   </Link>
-                  <Link href="/register" className={linkClass('/register', true)} onClick={() => setMobileMenuOpen(false)}>
-                    <User className="h-4 w-4" />
-                    Create Account
+                  <Link href="/register" className={menuLinkClass('/register')}>
+                    <User className="h-5 w-5" aria-hidden="true" /> Create account
                   </Link>
                 </>
               )}
+              <div className="flex min-h-11 items-center justify-between px-3 text-sm font-semibold text-foreground">
+                Theme
+                <ThemeToggle />
+              </div>
             </div>
           </div>
         </div>

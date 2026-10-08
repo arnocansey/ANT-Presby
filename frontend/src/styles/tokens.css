@@ -1,0 +1,49 @@
+/* Clean & classic design tokens (R G B triplets, used as rgb(var(--x) / <alpha>)).
+   Light is the default; .dark (set by next-themes) swaps the values. See docs/design-system.md. */
+:root {
+  --background: 255 255 255;
+  --surface: 246 248 252;
+  --card: 255 255 255;
+  --border: 230 234 242;
+  --input: 203 211 228;
+  --foreground: 19 34 74;
+  --muted: 86 96 122;
+  --primary: 30 58 138;
+  --primary-hover: 23 46 110;
+  --primary-foreground: 255 255 255;
+  --link: 30 58 138;
+  --gold: 201 162 39;
+  --gold-soft: 251 246 229;
+  --gold-ink: 122 98 22;
+  --success: 21 128 61;
+  --warning: 180 83 9;
+  --danger: 185 28 28;
+  --danger-solid: 185 28 28;
+  --danger-solid-foreground: 255 255 255;
+  --ring: 30 58 138;
+  color-scheme: light;
+}
+
+.dark {
+  --background: 11 21 48;
+  --surface: 18 32 74;
+  --card: 18 32 74;
+  --border: 31 47 92;
+  --input: 42 59 110;
+  --foreground: 238 242 251;
+  --muted: 169 180 208;
+  --primary: 111 143 232;
+  --primary-hover: 140 166 238;
+  --primary-foreground: 11 21 48;
+  --link: 157 180 242;
+  --gold: 227 195 90;
+  --gold-soft: 58 50 20;
+  --gold-ink: 227 195 90;
+  --success: 74 222 128;
+  --warning: 251 191 36;
+  --danger: 248 113 113;
+  --danger-solid: 239 68 68;
+  --danger-solid-foreground: 11 21 48;
+  --ring: 157 180 242;
+  color-scheme: dark;
+}

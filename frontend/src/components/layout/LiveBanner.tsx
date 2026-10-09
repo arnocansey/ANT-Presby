@@ -16,11 +16,11 @@ export default function LiveBanner() {
   return (
     <Link
       href="/live"
-      className="flex items-center justify-center gap-2 bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
+      className="flex items-center justify-center gap-2 bg-danger-solid px-4 py-2 text-sm font-semibold text-danger-solid-foreground transition-colors hover:bg-danger-solid/90"
     >
       <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-75" />
+        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-current" />
       </span>
       <Radio className="h-4 w-4" aria-hidden="true" />
       <span className="truncate">We&apos;re live: {data.title || 'Join us now'}</span>

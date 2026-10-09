@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
-    "type-check": "tsc -p tsconfig.typecheck.json --noEmit"
+    "type-check": "tsc -p tsconfig.typecheck.json --noEmit",
+    "check:contrast": "node scripts/check-contrast.mjs",
+    "check:tokens": "node scripts/check-token-parity.mjs"
   },
   "packageManager": "npm@10.0.0",
   "dependencies": {

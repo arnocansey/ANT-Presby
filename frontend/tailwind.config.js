@@ -48,7 +48,8 @@ module.exports = {
         panel: '16px',
       },
       boxShadow: {
-        card: '0 1px 2px rgb(19 34 74 / 0.06), 0 1px 3px rgb(19 34 74 / 0.04)',
+        // Not named "card": that would clash with the card colour and turn the shadow white.
+        soft: '0 1px 2px rgb(19 34 74 / 0.06), 0 1px 3px rgb(19 34 74 / 0.04)',
       },
       animation: {
         'fade-in': 'fadeIn 0.2s ease-out',

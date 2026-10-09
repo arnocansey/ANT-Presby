@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { Button } from '@/components/ui/button';
+import * as React from "react";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   title?: string;
@@ -13,19 +13,22 @@ type Props = {
 };
 
 export default function ConfirmDialog({
-  title = 'Confirm',
+  title = "Confirm",
   description,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
   onConfirm,
   onCancel,
 }: Props) {
+  const titleId = React.useId();
+  const descriptionId = React.useId();
+
   React.useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCancel?.();
+      if (event.key === "Escape") onCancel?.();
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [onCancel]);
 
   return (
@@ -36,18 +39,24 @@ export default function ConfirmDialog({
       <div
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="confirm-dialog-title"
+        aria-labelledby={titleId}
+        aria-describedby={description ? descriptionId : undefined}
         className="w-full max-w-lg rounded-panel border border-border bg-card p-6 text-foreground shadow-xl animate-slide-up"
       >
-        <h3 id="confirm-dialog-title" className="text-lg font-semibold">
+        <h3 id={titleId} className="text-lg font-semibold">
           {title}
         </h3>
-        {description && <p className="mt-2 text-sm text-muted">{description}</p>}
+        {description && (
+          <p id={descriptionId} className="mt-2 text-sm text-muted">
+            {description}
+          </p>
+        )}
         <div className="mt-6 flex justify-end gap-2">
-          <Button onClick={onCancel} variant="secondary">
+          {/* Cancel gets focus first so a stray Enter never confirms a delete. */}
+          <Button onClick={onCancel} variant="secondary" autoFocus>
             {cancelLabel}
           </Button>
-          <Button onClick={onConfirm} variant="danger" autoFocus>
+          <Button onClick={onConfirm} variant="danger">
             {confirmLabel}
           </Button>
         </div>

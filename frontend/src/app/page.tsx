@@ -11,6 +11,7 @@ import Section from '@/components/ui/section';
 import { SkeletonCard } from '@/components/ui/skeleton';
 import Tile from '@/components/ui/tile';
 import { useLatestNews, useLiveStream, useRecentSermons, useUpcomingEvents } from '@/hooks/useApi';
+import { APP_NAME } from '@/lib/app-config';
 import { HUB_LINKS, MEMBER_HUB_LINK } from '@/lib/navigation';
 import { useAuthStore } from '@/lib/store';
 import { formatDate } from '@/lib/utils';
@@ -53,7 +54,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="rounded-panel border border-border bg-card p-6 shadow-card dark:shadow-none">
+          <div className="rounded-panel border border-border bg-card p-6 shadow-soft dark:shadow-none">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gold-ink">
               {isLive ? 'Happening now' : 'Next gathering'}
             </p>
@@ -140,7 +141,7 @@ export default function HomePage() {
                     href={`/events/${event.id}`}
                     className="flex gap-4 rounded-card border border-border bg-card p-4 transition-colors hover:border-primary/40"
                   >
-                    <span className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <span className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-primary text-primary-foreground">
                       <span className="text-[11px] font-semibold uppercase">
                         {date.toLocaleDateString('en-GB', { month: 'short' })}
                       </span>
@@ -184,7 +185,7 @@ export default function HomePage() {
                   </span>
                   <span className="space-y-1 p-4">
                     <span className="line-clamp-2 block font-semibold text-foreground">{sermon.title}</span>
-                    <span className="block text-sm text-muted">{sermon.speaker || 'ANT PRESS'}</span>
+                    <span className="block text-sm text-muted">{sermon.speaker || APP_NAME}</span>
                   </span>
                 </Link>
               ))}

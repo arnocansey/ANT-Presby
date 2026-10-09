@@ -67,31 +67,63 @@ export default function Header() {
   const { user, isAuthenticated, logout } = useAuthStore();
   const logoutMutation = useLogout();
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const menuButtonRef = React.useRef<HTMLButtonElement>(null);
+  const closeButtonRef = React.useRef<HTMLButtonElement>(null);
+  const panelRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
 
-  // The phone menu: close on Escape and stop the page scrolling behind it.
+  // The phone menu is a modal dialog: focus moves into it, Tab stays inside, Escape closes it,
+  // the page behind doesn't scroll, and focus returns to the Menu button when it closes.
   React.useEffect(() => {
     if (!menuOpen) return undefined;
+    const trigger = menuButtonRef.current;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || !panelRef.current) return;
+      const focusable = Array.from(
+        panelRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
+    closeButtonRef.current?.focus();
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKey);
+      trigger?.focus();
     };
   }, [menuOpen]);
 
+  // Sign out locally even if the server request fails, so the member is never stuck signed in.
   const handleLogout = async () => {
-    await logoutMutation.mutateAsync();
-    logout();
-    setMenuOpen(false);
-    router.push("/");
+    try {
+      await logoutMutation.mutateAsync();
+    } catch {
+      // The local session is cleared below regardless.
+    } finally {
+      logout();
+      setMenuOpen(false);
+      router.push("/");
+    }
   };
 
   const firstName = getUserFirstName(user);
@@ -157,7 +189,7 @@ export default function Header() {
           </div>
           {isAuthenticated && user ? <NotificationBell /> : null}
 
-          <Button asChild size="sm" className="ml-1">
+          <Button asChild className="ml-1 px-4">
             <Link href={GIVE_LINK.href}>
               <GIVE_LINK.icon className="h-4 w-4" aria-hidden="true" />
               {GIVE_LINK.label}
@@ -237,6 +269,7 @@ export default function Header() {
           )}
 
           <Button
+            ref={menuButtonRef}
             variant="ghost"
             size="icon"
             className="md:hidden"
@@ -256,20 +289,28 @@ export default function Header() {
           <div className="fixed inset-0 z-[60] md:hidden">
             <button
               type="button"
+              tabIndex={-1}
               className="absolute inset-0 bg-foreground/40 animate-fade-in"
               aria-label="Close menu"
               onClick={() => setMenuOpen(false)}
             />
             <div
+              ref={panelRef}
               id="mobile-nav-panel"
               role="dialog"
               aria-modal="true"
               aria-label="Menu"
+              onClick={(event) => {
+                // Following any link closes the menu, including a link to the current page.
+                if ((event.target as HTMLElement).closest("a"))
+                  setMenuOpen(false);
+              }}
               className="absolute inset-y-0 right-0 flex w-[min(20rem,88vw)] flex-col overflow-y-auto border-l border-border bg-background p-4 shadow-xl animate-slide-up"
             >
               <div className="mb-4 flex items-center justify-between">
                 <Wordmark />
                 <Button
+                  ref={closeButtonRef}
                   variant="ghost"
                   size="icon"
                   onClick={() => setMenuOpen(false)}

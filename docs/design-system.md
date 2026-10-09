@@ -27,7 +27,7 @@ Inter (web via `next/font`, app uses the system font). Scripture and quotes: Sou
 Page title 30 bold (24 on phones) · section 20 semibold · body 16 · small 14 · caption 12.
 
 ## Shape and spacing
-8-point spacing. Corners: 8px controls (`rounded-lg` / `Corner.control`), 12px cards (`rounded-card` / `Corner.card`), 16px panels (`rounded-panel` / `Corner.panel`). Touch targets ≥ 44px (`h-11` / `MIN_TOUCH`). One soft card shadow in light (`shadow-card`), none in dark.
+8-point spacing. Corners: 8px controls (`rounded-lg` / `Corner.control`), 12px cards (`rounded-card` / `Corner.card`), 16px panels (`rounded-panel` / `Corner.panel`). Touch targets ≥ 44px (`h-11` / `MIN_TOUCH`). One soft card shadow in light (`shadow-soft`), none in dark.
 
 ## Web components (`frontend/src/components/ui`)
 Button (`primary`/`secondary`/`ghost`/`link`/`danger`; old names `default`/`outline`/`destructive` still work; `loading`), Card, Input, Textarea, Select, Label, Badge (`neutral`/`gold`/`success`/`warning`/`danger`/`live`), PageHeader, Section, Tile, EmptyState, Skeleton/SkeletonCard, Tabs, Scripture, SimpleTable (`emptyMessage`), ConfirmDialog, DropdownMenu, ThemeToggle.

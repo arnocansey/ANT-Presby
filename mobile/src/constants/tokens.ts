@@ -1,5 +1,5 @@
 // Clean & classic design tokens: the same values as frontend/src/styles/tokens.css.
-// New UI uses these through useAppTheme(); legacy screens still use Colors/useTheme until phase 8d.
+// Every screen reads these through useAppTheme() (phase 8d retired the old Colors/useTheme palette).
 export const Palette = {
   light: {
     background: '#FFFFFF',

@@ -186,3 +186,10 @@ Current media behavior:
 - Albums can link to an event (the event page shows "View photos") and to an outside folder such as Google Drive.
 - Admins manage albums at `/admin/gallery` or in the mobile admin console. They upload many photos at once (straight to Cloudinary, up to 10 MB each), choose a cover, and publish.
 - Everyone is notified once, the first time a published album has photos.
+
+## Mobile App Design (Phase 8d)
+
+- The app uses the Clean & classic design (white and navy, with royal blue and a touch of gold) and follows the phone's Light or Dark setting.
+- Five tabs: **Home** (the hub), **Watch** (live, sermons and series), **Events**, **Give** and **Me** (profile, groups, registrations, giving, notifications, settings, admin).
+- Home matches the website hub: a greeting, the live card while live, today's devotional, tiles for Live, Devotional, Small groups, Prayer wall, Gallery, News, Community and Ministries, then upcoming events.
+- Every screen, including the mobile admin console, shares one set of building blocks (`mobile/src/components/kit` on top of `mobile/src/components/ui`), so headers, lists, forms, empty states and dialogs look and behave the same everywhere.

@@ -41,7 +41,7 @@ export default function TabsLayout() {
         <Tabs.Screen name="index" options={{ ...tokens, title: 'Home', tabBarIcon: icon('home', 'home-outline') }} />
         <Tabs.Screen name="sermons" options={{ ...tokens, title: 'Watch', tabBarIcon: icon('play-circle', 'play-circle-outline') }} />
         <Tabs.Screen name="events" options={{ ...tokens, title: 'Events', tabBarIcon: icon('calendar-clear', 'calendar-clear-outline') }} />
-        <Tabs.Screen name="give" options={{ ...legacy, title: 'Give', tabBarIcon: icon('heart', 'heart-outline') }} />
+        <Tabs.Screen name="give" options={{ ...tokens, title: 'Give', tabBarIcon: icon('heart', 'heart-outline') }} />
         <Tabs.Screen name="account" options={{ ...legacy, title: 'Me', tabBarIcon: icon('person-circle', 'person-circle-outline') }} />
         <Tabs.Screen name="news" options={{ ...tokens, href: null }} />
       </Tabs>

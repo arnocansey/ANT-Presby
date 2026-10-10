@@ -53,13 +53,13 @@ export default function PhotoViewer({ photos, index, title, onIndexChange, onClo
         <div className="flex items-center gap-2">
           <a
             href={photo.download_url}
-            className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm font-medium hover:bg-white/20"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm font-medium hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
-            <Download className="h-4 w-4" />
+            <Download className="h-4 w-4" aria-hidden="true" />
             Download
           </a>
-          <button type="button" onClick={onClose} aria-label="Close" className="rounded-lg bg-white/10 p-2 hover:bg-white/20">
-            <X className="h-5 w-5" />
+          <button type="button" onClick={onClose} aria-label="Close" className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -73,9 +73,9 @@ export default function PhotoViewer({ photos, index, title, onIndexChange, onClo
               stop(event);
               go(-1);
             }}
-            className="absolute left-2 rounded-full bg-white/10 p-3 hover:bg-white/20 sm:left-4"
+            className="absolute left-2 rounded-full bg-white/10 p-3 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:left-4"
           >
-            <ChevronLeft className="h-6 w-6" />
+            <ChevronLeft className="h-6 w-6" aria-hidden="true" />
           </button>
         )}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -88,9 +88,9 @@ export default function PhotoViewer({ photos, index, title, onIndexChange, onClo
               stop(event);
               go(1);
             }}
-            className="absolute right-2 rounded-full bg-white/10 p-3 hover:bg-white/20 sm:right-4"
+            className="absolute right-2 rounded-full bg-white/10 p-3 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:right-4"
           >
-            <ChevronRight className="h-6 w-6" />
+            <ChevronRight className="h-6 w-6" aria-hidden="true" />
           </button>
         )}
       </div>

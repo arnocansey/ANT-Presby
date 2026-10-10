@@ -2,7 +2,12 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { BookOpenText } from 'lucide-react';
 import DevotionalBody from '@/components/devotionals/DevotionalBody';
+import BackLink from '@/components/site/BackLink';
+import { Button } from '@/components/ui/button';
+import EmptyState from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useDevotional } from '@/hooks/useApi';
 
 export default function DevotionalDetailPage() {
@@ -12,16 +17,29 @@ export default function DevotionalDetailPage() {
   const { data, isLoading, error } = useDevotional(devotionalId);
 
   return (
-    <div className="container-max space-y-6 py-12 sm:py-16">
-      <Link href="/devotionals" className="text-sm font-semibold text-sky-700 dark:text-cyan-300">
-        ← All devotionals
-      </Link>
+    <div className="container-max space-y-6 py-10 sm:py-12">
+      <BackLink href="/devotionals" label="All devotionals" />
       {!devotionalId || error ? (
-        <p className="text-ui-subtle">This devotional could not be found.</p>
+        <EmptyState
+          icon={BookOpenText}
+          title="This devotional could not be found"
+          message="It may have been removed, or it couldn't load right now."
+          action={
+            <Button asChild variant="secondary">
+              <Link href="/devotionals">Today&apos;s devotional</Link>
+            </Button>
+          }
+        />
       ) : isLoading || !data ? (
-        <p className="text-ui-subtle">Loading...</p>
+        <div className="max-w-3xl space-y-4" role="status">
+          <span className="sr-only">Loading…</span>
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-9 w-2/3" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </div>
       ) : (
-        <DevotionalBody devotional={data} />
+        <DevotionalBody devotional={data} headingLevel="h1" />
       )}
     </div>
   );

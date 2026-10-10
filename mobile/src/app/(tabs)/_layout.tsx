@@ -38,12 +38,12 @@ export default function TabsLayout() {
     <>
       <AnimatedSplashOverlay />
       <Tabs screenOptions={{ headerShown: false, tabBarLabelStyle: { fontSize: 12, fontWeight: '600' } }}>
-        <Tabs.Screen name="index" options={{ ...legacy, title: 'Home', tabBarIcon: icon('home', 'home-outline') }} />
+        <Tabs.Screen name="index" options={{ ...tokens, title: 'Home', tabBarIcon: icon('home', 'home-outline') }} />
         <Tabs.Screen name="sermons" options={{ ...legacy, title: 'Watch', tabBarIcon: icon('play-circle', 'play-circle-outline') }} />
         <Tabs.Screen name="events" options={{ ...legacy, title: 'Events', tabBarIcon: icon('calendar-clear', 'calendar-clear-outline') }} />
         <Tabs.Screen name="give" options={{ ...legacy, title: 'Give', tabBarIcon: icon('heart', 'heart-outline') }} />
         <Tabs.Screen name="account" options={{ ...legacy, title: 'Me', tabBarIcon: icon('person-circle', 'person-circle-outline') }} />
-        <Tabs.Screen name="news" options={{ ...legacy, href: null }} />
+        <Tabs.Screen name="news" options={{ ...tokens, href: null }} />
       </Tabs>
     </>
   );

@@ -1,342 +1,150 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { BrandScreen } from '@/components/brand-ui';
+import {
+  ErrorState,
+  IconButton,
+  ListGroup,
+  ListRow,
+  LoadingList,
+  Screen,
+  Scripture,
+  SectionHeader,
+} from '@/components/kit';
 import { LiveCard } from '@/components/live-card';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
-import { useSermons, useTodayDevotional, useUpcomingEvents } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
+import { AppText } from '@/components/ui/app-text';
+import { AppBadge } from '@/components/ui/badge';
+import { AppCard } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
+import { AppTile } from '@/components/ui/tile';
+import { Corner, Space } from '@/constants/tokens';
+import { useLiveStream, useTodayDevotional, useUpcomingEvents } from '@/hooks/use-api';
 import { APP_NAME } from '@/lib/config';
 import { useAuthStore } from '@/store/auth';
 
+type TileIcon = React.ComponentProps<typeof AppTile>['icon'];
+
+// The same destinations as the website hub (frontend/src/lib/navigation.ts HUB_LINKS), mapped to app routes.
+// The app has no /live screen; Watch shows the live card, so "Live" opens Watch.
+const HUB_TILES: { label: string; description: string; icon: TileIcon; href: string; live?: boolean }[] = [
+  { label: 'Live', description: 'Join the service online', icon: 'radio-outline', href: '/sermons', live: true },
+  { label: 'Devotional', description: "Today's reading and prayer", icon: 'book-outline', href: '/daily-devotional' },
+  { label: 'Small groups', description: 'Grow together in the week', icon: 'people-outline', href: '/small-groups' },
+  { label: 'Prayer wall', description: 'Pray for one another', icon: 'heart-outline', href: '/prayer-wall' },
+  { label: 'Gallery', description: 'Photos from services and events', icon: 'images-outline', href: '/gallery' },
+  { label: 'News', description: 'Updates from the church', icon: 'newspaper-outline', href: '/news' },
+  { label: 'Community', description: 'Stories from members', icon: 'chatbubbles-outline', href: '/community' },
+  { label: 'Ministries', description: 'Serve and connect', icon: 'sparkles-outline', href: '/ministries' },
+];
+
+const formatEventDate = (value?: string) =>
+  value
+    ? new Date(value).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : 'Date to be announced';
+
 export default function HomeScreen() {
-  const theme = useTheme();
   const user = useAuthStore((state) => state.user);
-  const { data } = useSermons(1, 1);
   const upcomingEventsQuery = useUpcomingEvents();
   const devotionalQuery = useTodayDevotional();
-  const latestSermon = Array.isArray(data) ? data[0] : null;
-  const nextEvent = Array.isArray(upcomingEventsQuery.data) ? upcomingEventsQuery.data[0] : null;
-  const greeting = getGreeting();
+  const liveQuery = useLiveStream();
+  const events = Array.isArray(upcomingEventsQuery.data) ? upcomingEventsQuery.data.slice(0, 3) : [];
+  const devotional = devotionalQuery.data;
+  const isLive = Boolean(liveQuery.data?.is_live);
   const title = APP_NAME.replace(/\s+Mobile$/i, '');
+  const name = user?.first_name ? `, ${user.first_name}` : '';
 
   return (
-    <BrandScreen>
-      <View style={styles.headerRow}>
+    <Screen>
+      <View style={styles.header}>
         <View style={styles.headerCopy}>
-          <ThemedText type="smallBold" style={styles.greeting}>
-            {greeting}
-          </ThemedText>
-          <ThemedText type="title" style={styles.headerTitle}>
+          <AppText variant="small" tone="muted">
+            {`${getGreeting()}${name}`}
+          </AppText>
+          <AppText variant="title" accessibilityRole="header">
             {title}
-          </ThemedText>
+          </AppText>
         </View>
-
-        <Pressable
+        <IconButton icon="search-outline" accessibilityLabel="Search" onPress={() => router.push('/search' as never)} />
+        <IconButton
+          icon="notifications-outline"
+          accessibilityLabel={user ? 'Notifications' : 'News'}
           onPress={() => router.push(user ? '/notifications' : ('/news' as never))}
-          style={[styles.notificationButton, { backgroundColor: theme.tint }]}>
-          <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
-          <View style={styles.notificationDot}>
-            <ThemedText type="smallBold" style={styles.notificationDotText}>
-              3
-            </ThemedText>
-          </View>
-        </Pressable>
+        />
       </View>
 
       <LiveCard />
 
-      {devotionalQuery.data ? (
-        <Pressable
+      <SectionHeader
+        title={devotional && devotional.is_today === false ? 'Latest devotional' : "Today's devotional"}
+        actionLabel="Open"
+        onAction={() => router.push('/daily-devotional' as never)}
+      />
+      {devotionalQuery.isLoading ? (
+        <Skeleton height={132} radius={Corner.card} />
+      ) : devotionalQuery.isError ? (
+        <ErrorState title="Could not load the devotional" onRetry={() => devotionalQuery.refetch()} />
+      ) : devotional ? (
+        <AppCard
           onPress={() => router.push('/daily-devotional' as never)}
-          style={[styles.devotionalCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-          <ThemedText type="smallBold" style={{ color: theme.tint, textTransform: 'uppercase', letterSpacing: 1 }}>
-            {devotionalQuery.data.is_today ? "Today's devotional" : 'Latest devotional'}
-          </ThemedText>
-          <ThemedText type="defaultSemiBold">{devotionalQuery.data.title}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {devotionalQuery.data.scripture_reference}
-          </ThemedText>
-        </Pressable>
-      ) : null}
+          accessibilityLabel={`Devotional: ${devotional.title}`}>
+          <AppText variant="bodyStrong">{devotional.title}</AppText>
+          <Scripture text={devotional.scripture_text} reference={devotional.scripture_reference} lines={3} />
+        </AppCard>
+      ) : (
+        <EmptyState icon="book-outline" title="No devotional yet" message="Today's reading will appear here once it is published." />
+      )}
 
-      <Pressable
-        onPress={() => router.push('/events')}
-        style={[styles.nextServiceCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-        <View style={styles.nextServiceLeft}>
-          <View style={[styles.nextServiceIconWrap, { backgroundColor: theme.accentSoft }]}>
-            <Ionicons name="time-outline" size={16} color={theme.accent} />
+      <SectionHeader title="Explore" />
+      <View style={styles.grid}>
+        {HUB_TILES.map((tile) => (
+          <View key={tile.label} style={styles.gridItem}>
+            <AppTile
+              icon={tile.icon}
+              label={tile.label}
+              description={tile.description}
+              onPress={() => router.push(tile.href as never)}
+              badge={tile.live && isLive ? <AppBadge tone="live">Live</AppBadge> : undefined}
+            />
           </View>
-          <View style={styles.nextServiceCopy}>
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.kicker}>
-              Next Service
-            </ThemedText>
-            <ThemedText type="defaultSemiBold">
-              {nextEvent?.event_date ? new Date(nextEvent.event_date).toLocaleString() : 'Upcoming event schedule will appear here'}
-            </ThemedText>
-            <View style={styles.locationRow}>
-              <Ionicons name="location-outline" size={13} color={theme.textSecondary} />
-              <ThemedText type="small" themeColor="textSecondary">
-                {nextEvent?.location || 'Event location will appear here'}
-              </ThemedText>
-            </View>
-          </View>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
-      </Pressable>
-
-      <View style={styles.sectionRow}>
-        <ThemedText type="defaultSemiBold">Quick Actions</ThemedText>
+        ))}
       </View>
 
-      <View style={styles.quickActions}>
-        <QuickAction
-          label="Sermons"
-          icon="play-outline"
-          color="#245BE7"
-          onPress={() => router.push('/sermons' as never)}
-        />
-        <QuickAction
-          label="Events"
-          icon="calendar-outline"
-          color="#0D9F6E"
-          onPress={() => router.push('/events')}
-        />
-        <QuickAction
-          label="Give"
-          icon="gift-outline"
-          color="#A66706"
-          onPress={() => router.push('/donate')}
-        />
-        <QuickAction
-          label="Groups"
-          icon="people-outline"
-          color="#B0206D"
-          onPress={() => router.push('/small-groups' as never)}
-        />
-        <QuickAction
-          label="Community"
-          icon="sparkles-outline"
-          color="#0F766E"
-          onPress={() => router.push('/community' as never)}
-        />
-      </View>
-
-      <View style={styles.sectionRow}>
-        <ThemedText type="defaultSemiBold">Latest Sermon</ThemedText>
-        <Pressable onPress={() => router.push('/sermons' as never)}>
-          <ThemedText type="smallBold" style={{ color: theme.tint }}>
-            See All
-          </ThemedText>
-        </Pressable>
-      </View>
-
-      <Pressable
-        onPress={() =>
-          latestSermon ? router.push(`/sermons/${latestSermon.id}` as never) : router.push('/sermons' as never)
-        }
-        style={[styles.sermonCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-        <View style={styles.sermonMedia}>
-          <View style={styles.durationBadge}>
-            <ThemedText type="smallBold" style={styles.durationText}>
-              42:15
-            </ThemedText>
-          </View>
-          <View style={styles.playCircle}>
-            <Ionicons name="play" size={26} color="#FFFFFF" />
-          </View>
-        </View>
-
-        <View style={styles.sermonContent}>
-          {latestSermon?.series ? (
-            <ThemedText type="smallBold" style={{ color: theme.tint }}>
-              Series: {latestSermon.series}
-            </ThemedText>
-          ) : null}
-          <ThemedText type="defaultSemiBold">
-            {latestSermon?.title || 'Latest sermon will appear here'}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {latestSermon?.speaker || 'Speaker details unavailable'} •{' '}
-            {latestSermon?.sermon_date
-              ? new Date(latestSermon.sermon_date).toLocaleDateString()
-              : 'Date unavailable'}
-          </ThemedText>
-        </View>
-      </Pressable>
-    </BrandScreen>
-  );
-}
-
-function QuickAction({
-  label,
-  icon,
-  color,
-  onPress,
-}: {
-  label: string;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  color: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable onPress={onPress} style={styles.quickActionItem}>
-      <View style={[styles.quickActionIcon, { backgroundColor: color }]}>
-        <Ionicons name={icon} size={22} color="#FFFFFF" />
-      </View>
-      <ThemedText type="small">{label}</ThemedText>
-    </Pressable>
+      <SectionHeader title="Upcoming events" actionLabel="See all" onAction={() => router.push('/events')} />
+      {upcomingEventsQuery.isLoading ? (
+        <LoadingList count={2} height={64} />
+      ) : upcomingEventsQuery.isError ? (
+        <ErrorState title="Could not load events" onRetry={() => upcomingEventsQuery.refetch()} />
+      ) : events.length === 0 ? (
+        <EmptyState icon="calendar-outline" title="No upcoming events" message="New events will show here." />
+      ) : (
+        <ListGroup>
+          {events.map((event: any) => (
+            <ListRow
+              key={String(event.id)}
+              icon="calendar-outline"
+              label={event.name || 'Event'}
+              description={[formatEventDate(event.event_date), event.location].filter(Boolean).join(' · ')}
+              onPress={() => router.push({ pathname: '/events/[id]', params: { id: String(event.id) } })}
+            />
+          ))}
+        </ListGroup>
+      )}
+    </Screen>
   );
 }
 
 function getGreeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good Morning';
-  if (hour < 18) return 'Good Afternoon';
-  return 'Good Evening';
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
 }
 
 const styles = StyleSheet.create({
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
-  },
-  headerCopy: {
-    flex: 1,
-    gap: Spacing.one,
-  },
-  greeting: {
-    color: '#FACC15',
-    textTransform: 'uppercase',
-  },
-  headerTitle: {
-    fontSize: 31,
-    lineHeight: 35,
-  },
-  notificationButton: {
-    width: 42,
-    height: 42,
-    borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  notificationDot: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 4,
-    borderRadius: Radius.pill,
-    backgroundColor: '#EF4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  notificationDotText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    lineHeight: 12,
-  },
-  nextServiceCard: {
-    borderRadius: Radius.medium,
-    borderWidth: 1,
-    padding: Spacing.three,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
-  },
-  nextServiceLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  nextServiceIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  nextServiceCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  kicker: {
-    textTransform: 'uppercase',
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  sectionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  quickActionItem: {
-    width: '18%',
-    minWidth: 62,
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  quickActionIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sermonCard: {
-    borderRadius: Radius.medium,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  sermonMedia: {
-    height: 136,
-    backgroundColor: '#7C3AED',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  durationBadge: {
-    position: 'absolute',
-    left: 12,
-    bottom: 10,
-    backgroundColor: '#111827',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  durationText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    lineHeight: 13,
-  },
-  playCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.22)',
-  },
-  sermonContent: {
-    padding: Spacing.three,
-    gap: 4,
-  },
-  devotionalCard: { borderWidth: 1, borderRadius: Radius.large, padding: Spacing.three, gap: 4 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: Space.sm },
+  headerCopy: { flex: 1, gap: 2 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm },
+  gridItem: { flexBasis: '47%', flexGrow: 1 },
 });

@@ -96,9 +96,7 @@ export default function HomePage() {
       </section>
 
       {/* 2. Today's devotional */}
-      <div className="container-max">
-        <TodayDevotionalCard />
-      </div>
+      <TodayDevotionalCard wrapperClassName="container-max" />
 
       {/* 3. Hub tiles */}
       <div className="container-max">

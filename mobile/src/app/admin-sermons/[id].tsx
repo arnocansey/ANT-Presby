@@ -2,7 +2,8 @@ import { useLocalSearchParams, router } from 'expo-router';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 
-import { ChoiceField, FormMessage, FormTextField, LoadingList, Screen, ScreenHeader } from '@/components/kit';
+import { ChoiceField, FormMessage, FormTextField, ErrorState, LoadingList, Screen, ScreenHeader } from '@/components/kit';
+import { EmptyState } from '@/components/ui/empty-state';
 import { AppButton } from '@/components/ui/button';
 import { AppCard } from '@/components/ui/card';
 import {
@@ -94,7 +95,13 @@ export default function AdminSermonEditScreen() {
     <Screen>
       <ScreenHeader back eyebrow="Edit sermon" title={sermon?.title || 'Edit sermon'} />
       {!sermon ? (
-        <LoadingList count={3} height={72} />
+        sermonsQuery.isLoading ? (
+          <LoadingList count={3} height={72} />
+        ) : sermonsQuery.isError ? (
+          <ErrorState title="Could not load this sermon" onRetry={() => sermonsQuery.refetch()} />
+        ) : (
+          <EmptyState icon="alert-circle-outline" title="Sermon not found" message="It may have been deleted." />
+        )
       ) : (
         <AppCard>
           <FormTextField control={control} name="title" label="Title" placeholder="Sermon title" />

@@ -81,3 +81,35 @@ describe('claimNotification', () => {
     });
   });
 });
+
+describe('updateDevotional and the notification flag', () => {
+  test('moving a devotional to a new date clears notified, so it can notify on its new day', async () => {
+    const prisma = {
+      devotional: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUnique: jest.fn().mockResolvedValue({ ...row, publishDate: new Date('2026-10-09T00:00:00Z') }),
+      },
+    };
+
+    await load(prisma).updateDevotional(4, { publishDate: '2026-10-09' });
+
+    expect(prisma.devotional.updateMany).toHaveBeenNthCalledWith(1, {
+      where: { id: 4, NOT: { publishDate: new Date('2026-10-09T00:00:00.000Z') } },
+      data: { notifiedAt: null },
+    });
+  });
+
+  test('editing without changing the date leaves notified alone', async () => {
+    const prisma = {
+      devotional: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUnique: jest.fn().mockResolvedValue(row),
+      },
+    };
+
+    await load(prisma).updateDevotional(4, { title: 'New title' });
+
+    expect(prisma.devotional.updateMany).toHaveBeenCalledTimes(1);
+    expect(prisma.devotional.updateMany.mock.calls[0][0].data).not.toHaveProperty('notifiedAt');
+  });
+});

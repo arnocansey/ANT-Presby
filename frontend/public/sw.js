@@ -1,5 +1,5 @@
-const CACHE_NAME = 'ant-press-pwa-v2';
-const APP_SHELL = ['/', '/manifest.webmanifest', '/icon?size=192', '/icon?size=512', '/apple-icon'];
+const CACHE_NAME = 'ant-press-pwa-v3';
+const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/apple-icon.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

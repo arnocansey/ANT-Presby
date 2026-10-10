@@ -61,9 +61,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ token, user });
   },
   clearSession: async () => {
+    // Run sign-out work (e.g. removing this phone's push token) but never wait more than 3 s,
+    // so signing out offline stays quick.
     for (const handler of beforeClearSessionHandlers) {
       try {
-        await handler();
+        await Promise.race([handler(), new Promise((resolve) => setTimeout(resolve, 3000))]);
       } catch {
         // Never block sign-out.
       }

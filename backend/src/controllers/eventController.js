@@ -142,7 +142,12 @@ const uploadEventImage = async (req, res, next) => {
     }
 
     const { url } = await imageStorage.uploadImage(req.file, { kind: 'events', actorId: req.user.userId });
-    await eventModel.setEventImage(found.id, url);
+    const changed = await eventModel.setEventImage(found.id, url);
+    if (!changed) {
+      // The event was deleted while the image uploaded: don't leave the new image behind.
+      await imageStorage.deleteImage(url);
+      return res.status(404).json(apiResponse(false, null, 'Event not found'));
+    }
 
     // Only remove the old image once the new one is saved.
     if (found.event.image_url && found.event.image_url !== url) {

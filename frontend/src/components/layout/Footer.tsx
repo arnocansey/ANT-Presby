@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
-import { Church, Mail, MapPin, Phone } from 'lucide-react';
+import { Mail, MapPin, Phone } from 'lucide-react';
+import Crest from './Crest';
 import {
   APP_CONTACT_EMAIL,
   APP_CONTACT_LOCATION,
@@ -18,9 +19,7 @@ export default function Footer() {
       <div className="container-max grid gap-10 py-12 md:grid-cols-[1.3fr_repeat(3,1fr)]">
         <div className="space-y-4">
           <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Church className="h-5 w-5" aria-hidden="true" />
-            </span>
+            <Crest />
             <span className="text-lg font-bold tracking-tight text-foreground">{APP_NAME}</span>
           </Link>
           <p className="max-w-xs text-sm text-muted">{APP_TAGLINE}</p>

@@ -90,7 +90,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="bg-background text-foreground">
       {/* Phones and tablets: a bar under the site header (h-16) that opens the admin drawer. */}
-      <div className="sticky top-16 z-30 flex items-center justify-between gap-3 border-b border-border bg-background px-4 py-2 lg:hidden">
+      <div className="sticky top-[65px] z-30 flex items-center justify-between gap-3 border-b border-border bg-background px-4 py-2 lg:hidden">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gold-ink">Admin</p>
           <p className="truncate text-sm font-semibold text-foreground">{current?.label ?? 'Admin'}</p>
@@ -113,7 +113,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           collapsed={collapsed}
           onToggleCollapse={toggleCollapsed}
           className={cn(
-            'sticky top-16 hidden h-[calc(100vh-4rem)] shrink-0 border-r border-border lg:flex',
+            'sticky top-[65px] hidden h-[calc(100vh-65px)] shrink-0 border-r border-border lg:flex',
             collapsed ? 'w-[4.5rem]' : 'w-64'
           )}
         />

@@ -29,7 +29,13 @@ export function Screen({ children, scroll = true }: { children: React.ReactNode;
   );
 }
 
-// Page title with an optional back button (router.back() unless onBack is given) and a right-hand slot.
+// Back when there is somewhere to go back to; otherwise (e.g. opened from a push notification) go Home.
+const goBack = () => {
+  if (router.canGoBack()) router.back();
+  else router.replace('/');
+};
+
+// Page title with an optional back button (goBack unless onBack is given) and a right-hand slot.
 export function ScreenHeader({
   title,
   subtitle,
@@ -50,7 +56,7 @@ export function ScreenHeader({
   return (
     <View style={styles.header}>
       {showBack ? (
-        <IconButton icon="chevron-back" accessibilityLabel="Go back" onPress={onBack ?? (() => router.back())} />
+        <IconButton icon="chevron-back" accessibilityLabel="Go back" onPress={onBack ?? goBack} />
       ) : null}
       <View style={styles.headerCopy}>
         {eyebrow ? (

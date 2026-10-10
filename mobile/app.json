@@ -11,7 +11,7 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/a998533d-88d7-40fa-bfa7-e9c98f42bf0e",
+      "url": "https://u.expo.dev/4dcaf883-647c-4a05-9997-654d7d383d25",
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
@@ -26,7 +26,7 @@
     "android": {
       "package": "com.antpress.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -55,22 +55,24 @@
           "photosPermission": "Allow ANT PRESS to choose photos for events and albums.",
           "savePhotosPermission": "Allow ANT PRESS to save church photos to your photo library.",
           "isAccessMediaLocationEnabled": false,
-          "granularPermissions": ["photo"]
+          "granularPermissions": [
+            "photo"
+          ]
         }
       ],
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0f172a",
-          "image": "./assets/images/android-icon-foreground.png",
-          "imageWidth": 180,
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
           "android": {
-            "image": "./assets/images/android-icon-foreground.png",
-            "imageWidth": 180
+            "image": "./assets/images/splash-icon.png",
+            "imageWidth": 200
           },
           "ios": {
-            "image": "./assets/images/android-icon-foreground.png",
-            "imageWidth": 180
+            "image": "./assets/images/splash-icon.png",
+            "imageWidth": 200
           }
         }
       ]
@@ -82,9 +84,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "a998533d-88d7-40fa-bfa7-e9c98f42bf0e"
+        "projectId": "4dcaf883-647c-4a05-9997-654d7d383d25"
       }
     },
-    "owner": "whoisarnold"
+    "owner": "ant-presby"
   }
 }

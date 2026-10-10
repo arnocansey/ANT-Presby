@@ -116,7 +116,7 @@ export default function NotificationBell() {
           <button
             type="button"
             onClick={() => markAllRead.mutate()}
-            className="inline-flex min-h-8 items-center gap-1 rounded text-xs font-semibold text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex min-h-11 items-center gap-1 rounded px-1 text-xs font-semibold text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" />
             Mark all read
@@ -149,6 +149,11 @@ export default function NotificationBell() {
             }}
             className="cursor-pointer items-start gap-2 py-2"
           >
+            {/* Unread is shown by a dot as well as by colour. */}
+            <span
+              className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${notification.is_read ? 'bg-transparent' : 'bg-primary'}`}
+              aria-hidden="true"
+            />
             <div className="w-full min-w-0">
               <p className={`text-sm font-semibold ${notification.is_read ? 'text-muted' : 'text-foreground'}`}>
                 {!notification.is_read && <span className="sr-only">Unread: </span>}

@@ -180,9 +180,10 @@ const adminDelete = async (req, res, next) => {
   try {
     const album = await findAlbum(req);
     if (!album) return fail(res, 404, NOT_FOUND);
-    // Best-effort: a Cloudinary failure is logged and never blocks deleting the album.
-    await imageStorage.deleteAlbumFolder(album.id);
+    // The record goes first: if it fails, the album and its photos are untouched.
+    // Then a best-effort Cloudinary cleanup (logged, never blocks).
     await photoAlbumModel.deleteAlbum(album.id);
+    await imageStorage.deleteAlbumFolder(album.id);
     await audit(req, 'delete', album.id, `Deleted album "${album.title}"`, { photoCount: album.photo_count });
     res.json(apiResponse(true, null, 'Album deleted'));
   } catch (error) {

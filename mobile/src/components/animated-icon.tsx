@@ -6,7 +6,8 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { Palette } from '@/constants/tokens';
 
-const brand = Palette.dark;
+// Light, to continue the white native splash (the crest is designed on white) without a flash.
+const brand = Palette.light;
 
 const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 900;
@@ -213,7 +214,7 @@ const styles = StyleSheet.create({
   },
   wordmarkSubtitle: {
     marginTop: 6,
-    color: brand.gold,
+    color: brand.goldInk,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 3.2,

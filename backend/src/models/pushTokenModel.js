@@ -19,7 +19,8 @@ const deleteToken = async ({ userId, token }) => {
 const getTokensForUsers = async (userIds) => {
   if (!Array.isArray(userIds) || userIds.length === 0) return [];
   const rows = await prisma.pushToken.findMany({
-    where: { userId: { in: userIds.map(Number) } },
+    // Deactivated members keep their device rows but receive no pushes.
+    where: { userId: { in: userIds.map(Number) }, user: { isActive: true } },
     select: { token: true },
   });
   return rows.map((row) => row.token);

@@ -261,7 +261,11 @@ const deleteAlbumFolder = async (albumId) => {
   if (!isConfigured()) return false;
   const folder = albumFolder(albumId);
   try {
-    await client().api.delete_resources_by_prefix(`${folder}/`);
+    // Cloudinary deletes at most 1,000 assets per call and reports `partial` with a cursor for the rest.
+    let result = await client().api.delete_resources_by_prefix(`${folder}/`);
+    for (let page = 1; result?.partial && result?.next_cursor && page < 100; page += 1) {
+      result = await client().api.delete_resources_by_prefix(`${folder}/`, { next_cursor: result.next_cursor });
+    }
   } catch (error) {
     console.warn('Album cleanup failed:', error.message);
     return false;

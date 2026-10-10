@@ -2,7 +2,8 @@ import { useLocalSearchParams, router } from 'expo-router';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 
-import { FormMessage, FormTextField, LoadingList, Screen, ScreenHeader, SwitchRow } from '@/components/kit';
+import { FormMessage, FormTextField, ErrorState, LoadingList, Screen, ScreenHeader, SwitchRow } from '@/components/kit';
+import { EmptyState } from '@/components/ui/empty-state';
 import { AppButton } from '@/components/ui/button';
 import { AppCard } from '@/components/ui/card';
 import { getApiErrorMessage, useAdminNews, useUpdateNewsPost } from '@/hooks/use-api';
@@ -73,7 +74,13 @@ export default function AdminNewsEditScreen() {
     <Screen>
       <ScreenHeader back eyebrow="Edit news" title={post?.title || 'Edit news post'} />
       {!post ? (
-        <LoadingList count={3} height={72} />
+        newsQuery.isLoading ? (
+          <LoadingList count={3} height={72} />
+        ) : newsQuery.isError ? (
+          <ErrorState title="Could not load this news post" onRetry={() => newsQuery.refetch()} />
+        ) : (
+          <EmptyState icon="alert-circle-outline" title="News post not found" message="It may have been deleted." />
+        )
       ) : (
         <AppCard>
           <FormTextField control={control} name="title" label="Title" placeholder="News title" />

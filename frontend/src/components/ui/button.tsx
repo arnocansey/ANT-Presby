@@ -28,7 +28,7 @@ const buttonVariants = cva(
       size: {
         default: md,
         md,
-        sm: 'h-10 px-3 text-sm',
+        sm: 'h-11 px-3 text-sm',
         lg: 'h-12 px-8 text-base',
         icon: 'h-11 w-11',
       },
@@ -49,16 +49,18 @@ export interface ButtonProps
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, loading = false, disabled, children, ...props }, ref) => {
+    // Link buttons are inline text: no size height or padding (cn has no tailwind-merge to resolve the clash).
+    const sizeFor = variant === 'link' ? null : size;
     if (asChild) {
       return (
-        <Slot className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props}>
+        <Slot className={cn(buttonVariants({ variant, size: sizeFor, className }))} ref={ref} {...props}>
           {children}
         </Slot>
       );
     }
     return (
       <button
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, size: sizeFor, className }))}
         ref={ref}
         disabled={disabled || loading}
         aria-busy={loading || undefined}

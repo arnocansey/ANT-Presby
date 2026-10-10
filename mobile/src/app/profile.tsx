@@ -13,6 +13,7 @@ import {
   IconButton,
   ListGroup,
   ListRow,
+  ErrorState,
   LoadingList,
   Screen,
   ScreenHeader,
@@ -37,7 +38,7 @@ export default function ProfileScreen() {
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
   const [showSignOutConfirm, setShowSignOutConfirm] = React.useState(false);
-  const { data, isLoading } = useMyProfile(Boolean(user));
+  const { data, isLoading, isError, refetch } = useMyProfile(Boolean(user));
   const donationsQuery = useMyDonations(Boolean(user));
   const updateProfileMutation = useUpdateProfile();
   const {
@@ -116,6 +117,9 @@ export default function ProfileScreen() {
         <AppText variant="section">Profile details</AppText>
         {isLoading ? (
           <LoadingList count={3} height={44} />
+        ) : isError && !data ? (
+          // Never show an empty form after a failed load: the member would think their details were gone.
+          <ErrorState title="Could not load your profile" onRetry={() => refetch()} />
         ) : (
           <>
             <FormTextField control={control} name="firstName" label="First name" placeholder="First name" error={errors.firstName?.message} />

@@ -95,7 +95,7 @@ export default function EditEventPage() {
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/gif"
                   className="max-w-xs"
-                  disabled={uploadImage.isPending}
+                  disabled={uploadImage.isPending || removeImage.isPending}
                   onChange={(event) => {
                     const file = event.target.files?.[0];
                     event.target.value = '';
@@ -111,7 +111,7 @@ export default function EditEventPage() {
                   <Button
                     type="button"
                     variant="secondary"
-                    disabled={removeImage.isPending}
+                    disabled={uploadImage.isPending || removeImage.isPending}
                     onClick={() => removeImage.mutate(undefined, { onSuccess: () => setImageUrl(null) })}
                   >
                     Remove image

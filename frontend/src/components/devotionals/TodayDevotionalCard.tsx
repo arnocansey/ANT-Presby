@@ -6,14 +6,15 @@ import Scripture from '@/components/ui/scripture';
 import { useTodayDevotional } from '@/hooks/useApi';
 import { formatDateOnly } from '@/lib/utils';
 
-export default function TodayDevotionalCard() {
+// The optional wrapper is rendered only with the card, so a missing devotional leaves no empty gap.
+export default function TodayDevotionalCard({ wrapperClassName }: { wrapperClassName?: string } = {}) {
   const { data: devotional, isLoading, isError } = useTodayDevotional();
 
   if (isLoading || isError || !devotional) {
     return null;
   }
 
-  return (
+  const card = (
     <Link
       href={`/devotionals/${devotional.id}`}
       className="group block rounded-panel border border-border bg-gold-soft/60 p-6 transition-colors hover:border-gold sm:p-8"
@@ -31,4 +32,6 @@ export default function TodayDevotionalCard() {
       </span>
     </Link>
   );
+
+  return wrapperClassName ? <div className={wrapperClassName}>{card}</div> : card;
 }

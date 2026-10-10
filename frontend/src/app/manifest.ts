@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { APP_NAME, APP_TAGLINE } from '@/lib/app-config';
 
+// Icons are the church crest, built from branding/pcglogo.png by scripts/build-brand-assets.mjs.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: APP_NAME,
@@ -9,26 +10,14 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',
-    theme_color: '#0369a1',
+    theme_color: '#1E3A8A',
     orientation: 'portrait',
     icons: [
-      {
-        src: '/icon?size=192',
-        sizes: '192x192',
-        type: 'image/png',
-        purpose: 'maskable',
-      },
-      {
-        src: '/icon?size=512',
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'maskable',
-      },
-      {
-        src: '/apple-icon',
-        sizes: '180x180',
-        type: 'image/png',
-      },
+      { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/icons/maskable-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+      { src: '/icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      { src: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
     ],
   };
 }

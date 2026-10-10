@@ -4,7 +4,8 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { Alert } from 'react-native';
 
-import { FormMessage, FormTextField, LoadingList, MediaFrame, Screen, ScreenHeader } from '@/components/kit';
+import { FormMessage, FormTextField, ErrorState, LoadingList, MediaFrame, Screen, ScreenHeader } from '@/components/kit';
+import { EmptyState } from '@/components/ui/empty-state';
 import { AppText } from '@/components/ui/app-text';
 import { AppButton } from '@/components/ui/button';
 import { AppCard } from '@/components/ui/card';
@@ -94,7 +95,13 @@ export default function AdminEventEditScreen() {
     <Screen>
       <ScreenHeader back eyebrow="Edit event" title={event?.name || 'Edit event'} />
       {!event ? (
-        <LoadingList count={3} height={72} />
+        eventsQuery.isLoading ? (
+          <LoadingList count={3} height={72} />
+        ) : eventsQuery.isError ? (
+          <ErrorState title="Could not load this event" onRetry={() => eventsQuery.refetch()} />
+        ) : (
+          <EmptyState icon="alert-circle-outline" title="Event not found" message="It may have been deleted." />
+        )
       ) : (
         <>
           <AppCard>

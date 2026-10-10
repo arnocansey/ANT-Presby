@@ -7,7 +7,7 @@ import {
   IconButton,
   type IconName,
   ListGroup,
-  LoadingList,
+  ErrorState, LoadingList,
   Screen,
   ScreenHeader,
   SectionHeader,
@@ -53,8 +53,10 @@ export default function NotificationsScreen() {
 
   const notifications = notificationsQuery.data?.notifications ?? [];
   const unreadCount = notificationsQuery.data?.unread_count ?? 0;
-  const todayItems = notifications.slice(0, 3);
-  const olderItems = notifications.slice(3);
+  // Group by the notification date on this phone, not by position in the list.
+  const isToday = (value: string) => new Date(value).toDateString() === new Date().toDateString();
+  const todayItems = notifications.filter((item: any) => item.created_at && isToday(item.created_at));
+  const olderItems = notifications.filter((item: any) => !(item.created_at && isToday(item.created_at)));
 
   const renderItem = (item: any) => (
     <NotificationRow
@@ -76,6 +78,8 @@ export default function NotificationsScreen() {
 
       {notificationsQuery.isLoading ? (
         <LoadingList />
+      ) : notificationsQuery.isError && !notificationsQuery.data ? (
+        <ErrorState title="Could not load notifications" onRetry={() => notificationsQuery.refetch()} />
       ) : notifications.length === 0 ? (
         <EmptyState
           icon="notifications-outline"

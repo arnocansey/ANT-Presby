@@ -10,8 +10,10 @@ export function Skeleton({ height, width = '100%', radius = Corner.control }: { 
 
   React.useEffect(() => {
     let loop: Animated.CompositeAnimation | undefined;
+    let cancelled = false;
     AccessibilityInfo.isReduceMotionEnabled().then((reduced) => {
-      if (reduced) return;
+      // Skip if the skeleton was already removed before this check answered.
+      if (reduced || cancelled) return;
       loop = Animated.loop(
         Animated.sequence([
           Animated.timing(opacity, { toValue: 0.5, duration: 700, useNativeDriver: true }),
@@ -20,7 +22,10 @@ export function Skeleton({ height, width = '100%', radius = Corner.control }: { 
       );
       loop.start();
     });
-    return () => loop?.stop();
+    return () => {
+      cancelled = true;
+      loop?.stop();
+    };
   }, [opacity]);
 
   return <Animated.View accessible={false} style={{ height, width, borderRadius: radius, backgroundColor: colors.surface, opacity }} />;

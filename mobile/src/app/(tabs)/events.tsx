@@ -61,12 +61,24 @@ export default function EventsScreen() {
         items.map((item: any) => {
           const isRegistered = registeredIds.has(item.id);
           const image = resolveImageUrl(item.image_url);
+          const openEvent = () => router.push({ pathname: '/events/[id]', params: { id: String(item.id) } });
+          const registerLabel = !user ? 'Sign in to register' : isRegistered ? `Registered for ${item.name}` : `Register for ${item.name}`;
+          const onRegister = () => {
+            if (!user) {
+              router.push('/login');
+              return;
+            }
+            if (isRegistered) openEvent();
+            else registerMutation.mutate(item.id);
+          };
 
           return (
             <AppCard
               key={String(item.id)}
-              onPress={() => router.push({ pathname: '/events/[id]', params: { id: String(item.id) } })}
+              onPress={openEvent}
               accessibilityLabel={`Open ${item.name}`}
+              accessibilityActions={[{ name: 'activate', label: 'Open' }, { name: 'register', label: registerLabel }]}
+              onAccessibilityAction={(event) => (event.nativeEvent.actionName === 'register' ? onRegister() : openEvent())}
               style={styles.eventCard}>
               <DateBox value={item.event_date} />
               <View style={styles.eventBody}>
@@ -84,18 +96,8 @@ export default function EventsScreen() {
               <IconButton
                 icon={user && isRegistered ? 'checkmark' : 'chevron-forward'}
                 variant="ghost"
-                accessibilityLabel={!user ? 'Sign in to register' : isRegistered ? `Registered for ${item.name}` : `Register for ${item.name}`}
-                onPress={() => {
-                  if (!user) {
-                    router.push('/login');
-                    return;
-                  }
-                  if (isRegistered) {
-                    router.push({ pathname: '/events/[id]', params: { id: String(item.id) } });
-                  } else {
-                    registerMutation.mutate(item.id);
-                  }
-                }}
+                accessibilityLabel={registerLabel}
+                onPress={onRegister}
               />
             </AppCard>
           );

@@ -2,8 +2,13 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, CalendarDays, MapPin, Users } from 'lucide-react';
+import { CalendarDays, ImageIcon, MapPin, Users } from 'lucide-react';
+import BackLink from '@/components/site/BackLink';
+import MediaPlaceholder from '@/components/site/MediaPlaceholder';
+import StatusMessage from '@/components/site/StatusMessage';
 import { Button } from '@/components/ui/button';
+import EmptyState from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useEvent, useRegisterEvent, useUserEventRegistrations } from '@/hooks/useApi';
 import { useAuthStore } from '@/lib/store';
 import { resolveAssetUrl } from '@/lib/utils';
@@ -27,105 +32,104 @@ export default function EventDetailPage() {
   const maxRegistrations = Number(data?.max_registrations || 0);
 
   return (
-    <div className="container-max py-10">
-      <Link
-        href="/events"
-        className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-sky-700 hover:text-sky-800 dark:text-cyan-300 dark:hover:text-cyan-200"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to events
-      </Link>
+    <div className="container-max space-y-6 py-10 sm:py-12">
+      <BackLink href="/events" label="Back to events" />
 
-      {isLoading && <DetailState text="Loading event..." />}
-      {!isLoading && error && <DetailState text="Failed to load event." />}
-      {!isLoading && !error && !data && <DetailState text="Event not found." />}
+      {isLoading && (
+        <div className="space-y-4" role="status">
+          <span className="sr-only">Loading…</span>
+          <Skeleton className="h-56 w-full rounded-panel" />
+          <Skeleton className="h-8 w-2/3" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+      )}
+      {!isLoading && error && (
+        <EmptyState icon={CalendarDays} title="This event couldn't load right now" message="Please try again in a moment." />
+      )}
+      {!isLoading && !error && !data && (
+        <EmptyState
+          icon={CalendarDays}
+          title="Event not found"
+          message="It may have been moved or removed."
+          action={
+            <Button asChild variant="secondary">
+              <Link href="/events">See all events</Link>
+            </Button>
+          }
+        />
+      )}
 
       {data && (
-        <article className="overflow-hidden rounded-[1.8rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+        <article className="overflow-hidden rounded-panel border border-border bg-card">
           {data.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={resolveAssetUrl(data.image_url)} alt={data.name} className="h-56 w-full object-cover sm:h-72" />
           ) : (
-            <div className="h-56 bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 sm:h-72" />
+            <MediaPlaceholder icon={CalendarDays} className="h-40 sm:h-56" />
           )}
           <div className="grid gap-8 p-6 sm:p-10 lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="space-y-5">
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-600 dark:text-amber-300">
-                Event Detail
-              </p>
-              <h1 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-4xl">
-                {data.name}
-              </h1>
-              <p className="leading-relaxed text-ui-muted">
+            <div className="min-w-0 space-y-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gold-ink">Event</p>
+              <h1 className="break-words text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{data.name}</h1>
+              <p className="leading-relaxed text-foreground/85">
                 {data.description || 'Open this event to review the full details and complete your registration.'}
               </p>
 
-              <div className="grid gap-3 text-sm text-ui-subtle">
-                <p className="inline-flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-sky-700 dark:text-cyan-300" />
+              <ul className="grid gap-3 text-sm text-muted">
+                <li className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
                   {data.location || 'Location to be announced'}
-                </p>
-                <p className="inline-flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4 text-sky-700 dark:text-cyan-300" />
+                </li>
+                <li className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
                   {new Date(data.event_date || data.eventDate).toLocaleString()}
-                </p>
-                <p className="inline-flex items-center gap-2">
-                  <Users className="h-4 w-4 text-sky-700 dark:text-cyan-300" />
+                </li>
+                <li className="flex items-center gap-2">
+                  <Users className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
                   {maxRegistrations > 0
                     ? `${registeredCount}/${maxRegistrations} registered`
                     : `${registeredCount} registered`}
-                </p>
-                {data.album_id ? (
-                  <Link
-                    href={`/gallery/${data.album_id}`}
-                    className="font-semibold text-sky-700 hover:text-sky-800 dark:text-cyan-300 dark:hover:text-cyan-200"
-                  >
-                    View photos from this event
-                  </Link>
-                ) : null}
-              </div>
+                </li>
+              </ul>
+              {data.album_id ? (
+                <Link
+                  href={`/gallery/${data.album_id}`}
+                  className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-link hover:underline"
+                >
+                  <ImageIcon className="h-4 w-4" aria-hidden="true" />
+                  View photos from this event
+                </Link>
+              ) : null}
             </div>
 
-            <div className="rounded-[1.4rem] border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900">
-              <h2 className="text-xl font-bold text-slate-950 dark:text-white">Registration</h2>
-              <p className="mt-3 text-sm leading-relaxed text-ui-muted">
-                Reserve your place through the live registration flow connected to the ANT PRESS backend.
-              </p>
+            <div className="h-fit rounded-card border border-border bg-surface p-5">
+              <h2 className="text-lg font-semibold text-foreground">Registration</h2>
+              <p className="mt-2 text-sm text-muted">Reserve your place for this event.</p>
               <Button
                 onClick={handleRegister}
-                disabled={register.isPending || !data || isRegistered}
-                className="mt-5 h-12 w-full rounded-xl bg-amber-500 text-slate-950 hover:bg-amber-400"
+                disabled={!data || isRegistered}
+                loading={register.isPending}
+                size="lg"
+                className="mt-5 w-full"
               >
                 {isRegistered ? 'Already Registered' : register.isPending ? 'Registering...' : 'Register for Event'}
               </Button>
 
-              {register.isSuccess && (
-                <p className="mt-3 text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                  Registration completed successfully.
-                </p>
-              )}
-              {isRegistered && !register.isSuccess && (
-                <p className="mt-3 text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                  You are already registered for this event.
-                </p>
-              )}
-              {register.isError && (
-                <p className="mt-3 text-sm font-medium text-red-700 dark:text-red-300">
-                  {(register.error as any)?.response?.data?.message || 'Could not complete registration. Please try again.'}
-                </p>
-              )}
+              <div className="mt-3 space-y-2" aria-live="polite">
+                {register.isSuccess && <StatusMessage tone="success">Registration completed successfully.</StatusMessage>}
+                {isRegistered && !register.isSuccess && (
+                  <StatusMessage tone="success">You are already registered for this event.</StatusMessage>
+                )}
+                {register.isError && (
+                  <StatusMessage tone="danger">
+                    {(register.error as any)?.response?.data?.message || 'Could not complete registration. Please try again.'}
+                  </StatusMessage>
+                )}
+              </div>
             </div>
           </div>
         </article>
       )}
-    </div>
-  );
-}
-
-function DetailState({ text }: { text: string }) {
-  return (
-    <div className="rounded-[1.4rem] border border-dashed border-slate-300 bg-white p-10 text-center text-ui-subtle dark:border-slate-700 dark:bg-slate-950">
-      <p>{text}</p>
     </div>
   );
 }

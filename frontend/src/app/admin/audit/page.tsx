@@ -1,9 +1,12 @@
 'use client';
 
 import React from 'react';
+import PageHeader from '@/components/ui/page-header';
 import SimpleTable from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { LoadError, TableSkeleton } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
 import { useAuditLogs } from '@/hooks/useApi';
-import { Card, CardContent } from '@/components/ui/card';
 
 type AuditLog = {
   id: number;
@@ -16,30 +19,35 @@ type AuditLog = {
 };
 
 export default function AdminAuditPage() {
-  const { data, isLoading } = useAuditLogs(1, 50);
+  const { data, isLoading, isError, refetch } = useAuditLogs(1, 50);
   const logs = (data?.data || []) as AuditLog[];
 
   return (
-    <div className="container-max space-y-6 py-12">
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Audit Log</h1>
-        <p className="mt-2 text-sm text-ui-subtle">Track important admin actions across content, settings, users, and donations.</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Activity log' }]}
+        title="Activity log"
+        description="Important admin actions across content, settings, members and donations (latest 50)."
+      />
 
       {isLoading ? (
-        <Card><CardContent className="p-4 text-sm text-ui-subtle">Loading audit logs...</CardContent></Card>
-      ) : logs.length === 0 ? (
-        <Card className="border-dashed"><CardContent className="p-4 text-sm text-ui-subtle">No audit activity recorded yet.</CardContent></Card>
+        <TableSkeleton label="Loading activity" />
+      ) : isError && logs.length === 0 ? (
+        <LoadError what="the activity log" onRetry={() => refetch()} />
       ) : (
         <SimpleTable
+          emptyMessage="No activity recorded yet."
           columns={[
             {
               key: 'summary',
               header: 'Summary',
               render: (log: AuditLog) => (
-                <div>
-                  <p className="font-semibold text-slate-900 dark:text-slate-50">{log.summary}</p>
-                  <p className="text-xs text-ui-subtle">{log.entity_type} • {log.action}</p>
+                <div className="space-y-1">
+                  <p className="font-semibold text-foreground">{log.summary}</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge tone="neutral">{log.entity_type}</Badge>
+                    <Badge tone="neutral">{log.action}</Badge>
+                  </div>
                 </div>
               ),
             },
@@ -51,7 +59,11 @@ export default function AdminAuditPage() {
             {
               key: 'created_at',
               header: 'When',
-              render: (log: AuditLog) => new Date(log.created_at).toLocaleString(),
+              render: (log: AuditLog) => (
+                <time dateTime={log.created_at} className="text-muted">
+                  {new Date(log.created_at).toLocaleString()}
+                </time>
+              ),
             },
           ]}
           data={logs}

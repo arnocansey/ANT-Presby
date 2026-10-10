@@ -1,11 +1,16 @@
 'use client';
 
 import React from 'react';
+import { UserRoundCog, Users, UsersRound } from 'lucide-react';
+import PageHeader from '@/components/ui/page-header';
 import SimpleTable from '@/components/ui/table';
-import { useAdminUsers, useUpdateUserRole } from '@/hooks/useApi';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import StatCard from '@/components/admin/stat-card';
+import { LoadError, TableSkeleton } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
+import { useAdminUsers, useUpdateUserRole } from '@/hooks/useApi';
 
 type AdminUser = {
   id: number;
@@ -18,7 +23,7 @@ type AdminUser = {
 };
 
 export default function AdminUsersPage() {
-  const { data, isLoading } = useAdminUsers();
+  const { data, isLoading, isError, refetch } = useAdminUsers();
   const updateRole = useUpdateUserRole();
   const [query, setQuery] = React.useState('');
   const users = (data ?? []) as AdminUser[];
@@ -30,56 +35,45 @@ export default function AdminUsersPage() {
   });
 
   return (
-    <div className="container-max space-y-6 py-12">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Manage Users</h1>
-          <p className="mt-2 text-sm text-ui-subtle">Search, review, and update access roles for users.</p>
-        </div>
-        <div className="w-full md:max-w-sm">
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by name, email, or role"
-          />
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Members' }]}
+        title="Members"
+        description="Search people and change who has admin access."
+      />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader><CardTitle>Total Users</CardTitle></CardHeader>
-          <CardContent className="text-3xl font-bold">{users.length}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>Admins</CardTitle></CardHeader>
-          <CardContent className="text-3xl font-bold">{users.filter((user) => user.role === 'admin').length}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>Members</CardTitle></CardHeader>
-          <CardContent className="text-3xl font-bold">{users.filter((user) => user.role === 'member').length}</CardContent>
-        </Card>
+      <section aria-label="Totals" className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="All accounts" icon={Users} loading={isLoading} value={users.length} />
+        <StatCard label="Admins" icon={UserRoundCog} loading={isLoading} value={users.filter((user) => user.role === 'admin').length} />
+        <StatCard label="Members" icon={UsersRound} loading={isLoading} value={users.filter((user) => user.role === 'member').length} />
+      </section>
+
+      <div className="w-full sm:max-w-sm">
+        <Input
+          aria-label="Search members"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search by name, email or role"
+        />
       </div>
 
       {isLoading ? (
-        <Card>
-          <CardContent className="p-4 text-sm text-ui-subtle">Loading users...</CardContent>
-        </Card>
-      ) : filteredUsers.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="p-4 text-sm text-ui-subtle">No users match the current search.</CardContent>
-        </Card>
+        <TableSkeleton label="Loading members" />
+      ) : isError && users.length === 0 ? (
+        <LoadError what="members" onRetry={() => refetch()} />
       ) : (
         <SimpleTable
+          emptyMessage={query.trim() ? 'No one matches your search.' : 'No accounts yet.'}
           columns={[
             {
               key: 'name',
               header: 'Name',
               render: (user: AdminUser) => (
                 <div>
-                  <p className="font-semibold text-slate-900 dark:text-slate-50">
+                  <p className="font-semibold text-foreground">
                     {[user.firstName, user.lastName].filter(Boolean).join(' ') || 'Unnamed user'}
                   </p>
-                  <p className="text-xs text-ui-subtle">{user.email}</p>
+                  <p className="text-xs text-muted">{user.email}</p>
                 </div>
               ),
             },
@@ -87,18 +81,16 @@ export default function AdminUsersPage() {
               key: 'role',
               header: 'Role',
               render: (user: AdminUser) => (
-                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${user.role === 'admin' ? 'bg-sky-100 text-sky-800 dark:bg-cyan-950/50 dark:text-cyan-200' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>
-                  {user.role}
-                </span>
+                <Badge tone={user.role === 'admin' ? 'gold' : 'neutral'}>{user.role === 'admin' ? 'Admin' : 'Member'}</Badge>
               ),
             },
             {
               key: 'status',
               header: 'Status',
               render: (user: AdminUser) => (
-                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${user.is_active === false ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'}`}>
-                  {user.is_active === false ? 'inactive' : 'active'}
-                </span>
+                <Badge tone={user.is_active === false ? 'danger' : 'success'}>
+                  {user.is_active === false ? 'Inactive' : 'Active'}
+                </Badge>
               ),
             },
             {
@@ -107,13 +99,11 @@ export default function AdminUsersPage() {
               render: (user: AdminUser) => (
                 <Button
                   size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    updateRole.mutate({ id: user.id, role: user.role === 'admin' ? 'member' : 'admin' })
-                  }
+                  variant="secondary"
+                  onClick={() => updateRole.mutate({ id: user.id, role: user.role === 'admin' ? 'member' : 'admin' })}
                   disabled={updateRole.isPending}
                 >
-                  Make {user.role === 'admin' ? 'Member' : 'Admin'}
+                  Make {user.role === 'admin' ? 'member' : 'admin'}
                 </Button>
               ),
             },

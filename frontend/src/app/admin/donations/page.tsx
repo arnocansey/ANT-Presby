@@ -1,11 +1,18 @@
 'use client';
 
 import React from 'react';
+import { Banknote, CheckCircle2, Hourglass } from 'lucide-react';
+import PageHeader from '@/components/ui/page-header';
 import SimpleTable from '@/components/ui/table';
-import { useAdminDonations, useUpdateDonationStatus } from '@/hooks/useApi';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import StatCard from '@/components/admin/stat-card';
+import { LoadError, TableSkeleton } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
+import { statusLabel, statusTone } from '@/components/admin/status';
+import { useAdminDonations, useUpdateDonationStatus } from '@/hooks/useApi';
 import { formatCurrency } from '@/lib/utils';
 
 type Donation = {
@@ -20,8 +27,10 @@ type Donation = {
   created_at?: string;
 };
 
+const STATUS_OPTIONS = ['pending', 'completed', 'failed', 'cancelled'];
+
 export default function AdminDonationsPage() {
-  const { data, isLoading } = useAdminDonations();
+  const { data, isLoading, isError, refetch } = useAdminDonations();
   const updateStatus = useUpdateDonationStatus();
   const [statusFilter, setStatusFilter] = React.useState('');
   const [query, setQuery] = React.useState('');
@@ -37,94 +46,107 @@ export default function AdminDonationsPage() {
     const matchesStatus = !statusFilter || donation.status === statusFilter;
     return matchesQuery && matchesStatus;
   });
+  const filtering = Boolean(query.trim() || statusFilter);
 
   return (
-    <div className="container-max space-y-6 py-12">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Donations</h1>
-          <p className="mt-2 text-sm text-ui-subtle">Track donation records and update completion states.</p>
-        </div>
-        <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row">
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Donations' }]}
+        title="Donations"
+        description="Track donation records and update their status."
+      />
+
+      <section aria-label="Totals" className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="All records" icon={Banknote} loading={isLoading} value={donations.length} />
+        <StatCard
+          label="Completed"
+          icon={CheckCircle2}
+          loading={isLoading}
+          value={donations.filter((item) => item.status === 'completed').length}
+        />
+        <StatCard
+          label="Pending"
+          icon={Hourglass}
+          loading={isLoading}
+          value={donations.filter((item) => item.status === 'pending').length}
+        />
+      </section>
+
+      <div className="flex w-full flex-col gap-3 sm:flex-row">
+        <div className="w-full sm:max-w-sm">
           <Input
+            aria-label="Search donations"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by reference, email, or type"
+            placeholder="Search by reference, email or type"
           />
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-            className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950"
-          >
-            <option value="">All statuses</option>
-            <option value="pending">pending</option>
-            <option value="completed">completed</option>
-            <option value="failed">failed</option>
-            <option value="cancelled">cancelled</option>
-          </select>
         </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card><CardHeader><CardTitle>Total Records</CardTitle></CardHeader><CardContent className="text-3xl font-bold">{donations.length}</CardContent></Card>
-        <Card><CardHeader><CardTitle>Completed</CardTitle></CardHeader><CardContent className="text-3xl font-bold">{donations.filter((item) => item.status === 'completed').length}</CardContent></Card>
-        <Card><CardHeader><CardTitle>Pending</CardTitle></CardHeader><CardContent className="text-3xl font-bold">{donations.filter((item) => item.status === 'pending').length}</CardContent></Card>
+        <Select
+          aria-label="Filter by status"
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          className="sm:w-48"
+        >
+          <option value="">All statuses</option>
+          {STATUS_OPTIONS.map((status) => (
+            <option key={status} value={status}>
+              {statusLabel(status)}
+            </option>
+          ))}
+        </Select>
       </div>
 
       {isLoading ? (
-        <Card><CardContent className="p-4 text-sm text-ui-subtle">Loading donations...</CardContent></Card>
-      ) : filteredDonations.length === 0 ? (
-        <Card className="border-dashed"><CardContent className="p-4 text-sm text-ui-subtle">No donations match the current filters.</CardContent></Card>
+        <TableSkeleton label="Loading donations" />
+      ) : isError && donations.length === 0 ? (
+        <LoadError what="donations" onRetry={() => refetch()} />
       ) : (
         <SimpleTable
+          emptyMessage={filtering ? 'No donations match the current filters.' : 'No donations yet.'}
           columns={[
             {
               key: 'reference',
               header: 'Reference',
               render: (donation: Donation) => (
                 <div>
-                  <p className="font-semibold text-slate-900 dark:text-slate-50">{donation.reference || `Donation #${donation.id}`}</p>
-                  <p className="text-xs text-ui-subtle">{donation.email || 'No email attached'}</p>
+                  <p className="font-semibold text-foreground">{donation.reference || `Donation #${donation.id}`}</p>
+                  <p className="text-xs text-muted">{donation.email || 'No email attached'}</p>
                 </div>
               ),
             },
             {
               key: 'amount',
               header: 'Amount',
-              render: (donation: Donation) => formatCurrency(donation.amount),
+              render: (donation: Donation) => <span className="font-semibold tabular-nums">{formatCurrency(donation.amount)}</span>,
             },
             {
               key: 'status',
               header: 'Status',
-              render: (donation: Donation) => (
-                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${donation.status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : donation.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>
-                  {donation.status}
-                </span>
-              ),
+              render: (donation: Donation) => <Badge tone={statusTone(donation.status)}>{statusLabel(donation.status)}</Badge>,
             },
             {
               key: 'actions',
               header: 'Actions',
               render: (donation: Donation) => (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {donation.status !== 'completed' && (
                     <Button
                       size="sm"
-                      variant="outline"
+                      variant="secondary"
                       onClick={() => updateStatus.mutate({ id: donation.id, status: 'completed' })}
                       disabled={updateStatus.isPending}
                     >
-                      Mark Completed
+                      Mark completed
                     </Button>
                   )}
                   {donation.status !== 'failed' && (
                     <Button
                       size="sm"
-                      variant="outline"
+                      variant="secondary"
                       onClick={() => updateStatus.mutate({ id: donation.id, status: 'failed' })}
                       disabled={updateStatus.isPending}
                     >
-                      Mark Failed
+                      Mark failed
                     </Button>
                   )}
                 </div>

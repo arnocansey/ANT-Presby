@@ -3,11 +3,18 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ImageIcon } from 'lucide-react';
+import PageHeader from '@/components/ui/page-header';
+import EmptyState from '@/components/ui/empty-state';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Field, FormActions, FormSection, formGridClass } from '@/components/admin/form-layout';
+import { CardListSkeleton, LoadError } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
 import { useAdminAlbums, useAdminEvents, useSaveAlbum } from '@/hooks/useApi';
 
 type FormState = { title: string; description: string; eventId: string; externalUrl: string };
@@ -15,7 +22,7 @@ const EMPTY: FormState = { title: '', description: '', eventId: '', externalUrl:
 
 export default function AdminGalleryPage() {
   const router = useRouter();
-  const { data: albums, isLoading } = useAdminAlbums();
+  const { data: albums, isLoading, isError, refetch } = useAdminAlbums();
   const { data: events } = useAdminEvents();
   const save = useSaveAlbum();
   const [form, setForm] = React.useState<FormState>(EMPTY);
@@ -45,97 +52,96 @@ export default function AdminGalleryPage() {
   };
 
   return (
-    <div className="container-max space-y-6 py-12">
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Photo Gallery</h1>
-        <p className="mt-2 text-sm text-ui-subtle">
-          Create an album as a draft, add photos, then publish it. Everyone is notified once, when a published album first has photos.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Gallery' }]}
+        title="Photo gallery"
+        description="Create an album as a draft, add photos, then publish it. Everyone is notified once, when a published album first has photos."
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">New album</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-4 md:grid-cols-2" onSubmit={onCreate}>
-            <div className="space-y-2">
-              <Label htmlFor="album-title">Title</Label>
-              <Input id="album-title" value={form.title} onChange={set('title')} required maxLength={255} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="album-event">Event (optional)</Label>
-              <select
-                id="album-event"
-                value={form.eventId}
-                onChange={set('eventId')}
-                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950"
-              >
-                <option value="">No event</option>
-                {(events || []).map((item: any) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="album-description">Description (optional)</Label>
-              <Textarea id="album-description" rows={3} value={form.description} onChange={set('description')} maxLength={5000} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="album-link">Outside folder link (optional, https)</Label>
-              <Input
-                id="album-link"
-                type="url"
-                value={form.externalUrl}
-                onChange={set('externalUrl')}
-                maxLength={500}
-                placeholder="https://drive.google.com/..."
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Button type="submit" disabled={save.isPending}>
-                Create draft album
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+      <FormSection title="New album">
+        <form className={formGridClass} onSubmit={onCreate}>
+          <Field label="Title" htmlFor="album-title">
+            <Input id="album-title" value={form.title} onChange={set('title')} required maxLength={255} />
+          </Field>
+          <Field label="Event (optional)" htmlFor="album-event">
+            <Select id="album-event" value={form.eventId} onChange={set('eventId')}>
+              <option value="">No event</option>
+              {(events || []).map((item: any) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Description (optional)" htmlFor="album-description" full>
+            <Textarea id="album-description" rows={3} value={form.description} onChange={set('description')} maxLength={5000} />
+          </Field>
+          <Field label="Outside folder link (optional, https)" htmlFor="album-link" full>
+            <Input
+              id="album-link"
+              type="url"
+              value={form.externalUrl}
+              onChange={set('externalUrl')}
+              maxLength={500}
+              placeholder="https://drive.google.com/..."
+            />
+          </Field>
+          <FormActions>
+            <Button type="submit" disabled={save.isPending}>
+              Create draft album
+            </Button>
+          </FormActions>
+        </form>
+      </FormSection>
 
-      {isLoading ? (
-        <p className="text-sm text-ui-subtle">Loading albums...</p>
-      ) : !albums || albums.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="p-4 text-sm text-ui-subtle">No albums yet.</CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {albums.map((album) => (
-            <Card key={album.id}>
-              <CardContent className="flex items-center gap-4 p-4">
-                {album.cover_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={album.cover_url} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" />
-                ) : (
-                  <div className="h-16 w-16 shrink-0 rounded-lg bg-slate-200 dark:bg-slate-800" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{album.title}</p>
-                  <p className="text-xs text-ui-subtle">
-                    {album.is_published ? 'Published' : 'Draft'} · {album.photo_count} photo{album.photo_count === 1 ? '' : 's'}
-                    {album.event_name ? ` · ${album.event_name}` : ''}
-                    {album.notified_at ? ' · everyone notified' : ''}
-                  </p>
-                </div>
-                <Button asChild size="sm" variant="outline">
-                  <Link href={`/admin/gallery/${album.id}`}>Manage</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <section aria-label="Albums" className="space-y-4">
+        <h2 className="text-xl font-semibold text-foreground">Albums</h2>
+        {isLoading ? (
+          <CardListSkeleton count={3} label="Loading albums" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" />
+        ) : isError && !albums ? (
+          <LoadError what="albums" onRetry={() => refetch()} />
+        ) : !albums || albums.length === 0 ? (
+          <EmptyState icon={ImageIcon} title="No albums yet." message="Create a draft album above, then add photos." />
+        ) : (
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {albums.map((album) => (
+              <li key={album.id}>
+                <Card className="flex h-full flex-col overflow-hidden">
+                  {album.cover_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={album.cover_url} alt="" className="aspect-video w-full object-cover" />
+                  ) : (
+                    <div className="flex aspect-video w-full items-center justify-center bg-surface text-muted">
+                      <ImageIcon className="h-8 w-8" aria-hidden="true" />
+                    </div>
+                  )}
+                  <div className="flex flex-1 flex-col gap-3 p-4">
+                    <div className="min-w-0 space-y-2">
+                      <p className="truncate font-semibold text-foreground">{album.title}</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge tone={album.is_published ? 'success' : 'neutral'}>
+                          {album.is_published ? 'Published' : 'Draft'}
+                        </Badge>
+                        {album.notified_at && <Badge tone="neutral">Everyone notified</Badge>}
+                      </div>
+                      <p className="text-xs text-muted">
+                        {album.photo_count} photo{album.photo_count === 1 ? '' : 's'}
+                        {album.event_name ? ` · ${album.event_name}` : ''}
+                      </p>
+                    </div>
+                    <Button asChild size="sm" variant="secondary" className="mt-auto self-start">
+                      <Link href={`/admin/gallery/${album.id}`} aria-label={`Manage ${album.title}`}>
+                        Manage
+                      </Link>
+                    </Button>
+                  </div>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

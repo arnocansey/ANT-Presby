@@ -4,13 +4,18 @@ import React from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Star, Trash2, Upload } from 'lucide-react';
+import { ImageIcon, Star, Trash2, Upload } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
+import EmptyState from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import PageHeader from '@/components/ui/page-header';
+import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { CheckboxField, Field, FormActions, FormSection, formGridClass } from '@/components/admin/form-layout';
+import { CardListSkeleton } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
 import {
   useAdminAlbum,
   useAdminEvents,
@@ -146,84 +151,89 @@ export default function AdminAlbumPage() {
     }
   };
 
+  const crumbs = [ADMIN_HOME_CRUMB, { label: 'Gallery', href: '/admin/gallery' }];
+
   if (isLoading || (album && !form)) {
-    return <div className="container-max py-12 text-sm text-ui-subtle">Loading album...</div>;
+    return (
+      <div className="space-y-6">
+        <PageHeader breadcrumb={[...crumbs, { label: 'Album' }]} title="Album" />
+        <CardListSkeleton count={2} label="Loading album" />
+      </div>
+    );
   }
   if (!album || !form || !id) {
-    return <div className="container-max py-12 text-sm text-ui-subtle">Album not found.</div>;
+    return (
+      <div className="space-y-6">
+        <PageHeader breadcrumb={[...crumbs, { label: 'Album' }]} title="Album" />
+        <EmptyState
+          icon={ImageIcon}
+          title="Album not found."
+          message="It may have been deleted, or the link is wrong."
+          action={
+            <Button asChild variant="secondary">
+              <Link href="/admin/gallery">All albums</Link>
+            </Button>
+          }
+        />
+      </div>
+    );
   }
 
   return (
-    <div className="container-max space-y-6 py-12">
-      <Link href="/admin/gallery" className="inline-flex items-center gap-2 text-sm font-medium text-sky-700 dark:text-cyan-300">
-        <ArrowLeft className="h-4 w-4" />
-        All albums
-      </Link>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[...crumbs, { label: album.title }]}
+        title={album.title}
+        description="Edit the details, add photos and choose the cover."
+        actions={
+          <Badge tone={album.is_published ? 'success' : 'neutral'}>{album.is_published ? 'Published' : 'Draft'}</Badge>
+        }
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Album details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-4 md:grid-cols-2" onSubmit={onSave}>
-            <div className="space-y-2">
-              <Label htmlFor="album-title">Title</Label>
-              <Input id="album-title" value={form.title} onChange={set('title')} required maxLength={255} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="album-event">Event (optional)</Label>
-              <select
-                id="album-event"
-                value={form.eventId}
-                onChange={set('eventId')}
-                className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950"
-              >
-                <option value="">No event</option>
-                {(events || []).map((item: any) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="album-description">Description (optional)</Label>
-              <Textarea id="album-description" rows={3} value={form.description} onChange={set('description')} maxLength={5000} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="album-link">Outside folder link (optional, https)</Label>
-              <Input id="album-link" type="url" value={form.externalUrl} onChange={set('externalUrl')} maxLength={500} />
-            </div>
-            <label className="flex items-center gap-2 text-sm md:col-span-2">
-              <input
-                type="checkbox"
-                checked={form.isPublished}
-                onChange={(event) => setForm((current) => (current ? { ...current, isPublished: event.target.checked } : current))}
-              />
-              Published (anyone with the link can see it)
-            </label>
-            <div className="flex flex-wrap gap-3 md:col-span-2">
-              <Button type="submit" disabled={save.isPending}>
-                Save
+      <FormSection title="Album details">
+        <form className={formGridClass} onSubmit={onSave}>
+          <Field label="Title" htmlFor="album-title">
+            <Input id="album-title" value={form.title} onChange={set('title')} required maxLength={255} />
+          </Field>
+          <Field label="Event (optional)" htmlFor="album-event">
+            <Select id="album-event" value={form.eventId} onChange={set('eventId')}>
+              <option value="">No event</option>
+              {(events || []).map((item: any) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Description (optional)" htmlFor="album-description" full>
+            <Textarea id="album-description" rows={3} value={form.description} onChange={set('description')} maxLength={5000} />
+          </Field>
+          <Field label="Outside folder link (optional, https)" htmlFor="album-link" full>
+            <Input id="album-link" type="url" value={form.externalUrl} onChange={set('externalUrl')} maxLength={500} />
+          </Field>
+          <CheckboxField
+            label="Published (anyone with the link can see it)"
+            checked={form.isPublished}
+            onChange={(event) => setForm((current) => (current ? { ...current, isPublished: event.target.checked } : current))}
+          />
+          <FormActions>
+            <Button type="submit" disabled={save.isPending}>
+              Save
+            </Button>
+            {album.is_published && (
+              <Button asChild variant="secondary">
+                <Link href={`/gallery/${album.id}`}>View public page</Link>
               </Button>
-              {album.is_published && (
-                <Button asChild variant="outline">
-                  <Link href={`/gallery/${album.id}`}>View public page</Link>
-                </Button>
-              )}
-              <Button type="button" variant="outline" onClick={() => setConfirmDelete(true)}>
-                Delete album
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+            )}
+            <Button type="button" variant="danger" onClick={() => setConfirmDelete(true)}>
+              Delete album
+            </Button>
+          </FormActions>
+        </form>
+      </FormSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Photos ({album.photo_count})</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <FormSection title={`Photos (${album.photo_count})`}>
+        <div className="space-y-4">
           <div
             onDragOver={(event) => {
               event.preventDefault();
@@ -235,12 +245,12 @@ export default function AdminAlbumPage() {
               setDragging(false);
               uploadFiles(Array.from(event.dataTransfer.files));
             }}
-            className={`flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center text-sm ${
-              dragging ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30' : 'border-slate-300 dark:border-slate-700'
+            className={`flex flex-col items-center gap-3 rounded-card border-2 border-dashed p-8 text-center text-sm text-foreground ${
+              dragging ? 'border-primary bg-primary/10' : 'border-input bg-surface/50'
             }`}
           >
-            <Upload className="h-6 w-6 text-ui-subtle" />
-            <p>{progress ? `Uploading ${progress.done} of ${progress.total}...` : 'Drop photos here, or choose them (JPEG, PNG, WebP or HEIC, up to 10 MB each).'}</p>
+            <Upload className="h-6 w-6 text-muted" aria-hidden="true" />
+            <p aria-live="polite">{progress ? `Uploading ${progress.done} of ${progress.total}...` : 'Drop photos here, or choose them (JPEG, PNG, WebP or HEIC, up to 10 MB each).'}</p>
             <input
               ref={fileInput}
               type="file"
@@ -252,8 +262,8 @@ export default function AdminAlbumPage() {
                 event.target.value = '';
               }}
             />
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" disabled={Boolean(progress)} onClick={() => fileInput.current?.click()}>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button type="button" variant="secondary" disabled={Boolean(progress)} onClick={() => fileInput.current?.click()}>
                 Choose photos
               </Button>
               {retryFiles.length + retryIds.length > 0 && !progress && (
@@ -265,7 +275,9 @@ export default function AdminAlbumPage() {
           </div>
 
           {album.photos.length === 0 ? (
-            <p className="text-sm text-ui-subtle">No photos yet.</p>
+            <p className="rounded-lg border border-dashed border-input bg-surface/50 px-4 py-6 text-center text-sm text-muted">
+              No photos yet.
+            </p>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {album.photos.map((photo) => {
@@ -273,19 +285,19 @@ export default function AdminAlbumPage() {
                 return (
                   <div key={photo.id} className="space-y-2">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={photo.thumb_url} alt="" loading="lazy" className="aspect-square w-full rounded-lg object-cover" />
+                    <img src={photo.thumb_url} alt="" loading="lazy" className="aspect-square w-full rounded-lg border border-border object-cover" />
                     <div className="flex gap-1">
                       <Button
                         type="button"
                         size="sm"
-                        variant={isCover ? 'default' : 'outline'}
+                        variant={isCover ? 'primary' : 'secondary'}
                         disabled={isCover || setCover.isPending}
                         onClick={() => setCover.mutate(photo.id)}
                         aria-label="Set as cover"
                       >
                         <Star className="h-4 w-4" />
                       </Button>
-                      <Button type="button" size="sm" variant="outline" onClick={() => setPendingPhoto(photo)} aria-label="Delete photo">
+                      <Button type="button" size="sm" variant="secondary" onClick={() => setPendingPhoto(photo)} aria-label="Delete photo">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -294,8 +306,8 @@ export default function AdminAlbumPage() {
               })}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </FormSection>
 
       {confirmDelete && (
         <ConfirmDialog

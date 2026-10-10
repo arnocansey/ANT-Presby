@@ -1,9 +1,17 @@
 import { useLocalSearchParams } from 'expo-router';
 import React from 'react';
 
-import { BrandCard, BrandHero, BrandPill, BrandScreen } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
+import { LoadingList, Screen, ScreenHeader } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppBadge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
 import { useNewsPost } from '@/hooks/use-api';
+
+const formatPublished = (value?: string) => {
+  if (!value) return 'Published';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+};
 
 export default function NewsDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
@@ -12,34 +20,24 @@ export default function NewsDetailScreen() {
   const post = newsQuery.data;
 
   return (
-    <BrandScreen>
-      <BrandHero
-        eyebrow="Announcement"
-        title={post?.title || 'News detail'}
-        description={post?.excerpt || post?.summary || 'Read the full update from ANT PRESS.'}
-      />
+    <Screen>
+      <ScreenHeader back eyebrow="News" title={post?.title || 'News'} />
 
       {newsQuery.isLoading ? (
-        <BrandCard>
-          <ThemedText type="small">Loading announcement...</ThemedText>
-        </BrandCard>
+        <LoadingList count={2} height={120} />
       ) : post ? (
         <>
-          <BrandCard>
-            <BrandPill>{post?.published_at || post?.publishedAt || 'Published'}</BrandPill>
-            <ThemedText type="defaultSemiBold">{post?.title}</ThemedText>
-            <ThemedText type="small">{post?.excerpt || post?.summary || 'Announcement summary.'}</ThemedText>
-          </BrandCard>
-          <BrandCard>
-            <ThemedText type="defaultSemiBold">Full announcement</ThemedText>
-            <ThemedText type="small">{post?.content || post?.excerpt || post?.summary || 'No content available.'}</ThemedText>
-          </BrandCard>
+          <AppBadge>{formatPublished(post?.published_at || post?.publishedAt)}</AppBadge>
+          {post?.excerpt || post?.summary ? (
+            <AppText variant="bodyStrong" tone="muted">
+              {post?.excerpt || post?.summary}
+            </AppText>
+          ) : null}
+          <AppText>{post?.content || post?.excerpt || post?.summary || 'No content available.'}</AppText>
         </>
       ) : (
-        <BrandCard>
-          <ThemedText type="small">Announcement not found.</ThemedText>
-        </BrandCard>
+        <EmptyState icon="newspaper-outline" title="Announcement not found" />
       )}
-    </BrandScreen>
+    </Screen>
   );
 }

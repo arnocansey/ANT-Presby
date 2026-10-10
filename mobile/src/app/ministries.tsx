@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
 import React from 'react';
 
-import { BrandButton, BrandCard, BrandHero, BrandPill, BrandScreen } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
+import { ListGroup, ListRow, LoadingList, Screen, ScreenHeader } from '@/components/kit';
+import { EmptyState } from '@/components/ui/empty-state';
 import { useMinistries } from '@/hooks/use-api';
 
 export default function MinistriesScreen() {
@@ -10,35 +10,27 @@ export default function MinistriesScreen() {
   const ministries = ministriesQuery.data || [];
 
   return (
-    <BrandScreen>
-      <BrandHero
-        eyebrow="Ministries"
-        title="Serve, grow, and connect"
-        description="Explore the same ministries available on the ANT PRESS website and open the sermon collections for each one."
-      />
+    <Screen>
+      <ScreenHeader back title="Ministries" subtitle="Serve, grow and connect. Open a ministry to see its sermons." />
 
       {ministriesQuery.isLoading ? (
-        <BrandCard>
-          <ThemedText type="small">Loading ministries...</ThemedText>
-        </BrandCard>
+        <LoadingList />
       ) : ministries.length > 0 ? (
-        ministries.map((ministry: any) => (
-          <BrandCard key={String(ministry?.id)}>
-            <BrandPill>Ministry</BrandPill>
-            <ThemedText type="defaultSemiBold">{ministry?.name || 'Ministry'}</ThemedText>
-            <ThemedText type="small">{ministry?.description || 'No ministry description provided yet.'}</ThemedText>
-            <BrandButton
-              label="View Sermons"
+        <ListGroup>
+          {ministries.map((ministry: any) => (
+            <ListRow
+              key={String(ministry?.id)}
+              icon="sparkles-outline"
+              label={ministry?.name || 'Ministry'}
+              description={ministry?.description || 'No ministry description provided yet.'}
+              accessibilityLabel={`View sermons from ${ministry?.name || 'this ministry'}`}
               onPress={() => router.push(`/ministries/${ministry?.id}` as never)}
-              variant="secondary"
             />
-          </BrandCard>
-        ))
+          ))}
+        </ListGroup>
       ) : (
-        <BrandCard>
-          <ThemedText type="small">No ministries available right now.</ThemedText>
-        </BrandCard>
+        <EmptyState icon="sparkles-outline" title="No ministries available right now" />
       )}
-    </BrandScreen>
+    </Screen>
   );
 }

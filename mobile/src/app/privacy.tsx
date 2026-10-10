@@ -1,30 +1,27 @@
 import React from 'react';
 
-import { BrandCard, BrandHero, BrandScreen } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
+import { Screen, ScreenHeader } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppCard } from '@/components/ui/card';
 
 export default function PrivacyScreen() {
   return (
-    <BrandScreen>
-      <BrandHero
-        eyebrow="Privacy"
-        title="Privacy overview"
-        description="A mobile summary of the privacy commitments represented on the ANT PRESS website."
-      />
+    <Screen>
+      <ScreenHeader back eyebrow="Privacy" title="Privacy overview" />
 
-      <BrandCard>
-        <ThemedText type="defaultSemiBold">Your data</ThemedText>
-        <ThemedText type="small">
+      <AppCard>
+        <AppText variant="bodyStrong">Your data</AppText>
+        <AppText variant="small" tone="muted">
           ANT PRESS stores the account, giving, prayer, and notification data needed to provide the platform experience across web and mobile.
-        </ThemedText>
-      </BrandCard>
+        </AppText>
+      </AppCard>
 
-      <BrandCard>
-        <ThemedText type="defaultSemiBold">How it is used</ThemedText>
-        <ThemedText type="small">
+      <AppCard>
+        <AppText variant="bodyStrong">How it is used</AppText>
+        <AppText variant="small" tone="muted">
           We use your information to authenticate you, support participation in events, power giving and communication flows, and help admins manage the platform responsibly.
-        </ThemedText>
-      </BrandCard>
-    </BrandScreen>
+        </AppText>
+      </AppCard>
+    </Screen>
   );
 }

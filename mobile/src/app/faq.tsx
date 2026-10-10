@@ -1,7 +1,8 @@
 import React from 'react';
 
-import { BrandCard, BrandHero, BrandScreen } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
+import { Screen, ScreenHeader } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppCard } from '@/components/ui/card';
 
 const faqs = [
   {
@@ -20,19 +21,19 @@ const faqs = [
 
 export default function FaqScreen() {
   return (
-    <BrandScreen>
-      <BrandHero
-        eyebrow="FAQ"
-        title="Common questions"
-        description="A quick mobile version of the same help and onboarding content available on the website."
-      />
+    <Screen>
+      <ScreenHeader back eyebrow="FAQ" title="Common questions" />
 
       {faqs.map((item) => (
-        <BrandCard key={item.question}>
-          <ThemedText type="defaultSemiBold">{item.question}</ThemedText>
-          <ThemedText type="small">{item.answer}</ThemedText>
-        </BrandCard>
+        <AppCard key={item.question}>
+          <AppText variant="bodyStrong" accessibilityRole="header">
+            {item.question}
+          </AppText>
+          <AppText variant="small" tone="muted">
+            {item.answer}
+          </AppText>
+        </AppCard>
       ))}
-    </BrandScreen>
+    </Screen>
   );
 }

@@ -3,9 +3,15 @@
 import React from 'react';
 import Image from 'next/image';
 import { useForm } from 'react-hook-form';
-import { Camera, User } from 'lucide-react';
+import { Camera, UserRound } from 'lucide-react';
+import StatusMessage from '@/components/site/StatusMessage';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import EmptyState from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import PageHeader from '@/components/ui/page-header';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useProfile, useUpdateProfile, useUploadProfilePhoto } from '@/hooks/useApi';
 import { useAuthStore } from '@/lib/store';
 import { resolveAssetUrl } from '@/lib/utils';
@@ -17,7 +23,7 @@ type ProfileFormData = {
 };
 
 export default function ProfilePage() {
-  const { data: profile, isLoading } = useProfile();
+  const { data: profile, isLoading, isError } = useProfile();
   const update = useUpdateProfile();
   const uploadPhoto = useUploadProfilePhoto();
   const { setUser } = useAuthStore();
@@ -56,20 +62,28 @@ export default function ProfilePage() {
   const displayName = `${profile?.first_name || profile?.firstName || ''} ${profile?.last_name || profile?.lastName || ''}`.trim();
 
   return (
-    <div className="container-max py-10">
-      <section className="rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-10 text-white shadow-xl sm:px-10">
-        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-300">Profile</p>
-        <h1 className="mt-3 text-4xl font-black tracking-tight">{displayName || 'Your Profile'}</h1>
-        <p className="mt-3 text-slate-200">
-          Keep your member identity up to date and make sure your account details stay current across the platform.
-        </p>
-      </section>
+    <div className="container-max space-y-8 py-10 sm:py-12">
+      <PageHeader
+        eyebrow="Profile"
+        title={displayName || 'Your Profile'}
+        description="Keep your member details up to date across the site."
+        breadcrumb={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Profile' }]}
+      />
 
-      <div className="mt-8 rounded-[1.8rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-8">
-        {isLoading && <ProfileState text="Loading profile..." />}
-
-        {!isLoading && (
-          <div className="space-y-8">
+      {isLoading ? (
+        <Card>
+          <CardContent className="space-y-6 p-6 sm:p-8" role="status">
+            <span className="sr-only">Loading…</span>
+            <Skeleton className="h-28 w-28 rounded-full" />
+            <Skeleton className="h-11 w-full" />
+            <Skeleton className="h-11 w-full" />
+          </CardContent>
+        </Card>
+      ) : isError ? (
+        <EmptyState icon={UserRound} title="Your profile couldn't load right now" message="Please try again in a moment." />
+      ) : (
+        <Card>
+          <CardContent className="space-y-8 p-6 sm:p-8">
             <section className="flex flex-col gap-5 sm:flex-row sm:items-center">
               {imageUrl ? (
                 <Image
@@ -78,16 +92,19 @@ export default function ProfilePage() {
                   width={112}
                   height={112}
                   unoptimized
-                  className="h-28 w-28 rounded-full border border-slate-200 object-cover dark:border-slate-700"
+                  className="h-28 w-28 rounded-full border border-border object-cover"
                 />
               ) : (
-                <div className="inline-flex h-28 w-28 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-3xl font-black text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                <div
+                  className="inline-flex h-28 w-28 items-center justify-center rounded-full bg-primary/10 text-3xl font-bold text-primary"
+                  aria-hidden="true"
+                >
                   {(profile?.first_name || profile?.firstName || 'U').charAt(0).toUpperCase()}
                 </div>
               )}
 
               <div className="space-y-3">
-                <p className="text-sm text-ui-subtle">Upload a profile picture (JPG, PNG, WebP, max 5MB).</p>
+                <p className="text-sm text-muted">Upload a profile picture (JPG, PNG, WebP, max 5MB).</p>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -97,62 +114,45 @@ export default function ProfilePage() {
                 />
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadPhoto.isPending}
-                  className="rounded-full"
+                  loading={uploadPhoto.isPending}
                 >
-                  <Camera className="mr-2 h-4 w-4" />
+                  {!uploadPhoto.isPending && <Camera className="h-4 w-4" aria-hidden="true" />}
                   {uploadPhoto.isPending ? 'Uploading...' : 'Upload Photo'}
                 </Button>
               </div>
             </section>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="grid gap-5 lg:grid-cols-2">
+            <form onSubmit={handleSubmit(onSubmit)} className="grid gap-5 border-t border-border pt-8 lg:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-950 dark:text-white">First Name</label>
-                <Input className="h-12 rounded-xl border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900" {...register('firstName')} />
+                <Label htmlFor="profile-first-name">First name</Label>
+                <Input id="profile-first-name" {...register('firstName')} />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-950 dark:text-white">Last Name</label>
-                <Input className="h-12 rounded-xl border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900" {...register('lastName')} />
+                <Label htmlFor="profile-last-name">Last name</Label>
+                <Input id="profile-last-name" {...register('lastName')} />
               </div>
 
               <div className="space-y-2 lg:col-span-2">
-                <label className="text-sm font-semibold text-slate-950 dark:text-white">Phone</label>
-                <Input className="h-12 rounded-xl border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900" {...register('phone')} />
+                <Label htmlFor="profile-phone">Phone</Label>
+                <Input id="profile-phone" type="tel" {...register('phone')} />
               </div>
 
-              <div className="flex flex-col gap-3 lg:col-span-2 sm:flex-row sm:items-center sm:justify-between">
-                <Button
-                  type="submit"
-                  disabled={update.isPending}
-                  className="h-12 rounded-xl bg-amber-500 text-slate-950 hover:bg-amber-400"
-                >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:col-span-2">
+                <Button type="submit" size="lg" loading={update.isPending}>
                   {update.isPending ? 'Saving...' : 'Save Profile'}
                 </Button>
-
-                {update.isError && (
-                  <p className="text-sm text-red-700 dark:text-red-300">Could not update profile.</p>
-                )}
-                {update.isSuccess && (
-                  <p className="text-sm text-emerald-700 dark:text-emerald-300">Profile updated.</p>
-                )}
+                <div aria-live="polite">
+                  {update.isError && <StatusMessage tone="danger">Could not update profile.</StatusMessage>}
+                  {update.isSuccess && <StatusMessage tone="success">Profile updated.</StatusMessage>}
+                </div>
               </div>
             </form>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ProfileState({ text }: { text: string }) {
-  return (
-    <div className="rounded-[1.4rem] border border-dashed border-slate-300 bg-white p-10 text-center text-ui-subtle dark:border-slate-700 dark:bg-slate-950">
-      <User className="mx-auto mb-4 h-10 w-10 opacity-30" />
-      <p>{text}</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

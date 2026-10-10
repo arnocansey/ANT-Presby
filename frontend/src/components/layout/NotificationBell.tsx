@@ -33,7 +33,7 @@ type NotificationItem = {
 
 export default function NotificationBell() {
   const router = useRouter();
-  const { data } = useNotifications(1, 10);
+  const { data, isLoading, isError } = useNotifications(1, 10);
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const notifications = (data?.notifications || []) as NotificationItem[];
@@ -93,34 +93,50 @@ export default function NotificationBell() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" className="relative" aria-label="Open notifications">
-          <Bell className="h-4 w-4" />
+        <Button
+          variant="outline"
+          size="icon"
+          className="relative"
+          aria-label={unreadCount > 0 ? `Open notifications, ${unreadCount} unread` : 'Open notifications'}
+        >
+          <Bell className="h-4 w-4" aria-hidden="true" />
           {unreadCount > 0 && (
-            <span className="absolute -right-1 -top-1 inline-flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white">
+            <span
+              aria-hidden="true"
+              className="absolute -right-1 -top-1 inline-flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger-solid px-1 text-[10px] font-bold text-danger-solid-foreground"
+            >
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel className="flex items-center justify-between">
+      <DropdownMenuContent align="end" className="w-80 max-w-[calc(100vw-2rem)]">
+        <DropdownMenuLabel className="flex items-center justify-between gap-3">
           Notifications
           <button
             type="button"
             onClick={() => markAllRead.mutate()}
-            className="inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-800 dark:text-cyan-300"
+            className="inline-flex min-h-8 items-center gap-1 rounded text-xs font-semibold text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <CheckCheck className="h-3.5 w-3.5" />
+            <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" />
             Mark all read
           </button>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
-        {notifications.length === 0 && (
-          <DropdownMenuItem disabled className="text-ui-subtle">
+        {isLoading ? (
+          <DropdownMenuItem disabled className="text-muted">
+            Loading notifications…
+          </DropdownMenuItem>
+        ) : isError ? (
+          <DropdownMenuItem disabled className="text-muted">
+            Notifications couldn&apos;t load right now
+          </DropdownMenuItem>
+        ) : notifications.length === 0 ? (
+          <DropdownMenuItem disabled className="text-muted">
             No notifications yet
           </DropdownMenuItem>
-        )}
+        ) : null}
 
         {notifications.map((notification) => (
           <DropdownMenuItem
@@ -133,12 +149,13 @@ export default function NotificationBell() {
             }}
             className="cursor-pointer items-start gap-2 py-2"
           >
-            <div className="w-full">
-              <p className={`text-sm font-semibold ${notification.is_read ? 'text-ui-muted' : 'text-slate-900 dark:text-slate-50'}`}>
+            <div className="w-full min-w-0">
+              <p className={`text-sm font-semibold ${notification.is_read ? 'text-muted' : 'text-foreground'}`}>
+                {!notification.is_read && <span className="sr-only">Unread: </span>}
                 {notification.title}
               </p>
-              <p className="mt-1 line-clamp-2 text-xs text-ui-subtle">{notification.message}</p>
-              <p className="mt-1 text-[11px] text-ui-subtle">
+              <p className="mt-1 line-clamp-2 text-xs text-muted">{notification.message}</p>
+              <p className="mt-1 text-[11px] text-muted">
                 {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
               </p>
             </div>

@@ -30,13 +30,8 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
-  icons: {
-    apple: '/apple-icon',
-    icon: [
-      { url: '/icon?size=192', sizes: '192x192', type: 'image/png' },
-      { url: '/icon?size=512', sizes: '512x512', type: 'image/png' },
-    ],
-  },
+  // Favicon and Apple touch icon come from app/icon.png and app/apple-icon.png (the church crest),
+  // which Next.js links automatically. Regenerate them with `node scripts/build-brand-assets.mjs`.
 };
 
 export const viewport: Viewport = {

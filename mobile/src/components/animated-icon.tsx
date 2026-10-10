@@ -4,6 +4,10 @@ import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import { Palette } from '@/constants/tokens';
+
+const brand = Palette.dark;
+
 const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 900;
 
@@ -166,13 +170,13 @@ const styles = StyleSheet.create({
   },
   background: {
     borderRadius: 52,
-    backgroundColor: '#16213a',
+    backgroundColor: brand.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: brand.border,
     width: 168,
     height: 168,
     position: 'absolute',
-    shadowColor: '#208AEF',
+    shadowColor: brand.primary,
     shadowOpacity: 0.28,
     shadowRadius: 32,
     shadowOffset: { width: 0, height: 18 },
@@ -180,7 +184,7 @@ const styles = StyleSheet.create({
   },
   backgroundSolidColor: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0f172a',
+    backgroundColor: brand.background,
     zIndex: 1000,
   },
   overlayBackdrop: {
@@ -202,14 +206,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   wordmarkTitle: {
-    color: '#F8FAFC',
+    color: brand.text,
     fontSize: 24,
     fontWeight: '900',
     letterSpacing: 1.4,
   },
   wordmarkSubtitle: {
     marginTop: 6,
-    color: '#FBBF24',
+    color: brand.gold,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 3.2,

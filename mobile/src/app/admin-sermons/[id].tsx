@@ -1,11 +1,10 @@
 import { useLocalSearchParams, router } from 'expo-router';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
-import { BrandButton, BrandCard, BrandHero, BrandPill, BrandScreen, BrandSectionHeader } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { ChoiceField, FormMessage, FormTextField, LoadingList, Screen, ScreenHeader } from '@/components/kit';
+import { AppButton } from '@/components/ui/button';
+import { AppCard } from '@/components/ui/card';
 import {
   getApiErrorMessage,
   useAdminSermons,
@@ -13,7 +12,6 @@ import {
   useSermonSeriesList,
   useUpdateAdminSermon,
 } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/store/auth';
 
 type SermonFormValues = {
@@ -33,7 +31,6 @@ export default function AdminSermonEditScreen() {
   const sermonsQuery = useAdminSermons(isAdmin);
   const ministriesQuery = useMinistries(isAdmin);
   const seriesQuery = useSermonSeriesList(isAdmin);
-  const theme = useTheme();
   const updateMutation = useUpdateAdminSermon();
   const { control, handleSubmit, reset, watch, setValue } = useForm<SermonFormValues>({
     defaultValues: { title: '', speaker: '', description: '', videoUrl: '', sermonDate: '', ministryId: '', seriesId: '' },
@@ -81,96 +78,60 @@ export default function AdminSermonEditScreen() {
 
   if (!user || !isAdmin) {
     return (
-      <BrandScreen>
-        <BrandHero eyebrow="Edit Sermon" title="Admin access required" description="Sign in with an admin account to edit sermons." />
-      </BrandScreen>
+      <Screen>
+        <ScreenHeader back eyebrow="Edit sermon" title="Admin access required" subtitle="Sign in with an admin account to edit sermons." />
+      </Screen>
     );
   }
 
-  return (
-    <BrandScreen>
-      <BrandHero eyebrow="Edit Sermon" title={sermon?.title || 'Edit sermon'} description="Update the sermon details from the mobile admin app." />
-      <BrandCard>
-        <BrandPill>Edit</BrandPill>
-        <BrandSectionHeader title="Edit sermon" description="Use the ministry IDs below if you need to reassign the sermon." />
-        {!sermon ? (
-          <ThemedText type="small">Loading sermon...</ThemedText>
-        ) : (
-          <>
-            <Field control={control} name="title" label="Title" placeholder="Sermon title" />
-            <Field control={control} name="speaker" label="Speaker" placeholder="Speaker" />
-            <Field control={control} name="description" label="Description" placeholder="Sermon description" multiline />
-            <Field control={control} name="videoUrl" label="Video URL" placeholder="Optional video link" />
-            <Field control={control} name="sermonDate" label="Sermon Date" placeholder="2026-04-20T09:00:00.000Z" />
-            <Field control={control} name="ministryId" label="Ministry ID" placeholder="Numeric ministry ID" />
-            {ministriesQuery.data?.length ? (
-              <ThemedText type="small">
-                Available ministries: {ministriesQuery.data.map((item: any) => `${item.id}=${item.name}`).join(', ')}
-              </ThemedText>
-            ) : null}
-            <View style={styles.field}>
-              <ThemedText type="smallBold">Series</ThemedText>
-              <View style={styles.chips}>
-                {[{ id: '', title: 'No series' }, ...(seriesQuery.data || []).map((s) => ({ id: String(s.id), title: s.title }))].map(
-                  (option) => {
-                    const active = selectedSeriesId === option.id;
-                    return (
-                      <Pressable key={option.id || 'none'} onPress={() => setValue('seriesId', option.id)}>
-                        <View
-                          style={[
-                            styles.chip,
-                            { backgroundColor: active ? theme.tint : theme.background, borderColor: active ? theme.tint : theme.border },
-                          ]}>
-                          <ThemedText type="smallBold" style={{ color: active ? theme.white : theme.text }}>
-                            {option.title}
-                          </ThemedText>
-                        </View>
-                      </Pressable>
-                    );
-                  }
-                )}
-              </View>
-            </View>
-            <BrandButton label="Save Changes" onPress={handleSubmit(onSubmit)} variant="secondary" />
-            {updateMutation.isError ? (
-              <ThemedText style={styles.errorText}>{getApiErrorMessage(updateMutation.error, 'Failed to update sermon.')}</ThemedText>
-            ) : null}
-          </>
-        )}
-      </BrandCard>
-    </BrandScreen>
-  );
-}
+  const ministryOptions = (ministriesQuery.data || []).map((item: any) => ({ value: String(item.id), label: String(item.name) }));
+  const seriesOptions = [
+    { value: '', label: 'No series' },
+    ...(seriesQuery.data || []).map((s) => ({ value: String(s.id), label: s.title })),
+  ];
 
-function Field({ control, name, label, placeholder, multiline = false }: { control: any; name: keyof SermonFormValues; label: string; placeholder: string; multiline?: boolean }) {
-  const theme = useTheme();
   return (
-    <View style={styles.field}>
-      <ThemedText type="smallBold">{label}</ThemedText>
-      <Controller
-        control={control}
-        name={name}
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
-            value={String(value ?? '')}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            placeholder={placeholder}
-            placeholderTextColor={theme.textSecondary}
-            multiline={multiline}
-            style={[styles.input, multiline && styles.multiline, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+    <Screen>
+      <ScreenHeader back eyebrow="Edit sermon" title={sermon?.title || 'Edit sermon'} />
+      {!sermon ? (
+        <LoadingList count={3} height={72} />
+      ) : (
+        <AppCard>
+          <FormTextField control={control} name="title" label="Title" placeholder="Sermon title" />
+          <FormTextField control={control} name="speaker" label="Speaker" placeholder="Speaker" />
+          <FormTextField control={control} name="description" label="Description" placeholder="Sermon description" multiline />
+          <FormTextField control={control} name="videoUrl" label="Video URL" placeholder="Optional video link" autoCapitalize="none" />
+          <FormTextField
+            control={control}
+            name="sermonDate"
+            label="Sermon date"
+            placeholder="2026-04-20T09:00:00.000Z"
+            hint="ISO format, for example 2026-04-20T09:00:00.000Z"
+            autoCapitalize="none"
           />
-        )}
-      />
-    </View>
+          {ministryOptions.length > 0 ? (
+            <Controller
+              control={control}
+              name="ministryId"
+              render={({ field: { value, onChange } }) => (
+                <ChoiceField label="Ministry" options={ministryOptions} value={value} onChange={onChange} />
+              )}
+            />
+          ) : (
+            <FormTextField control={control} name="ministryId" label="Ministry ID" placeholder="Numeric ministry ID" keyboardType="number-pad" />
+          )}
+          <ChoiceField
+            label="Series"
+            options={seriesOptions}
+            value={selectedSeriesId}
+            onChange={(value) => setValue('seriesId', value)}
+          />
+          <AppButton label="Save changes" onPress={handleSubmit(onSubmit)} />
+          {updateMutation.isError ? (
+            <FormMessage tone="danger">{getApiErrorMessage(updateMutation.error, 'Failed to update sermon.')}</FormMessage>
+          ) : null}
+        </AppCard>
+      )}
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  field: { gap: Spacing.one },
-  input: { borderWidth: 1, borderRadius: Radius.medium, paddingHorizontal: Spacing.three, paddingVertical: Spacing.three, fontSize: 16 },
-  multiline: { minHeight: 110, textAlignVertical: 'top' },
-  errorText: { color: '#B91C1C' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  chip: { borderWidth: 1, borderRadius: Radius.pill, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
-});

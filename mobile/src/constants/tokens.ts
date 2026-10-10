@@ -1,5 +1,5 @@
 // Clean & classic design tokens: the same values as frontend/src/styles/tokens.css.
-// New UI uses these through useAppTheme(); legacy screens still use Colors/useTheme until phase 8d.
+// Every screen reads these through useAppTheme() (phase 8d retired the old Colors/useTheme palette).
 export const Palette = {
   light: {
     background: '#FFFFFF',
@@ -59,3 +59,14 @@ export const TypeScale = {
 export const Space = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 } as const;
 export const Corner = { control: 8, card: 12, panel: 16, pill: 999 } as const;
 export const MIN_TOUCH = 44;
+
+// Colours that never change with the phone theme: the photo viewer, text on photos and the dialog scrim.
+export const Fixed = {
+  viewer: '#000000',
+  onMedia: '#FFFFFF',
+  mediaShade: 'rgba(0, 0, 0, 0.45)',
+  scrim: 'rgba(11, 21, 48, 0.55)',
+} as const;
+
+// Content column cap for tablets and the web build.
+export const MAX_CONTENT_WIDTH = 880;

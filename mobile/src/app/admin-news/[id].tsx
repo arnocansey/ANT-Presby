@@ -1,13 +1,11 @@
 import { useLocalSearchParams, router } from 'expo-router';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { StyleSheet, Switch, TextInput, View } from 'react-native';
 
-import { BrandButton, BrandCard, BrandHero, BrandPill, BrandScreen, BrandSectionHeader } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { FormMessage, FormTextField, LoadingList, Screen, ScreenHeader, SwitchRow } from '@/components/kit';
+import { AppButton } from '@/components/ui/button';
+import { AppCard } from '@/components/ui/card';
 import { getApiErrorMessage, useAdminNews, useUpdateNewsPost } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/store/auth';
 
 type NewsFormValues = {
@@ -65,91 +63,53 @@ export default function AdminNewsEditScreen() {
 
   if (!user || !isAdmin) {
     return (
-      <BrandScreen>
-        <BrandHero eyebrow="Edit News" title="Admin access required" description="Sign in with an admin account to edit news posts." />
-      </BrandScreen>
+      <Screen>
+        <ScreenHeader back eyebrow="Edit news" title="Admin access required" subtitle="Sign in with an admin account to edit news posts." />
+      </Screen>
     );
   }
 
   return (
-    <BrandScreen>
-      <BrandHero eyebrow="Edit News" title={post?.title || 'Edit news post'} description="Update the post and push changes back through the live admin backend." />
-      <BrandCard>
-        <BrandPill>Edit</BrandPill>
-        <BrandSectionHeader title="Edit post" description="Make changes and save them back to ANT PRESS." />
-        {!post ? (
-          <ThemedText type="small">Loading post...</ThemedText>
-        ) : (
-          <>
-            <Field control={control} name="title" label="Title" placeholder="News title" />
-            <Field control={control} name="excerpt" label="Excerpt" placeholder="Short summary" multiline />
-            <Field control={control} name="content" label="Content" placeholder="Write the announcement" multiline />
-            <Toggle control={control} name="status" label="Publish immediately" />
-            <Toggle control={control} name="featured" label="Feature this post" booleanValue />
-            <Toggle control={control} name="notifySubscribers" label="Notify subscribers" booleanValue />
-            <BrandButton label="Save Changes" onPress={handleSubmit(onSubmit)} variant="secondary" />
-            {updateMutation.isError ? (
-              <ThemedText style={styles.errorText}>{getApiErrorMessage(updateMutation.error, 'Failed to update news post.')}</ThemedText>
-            ) : null}
-          </>
-        )}
-      </BrandCard>
-    </BrandScreen>
-  );
-}
-
-function Field({ control, name, label, placeholder, multiline = false }: { control: any; name: keyof NewsFormValues; label: string; placeholder: string; multiline?: boolean }) {
-  const theme = useTheme();
-  return (
-    <View style={styles.field}>
-      <ThemedText type="smallBold">{label}</ThemedText>
-      <Controller
-        control={control}
-        name={name}
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
-            value={String(value ?? '')}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            placeholder={placeholder}
-            placeholderTextColor={theme.textSecondary}
-            multiline={multiline}
-            style={[styles.input, multiline && styles.multiline, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+    <Screen>
+      <ScreenHeader back eyebrow="Edit news" title={post?.title || 'Edit news post'} />
+      {!post ? (
+        <LoadingList count={3} height={72} />
+      ) : (
+        <AppCard>
+          <FormTextField control={control} name="title" label="Title" placeholder="News title" />
+          <FormTextField control={control} name="excerpt" label="Excerpt" placeholder="Short summary" multiline />
+          <FormTextField control={control} name="content" label="Content" placeholder="Write the announcement" multiline />
+          <Controller
+            control={control}
+            name="status"
+            render={({ field: { onChange, value } }) => (
+              <SwitchRow
+                label="Publish immediately"
+                value={value === 'published'}
+                onValueChange={(enabled) => onChange(enabled ? 'published' : 'draft')}
+              />
+            )}
           />
-        )}
-      />
-    </View>
-  );
-}
-
-function Toggle({ control, name, label, booleanValue = false }: { control: any; name: keyof NewsFormValues; label: string; booleanValue?: boolean }) {
-  return (
-    <View style={styles.toggleRow}>
-      <ThemedText type="smallBold">{label}</ThemedText>
-      <Controller
-        control={control}
-        name={name}
-        render={({ field: { onChange, value } }) => (
-          <Switch
-            value={booleanValue ? Boolean(value) : value === 'published'}
-            onValueChange={(enabled) => onChange(booleanValue ? enabled : enabled ? 'published' : 'draft')}
+          <Controller
+            control={control}
+            name="featured"
+            render={({ field: { onChange, value } }) => (
+              <SwitchRow label="Feature this post" value={Boolean(value)} onValueChange={onChange} />
+            )}
           />
-        )}
-      />
-    </View>
+          <Controller
+            control={control}
+            name="notifySubscribers"
+            render={({ field: { onChange, value } }) => (
+              <SwitchRow label="Notify subscribers" value={Boolean(value)} onValueChange={onChange} />
+            )}
+          />
+          <AppButton label="Save changes" onPress={handleSubmit(onSubmit)} />
+          {updateMutation.isError ? (
+            <FormMessage tone="danger">{getApiErrorMessage(updateMutation.error, 'Failed to update news post.')}</FormMessage>
+          ) : null}
+        </AppCard>
+      )}
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  field: { gap: Spacing.one },
-  input: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-    fontSize: 16,
-  },
-  multiline: { minHeight: 110, textAlignVertical: 'top' },
-  toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.two },
-  errorText: { color: '#B91C1C' },
-});

@@ -3,11 +3,10 @@ import { useFocusEffect } from 'expo-router';
 import React from 'react';
 import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { AppText } from '@/components/ui/app-text';
+import { Corner, MIN_TOUCH, Space } from '@/constants/tokens';
 import { useLiveStream } from '@/hooks/use-api';
-
-const LIVE_RED = '#DC2626';
+import { useAppTheme } from '@/hooks/use-app-theme';
 
 const openLink = async (url: string) => {
   try {
@@ -17,8 +16,9 @@ const openLink = async (url: string) => {
   }
 };
 
-// Home screen card, shown only while the church is live; refreshed whenever the screen gains focus.
+// Shown on Home and Watch only while the church is live; refreshed whenever the screen gains focus.
 export function LiveCard() {
+  const { colors } = useAppTheme();
   const { data: live, refetch } = useLiveStream();
 
   useFocusEffect(
@@ -30,16 +30,16 @@ export function LiveCard() {
   if (!live?.is_live) return null;
 
   return (
-    <View style={styles.card}>
-      <View style={styles.badge}>
-        <View style={styles.dot} />
-        <ThemedText type="smallBold" style={styles.badgeText}>
+    <View style={[styles.card, { backgroundColor: colors.dangerSolid }]}>
+      <View style={[styles.pill, { borderColor: colors.onDangerSolid }]}>
+        <View style={[styles.dot, { backgroundColor: colors.onDangerSolid }]} />
+        <AppText variant="caption" style={[styles.pillText, { color: colors.onDangerSolid }]}>
           Live now
-        </ThemedText>
+        </AppText>
       </View>
-      <ThemedText type="subtitle" style={styles.title}>
+      <AppText variant="section" accessibilityRole="header" style={{ color: colors.onDangerSolid }}>
         {live.title || "We're live"}
-      </ThemedText>
+      </AppText>
       <View style={styles.buttons}>
         {live.youtube_url ? <WatchButton icon="logo-youtube" label="Watch on YouTube" url={live.youtube_url} /> : null}
         {live.facebook_url ? <WatchButton icon="logo-facebook" label="Watch on Facebook" url={live.facebook_url} /> : null}
@@ -48,72 +48,43 @@ export function LiveCard() {
   );
 }
 
-function WatchButton({
-  icon,
-  label,
-  url,
-}: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  label: string;
-  url: string;
-}) {
+function WatchButton({ icon, label, url }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; url: string }) {
+  const { colors } = useAppTheme();
   return (
-    <Pressable onPress={() => openLink(url)} style={styles.watchButton} accessibilityRole="link">
-      <Ionicons name={icon} size={16} color={LIVE_RED} />
-      <ThemedText type="defaultSemiBold" style={styles.watchText}>
+    <Pressable
+      onPress={() => openLink(url)}
+      accessibilityRole="link"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.watch, { backgroundColor: colors.onDangerSolid, opacity: pressed ? 0.85 : 1 }]}>
+      <Ionicons name={icon} size={18} color={colors.dangerSolid} />
+      <AppText variant="bodyStrong" style={{ color: colors.dangerSolid }}>
         {label}
-      </ThemedText>
+      </AppText>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: LIVE_RED,
-    borderRadius: Radius.large,
-    padding: Spacing.four,
-    gap: Spacing.two,
-  },
-  badge: {
+  card: { borderRadius: Corner.panel, padding: Space.lg, gap: Space.sm },
+  pill: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.one,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: Radius.pill,
+    gap: Space.xs,
+    borderWidth: 1,
+    borderRadius: Corner.pill,
+    paddingHorizontal: Space.sm + 2,
+    paddingVertical: 2,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: Radius.pill,
-    backgroundColor: '#FFFFFF',
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    textTransform: 'uppercase',
-  },
-  title: {
-    color: '#FFFFFF',
-  },
-  buttons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-    marginTop: Spacing.one,
-  },
-  watchButton: {
+  dot: { width: 8, height: 8, borderRadius: Corner.pill },
+  pillText: { textTransform: 'uppercase', letterSpacing: 1 },
+  buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm, marginTop: Space.xs },
+  watch: {
+    minHeight: MIN_TOUCH,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.one,
-    backgroundColor: '#FFFFFF',
-    borderRadius: Radius.pill,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  watchText: {
-    color: LIVE_RED,
-    fontWeight: '800',
+    gap: Space.sm,
+    borderRadius: Corner.pill,
+    paddingHorizontal: Space.md,
   },
 });

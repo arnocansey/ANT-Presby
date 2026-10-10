@@ -1,32 +1,34 @@
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AdminShell } from '@/components/admin-shell';
-import { BrandButton, BrandCard, BrandHero, BrandPill, BrandScreen, BrandSectionHeader } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { Avatar, LoadingList, Screen, ScreenHeader, SectionHeader, StatGrid, StatTile } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppBadge } from '@/components/ui/badge';
+import { AppButton } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Corner, Space } from '@/constants/tokens';
 import { useAdminUsers, useUpdateUserRole } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
+import { useAppTheme } from '@/hooks/use-app-theme';
 import { useAuthStore } from '@/store/auth';
 
 export default function AdminUsersScreen() {
+  const { colors } = useAppTheme();
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'admin';
   const usersQuery = useAdminUsers(isAdmin);
   const updateRoleMutation = useUpdateUserRole();
-  const theme = useTheme();
 
   if (!user || !isAdmin) {
     return (
-      <BrandScreen>
-        <BrandHero
-          eyebrow="Admin Users"
+      <Screen>
+        <ScreenHeader
+          back
+          eyebrow="Admin users"
           title="Admin access required"
-          description="Sign in with an admin account to manage user roles from mobile."
+          subtitle="Sign in with an admin account to manage user roles from mobile."
         />
-      </BrandScreen>
+      </Screen>
     );
   }
 
@@ -38,35 +40,20 @@ export default function AdminUsersScreen() {
 
   return (
     <AdminShell activeTab="/admin-users">
-      <View style={styles.headerRow}>
-        <Pressable
-          onPress={() => router.back()}
-          style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: theme.border }]}>
-          <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
-        </Pressable>
-        <View style={styles.headerCopy}>
-          <ThemedText type="smallBold" style={{ color: '#60A5FA', textTransform: 'uppercase', letterSpacing: 1 }}>
-            Admin
-          </ThemedText>
-          <ThemedText type="subtitle">Members</ThemedText>
-        </View>
-        <View style={[styles.iconButton, { backgroundColor: '#2563EB', borderColor: '#2563EB' }]}>
-          <Ionicons name="person-add-outline" size={16} color="#FFFFFF" />
-        </View>
-      </View>
+      <ScreenHeader back eyebrow="Admin" title="Members" />
 
-      <View style={styles.metricsRow}>
-        <MetricChip label="Total" value={String(total)} color="#60A5FA" />
-        <MetricChip label="Admins" value={String(admins)} color="#FBBF24" />
-        <MetricChip label="Members" value={String(members)} color="#34D399" />
-      </View>
+      <StatGrid minTileWidth={96}>
+        <StatTile label="Total" value={String(total)} icon="people-outline" />
+        <StatTile label="Admins" value={String(admins)} icon="shield-outline" />
+        <StatTile label="Members" value={String(members)} icon="person-outline" />
+      </StatGrid>
 
-      <BrandCard>
-        <BrandSectionHeader title="Recent users" description="Quick role changes for admin and member accounts." />
-        {usersQuery.isLoading ? (
-          <ThemedText type="small">Loading users...</ThemedText>
-        ) : users.length > 0 ? (
-          users.slice(0, 12).map((item: any) => {
+      <SectionHeader title="Recent users" />
+      {usersQuery.isLoading ? (
+        <LoadingList count={4} height={96} />
+      ) : users.length > 0 ? (
+        <View style={[styles.list, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {users.slice(0, 12).map((item: any, index: number) => {
             const name = [item?.first_name || item?.firstName, item?.last_name || item?.lastName]
               .filter(Boolean)
               .join(' ');
@@ -80,114 +67,41 @@ export default function AdminUsersScreen() {
               .toUpperCase();
 
             return (
-              <View key={String(item?.id)} style={[styles.userRow, { borderColor: 'rgba(255,255,255,0.08)' }]}>
+              <View
+                key={String(item?.id)}
+                style={[styles.userRow, index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}>
                 <View style={styles.userMain}>
-                  <View style={[styles.avatar, { backgroundColor: currentRole === 'admin' ? '#F59E0B' : '#2563EB' }]}>
-                    <ThemedText type="smallBold" style={{ color: '#FFFFFF' }}>
-                      {initials}
-                    </ThemedText>
+                  <Avatar initials={initials} size={40} tone={currentRole === 'admin' ? 'gold' : 'primary'} />
+                  <View style={styles.flex}>
+                    <AppText variant="bodyStrong" numberOfLines={1}>
+                      {name || item?.email || 'User account'}
+                    </AppText>
+                    <AppText variant="small" tone="muted" numberOfLines={1}>
+                      {item?.email || 'No email available'}
+                    </AppText>
                   </View>
-                  <View style={styles.userCopy}>
-                    <View style={styles.nameRow}>
-                      <ThemedText type="defaultSemiBold">{name || item?.email || 'User account'}</ThemedText>
-                      <BrandPill>{currentRole}</BrandPill>
-                    </View>
-                    <ThemedText type="small">{item?.email || 'No email available'}</ThemedText>
-                  </View>
+                  <AppBadge tone={currentRole === 'admin' ? 'gold' : 'neutral'}>{currentRole}</AppBadge>
                 </View>
-                <BrandButton
+                <AppButton
                   label={`Make ${nextRole}`}
+                  size="sm"
+                  variant="secondary"
                   onPress={() => updateRoleMutation.mutate({ id: Number(item?.id), role: nextRole })}
-                  variant="outline"
                 />
               </View>
             );
-          })
-        ) : (
-          <ThemedText type="small">No users available.</ThemedText>
-        )}
-      </BrandCard>
+          })}
+        </View>
+      ) : (
+        <EmptyState icon="people-outline" title="No users available" />
+      )}
     </AdminShell>
   );
 }
 
-function MetricChip({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: string;
-  color: string;
-}) {
-  return (
-    <View style={[styles.metricChip, { borderColor: `${color}33`, backgroundColor: `${color}14` }]}>
-      <ThemedText type="defaultSemiBold" style={{ color }}>
-        {value}
-      </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  headerCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: Radius.pill,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  metricChip: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    paddingVertical: Spacing.two,
-    alignItems: 'center',
-    gap: 2,
-  },
-  userRow: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  userMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userCopy: {
-    gap: 4,
-    flex: 1,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
+  list: { borderWidth: 1, borderRadius: Corner.card, overflow: 'hidden' },
+  userRow: { padding: Space.md, gap: Space.sm },
+  userMain: { flexDirection: 'row', alignItems: 'center', gap: Space.sm + 4 },
+  flex: { flex: 1, gap: 2 },
 });

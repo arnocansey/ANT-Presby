@@ -1,8 +1,9 @@
 import React from 'react';
 
 import { AdminShell } from '@/components/admin-shell';
-import { BrandCard, BrandHero, BrandPill, BrandScreen, BrandSectionHeader } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
+import { ListGroup, ListRow, LoadingList, Screen, ScreenHeader } from '@/components/kit';
+import { AppBadge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
 import { useAuditLogs } from '@/hooks/use-api';
 import { useAuthStore } from '@/store/auth';
 
@@ -14,41 +15,42 @@ export default function AdminAuditScreen() {
 
   if (!user || !isAdmin) {
     return (
-      <BrandScreen>
-        <BrandHero
-          eyebrow="Audit Log"
+      <Screen>
+        <ScreenHeader
+          back
+          eyebrow="Audit log"
           title="Admin access required"
-          description="Sign in with an admin account to review system activity from mobile."
+          subtitle="Sign in with an admin account to review system activity from mobile."
         />
-      </BrandScreen>
+      </Screen>
     );
   }
 
   return (
     <AdminShell activeTab="/admin-audit">
-      <BrandHero
-        eyebrow="Audit Log"
-        title="Track admin activity"
-        description="Review the recent audit stream across settings, content, donations, and user actions."
+      <ScreenHeader
+        back
+        eyebrow="Admin"
+        title="Activity log"
+        subtitle="Recent admin activity across settings, content, donations and users."
       />
 
-      <BrandCard>
-        <BrandSectionHeader title="Recent audit entries" description="A mobile-readable activity stream from the audit log." />
-        {logsQuery.isLoading ? (
-          <ThemedText type="small">Loading audit activity...</ThemedText>
-        ) : logs.length > 0 ? (
-          logs.map((log: any) => (
-            <BrandCard key={String(log?.id)}>
-              <BrandPill>{log?.entity_type || log?.entityType || 'audit'}</BrandPill>
-              <ThemedText type="defaultSemiBold">{log?.summary || 'Audit entry'}</ThemedText>
-              <ThemedText type="small">{log?.actor_name || log?.actor_email || 'System'}</ThemedText>
-              <ThemedText type="small">{log?.created_at || log?.createdAt || ''}</ThemedText>
-            </BrandCard>
-          ))
-        ) : (
-          <ThemedText type="small">No audit activity recorded yet.</ThemedText>
-        )}
-      </BrandCard>
+      {logsQuery.isLoading ? (
+        <LoadingList count={4} height={64} />
+      ) : logs.length > 0 ? (
+        <ListGroup>
+          {logs.map((log: any) => (
+            <ListRow
+              key={String(log?.id)}
+              label={log?.summary || 'Audit entry'}
+              description={[log?.actor_name || log?.actor_email || 'System', log?.created_at || log?.createdAt || ''].filter(Boolean).join(' · ')}
+              trailing={<AppBadge>{String(log?.entity_type || log?.entityType || 'audit')}</AppBadge>}
+            />
+          ))}
+        </ListGroup>
+      ) : (
+        <EmptyState icon="pulse-outline" title="No audit activity recorded yet" />
+      )}
     </AdminShell>
   );
 }

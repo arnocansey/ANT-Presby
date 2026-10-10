@@ -1,12 +1,16 @@
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { AdminShell } from '@/components/admin-shell';
-import { BrandButton, BrandCard, BrandHero, BrandPill, BrandScreen, BrandSectionHeader } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { ChoiceField, FormMessage, FormTextField, LoadingList, Screen, ScreenHeader, SectionHeader } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppBadge } from '@/components/ui/badge';
+import { AppButton } from '@/components/ui/button';
+import { AppCard } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Space } from '@/constants/tokens';
 import {
   getApiErrorMessage,
   useAdminSermons,
@@ -14,7 +18,6 @@ import {
   useDeleteAdminSermon,
   useMinistries,
 } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/store/auth';
 
 type SermonFormValues = {
@@ -62,142 +65,86 @@ export default function AdminSermonsScreen() {
 
   if (!user || !isAdmin) {
     return (
-      <BrandScreen>
-        <BrandHero
-          eyebrow="Admin Sermons"
+      <Screen>
+        <ScreenHeader
+          back
+          eyebrow="Admin sermons"
           title="Admin access required"
-          description="Sign in with an admin account to manage sermons from mobile."
+          subtitle="Sign in with an admin account to manage sermons from mobile."
         />
-      </BrandScreen>
+      </Screen>
     );
   }
 
   const sermons = sermonsQuery.data || [];
   const ministries = ministriesQuery.data || [];
+  const ministryOptions = ministries.map((item: any) => ({ value: String(item.id), label: String(item.name) }));
   const createError = createMutation.isError
     ? getApiErrorMessage(createMutation.error, 'Failed to create sermon.')
     : '';
 
   return (
     <AdminShell activeTab="/admin-sermons">
-      <BrandHero
-        eyebrow="Admin Sermons"
-        title="Manage sermons on mobile"
-        description="Create and remove sermons using the same backend flow as the web admin area."
-      />
+      <ScreenHeader back eyebrow="Admin" title="Sermons" />
 
-      <BrandCard>
-        <BrandSectionHeader title="Create a sermon" description="Use a ministry ID from the list below when publishing a sermon." />
-        <Field control={control} name="title" label="Title" placeholder="Sermon title" />
-        <Field control={control} name="speaker" label="Speaker" placeholder="Speaker name" />
-        <Field control={control} name="description" label="Description" placeholder="Sermon summary" multiline />
-        <Field control={control} name="videoUrl" label="Video URL" placeholder="Optional video link" />
-        <Field control={control} name="sermonDate" label="Sermon Date" placeholder="2026-04-20T09:00:00.000Z" />
-        <Field control={control} name="ministryId" label="Ministry ID" placeholder="Numeric ministry ID" />
-        {ministries.length > 0 ? (
-          <ThemedText type="small">
-            Available ministries: {ministries.map((item: any) => `${item.id}=${item.name}`).join(', ')}
-          </ThemedText>
-        ) : null}
-        <BrandButton label="Create Sermon" onPress={handleSubmit(onSubmit)} variant="secondary" />
-        {createError ? <ThemedText style={styles.errorText}>{createError}</ThemedText> : null}
-      </BrandCard>
-
-      <BrandCard>
-        <BrandSectionHeader title="Recent sermons" description="Review the latest sermon records and remove outdated ones." />
-        {sermonsQuery.isLoading ? (
-          <ThemedText type="small">Loading sermons...</ThemedText>
-        ) : sermons.length > 0 ? (
-          <View style={styles.list}>
-            {sermons.slice(0, 8).map((sermon: any) => (
-              <View key={String(sermon?.id)} style={styles.item}>
-                <BrandPill>{sermon?.speaker || 'Sermon'}</BrandPill>
-                <ThemedText type="defaultSemiBold">{sermon?.title || 'Untitled sermon'}</ThemedText>
-                <ThemedText type="small">{sermon?.description || 'No description available.'}</ThemedText>
-                <BrandButton
-                  label="Edit Sermon"
-                  onPress={() => router.push(`/admin-sermons/${sermon?.id}` as never)}
-                  variant="secondary"
-                />
-                <BrandButton label="Delete Sermon" onPress={() => deleteMutation.mutate(Number(sermon?.id))} variant="outline" />
-              </View>
-            ))}
-          </View>
+      <AppCard>
+        <AppText variant="section">Create a sermon</AppText>
+        <FormTextField control={control} name="title" label="Title" placeholder="Sermon title" />
+        <FormTextField control={control} name="speaker" label="Speaker" placeholder="Speaker name" />
+        <FormTextField control={control} name="description" label="Description" placeholder="Sermon summary" multiline />
+        <FormTextField control={control} name="videoUrl" label="Video URL" placeholder="Optional video link" autoCapitalize="none" />
+        <FormTextField
+          control={control}
+          name="sermonDate"
+          label="Sermon date"
+          placeholder="2026-04-20T09:00:00.000Z"
+          hint="ISO format, for example 2026-04-20T09:00:00.000Z"
+          autoCapitalize="none"
+        />
+        {ministryOptions.length > 0 ? (
+          <Controller
+            control={control}
+            name="ministryId"
+            render={({ field: { value, onChange } }) => (
+              <ChoiceField label="Ministry" options={ministryOptions} value={value} onChange={onChange} />
+            )}
+          />
         ) : (
-          <ThemedText type="small">No sermons available.</ThemedText>
+          <FormTextField control={control} name="ministryId" label="Ministry ID" placeholder="Numeric ministry ID" keyboardType="number-pad" />
         )}
-      </BrandCard>
+        <AppButton label="Create sermon" onPress={handleSubmit(onSubmit)} />
+        {createError ? <FormMessage tone="danger">{createError}</FormMessage> : null}
+      </AppCard>
+
+      <SectionHeader title="Recent sermons" />
+      {sermonsQuery.isLoading ? (
+        <LoadingList count={3} height={120} />
+      ) : sermons.length > 0 ? (
+        sermons.slice(0, 8).map((sermon: any) => (
+          <AppCard key={String(sermon?.id)}>
+            <AppBadge>{String(sermon?.speaker || 'Sermon')}</AppBadge>
+            <AppText variant="bodyStrong">{sermon?.title || 'Untitled sermon'}</AppText>
+            <AppText variant="small" tone="muted" numberOfLines={3}>
+              {sermon?.description || 'No description available.'}
+            </AppText>
+            <View style={styles.actions}>
+              <View style={styles.flex}>
+                <AppButton label="Edit sermon" size="sm" variant="secondary" onPress={() => router.push(`/admin-sermons/${sermon?.id}` as never)} />
+              </View>
+              <View style={styles.flex}>
+                <AppButton label="Delete sermon" size="sm" variant="danger" onPress={() => deleteMutation.mutate(Number(sermon?.id))} />
+              </View>
+            </View>
+          </AppCard>
+        ))
+      ) : (
+        <EmptyState icon="play-circle-outline" title="No sermons available" />
+      )}
     </AdminShell>
   );
 }
 
-function Field({
-  control,
-  name,
-  label,
-  placeholder,
-  multiline = false,
-}: {
-  control: any;
-  name: keyof SermonFormValues;
-  label: string;
-  placeholder: string;
-  multiline?: boolean;
-}) {
-  const theme = useTheme();
-
-  return (
-    <View style={styles.field}>
-      <ThemedText type="smallBold">{label}</ThemedText>
-      <Controller
-        control={control}
-        name={name}
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
-            value={String(value ?? '')}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            placeholder={placeholder}
-            placeholderTextColor={theme.textSecondary}
-            multiline={multiline}
-            style={[
-              styles.input,
-              multiline && styles.multiline,
-              {
-                backgroundColor: theme.background,
-                borderColor: theme.border,
-                color: theme.text,
-              },
-            ]}
-          />
-        )}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  field: {
-    gap: Spacing.one,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-    fontSize: 16,
-  },
-  multiline: {
-    minHeight: 110,
-    textAlignVertical: 'top',
-  },
-  list: {
-    gap: Spacing.two,
-  },
-  item: {
-    gap: Spacing.one,
-  },
-  errorText: {
-    color: '#B91C1C',
-  },
+  flex: { flex: 1 },
+  actions: { flexDirection: 'row', gap: Space.sm },
 });

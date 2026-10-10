@@ -180,3 +180,17 @@ Check each item at 375px and 1280px wide, in light and dark mode.
 - [ ] Deleting a sermon, series, devotional, event, ministry, album, photo or news post, deactivating a group, and ending the livestream all ask for confirmation first, with Cancel focused
 - [ ] Sermons and Series switch with the tabs under the page title
 - [ ] Dark mode: no white panels, grey chips or unreadable text anywhere in admin
+
+## Mobile App Redesign (Phase 8d)
+
+Check each item on a phone or simulator twice: with the phone in Light mode and again in Dark mode.
+
+- [ ] The bottom tabs read Home · Watch · Events · Give · Me, and every tab, the bar and the status bar match the phone's theme
+- [ ] Home shows the greeting, the live card (only while live), today's devotional, eight tiles (Live, Devotional, Small groups, Prayer wall, Gallery, News, Community, Ministries) and up to three upcoming events; every tile opens its screen
+- [ ] Watch shows the live card while live, series chips that filter, the latest sermon and recent messages; Search opens from the icon
+- [ ] Me shows the profile, my groups, my registrations, activity, settings and help, Admin (admins only) and Sign out with a confirm dialog
+- [ ] Links into the app still land on the same screens: a push for an event, album, devotional, prayer or news item; `/donate?reference=…` after Paystack
+- [ ] No screen has white text on a white card or navy text on a navy background; every status badge has a word, not just a colour
+- [ ] Every button, chip, tab and icon button is easy to tap (at least 44 points), including the photo viewer arrows and the album star/trash icons
+- [ ] Admin: every create, edit, delete, publish, check-in, undo, role, status, upload, cover, go-live and end action still works and asks for confirmation where it did before
+- [ ] Loading shows grey placeholders, empty lists show a friendly message, and turning on airplane mode shows "Could not load" with "Try again"

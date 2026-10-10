@@ -182,7 +182,7 @@ Current media behavior:
 
 ## Photo Albums
 
-- Anyone with the link can browse published albums at `/gallery` (web) or Account → Photo Gallery (mobile), open photos full size, and download them one at a time or all at once as a zip.
+- Anyone with the link can browse published albums at `/gallery` (web) or the Gallery tile on Home (mobile), open photos full size, and download them one at a time or all at once as a zip.
 - Albums can link to an event (the event page shows "View photos") and to an outside folder such as Google Drive.
 - Admins manage albums at `/admin/gallery` or in the mobile admin console. They upload many photos at once (straight to Cloudinary, up to 10 MB each), choose a cover, and publish.
 - Everyone is notified once, the first time a published album has photos.
@@ -203,3 +203,10 @@ Current media behavior:
 - Every admin page has the same title bar with a breadcrumb, the same table (which becomes cards on phones), and the same two-column form layout (one column on phones). Lists show loading placeholders, friendly empty messages and a "Try again" message when they can't load.
 - Sermons and series share one sidebar entry and switch with tabs. Members (`/admin/users`) and Activity log (`/admin/audit`) keep their addresses.
 - Deleting a news post and ending the livestream now ask for confirmation, like every other delete.
+
+## Mobile App Design (Phase 8d)
+
+- The app uses the Clean & classic design (white and navy, with royal blue and a touch of gold) and follows the phone's Light or Dark setting.
+- Five tabs: **Home** (the hub), **Watch** (live, sermons and series), **Events**, **Give** and **Me** (profile, groups, registrations, giving, notifications, settings, admin).
+- Home matches the website hub: a greeting, the live card while live, today's devotional, tiles for Live, Devotional, Small groups, Prayer wall, Gallery, News, Community and Ministries, then upcoming events.
+- Every screen, including the mobile admin console, shares one set of building blocks (`mobile/src/components/kit` on top of `mobile/src/components/ui`), so headers, lists, forms, empty states and dialogs look and behave the same everywhere.

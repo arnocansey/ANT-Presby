@@ -1,16 +1,22 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import { Radius, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { useAppTheme } from '@/hooks/use-app-theme';
 
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const icon = (active: IconName, idle: IconName) => {
+  function TabIcon({ color, focused }: { color: string; focused: boolean }) {
+    return <Ionicons name={focused ? active : idle} size={22} color={color} />;
+  }
+  return TabIcon;
+};
+
+// Route files keep their names (sermons = Watch, account = Me) so every existing link still works.
 export default function TabsLayout() {
-  const theme = useTheme();
-  const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme();
 
   return (
     <>
@@ -18,85 +24,18 @@ export default function TabsLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: theme.tint,
-          tabBarInactiveTintColor: theme.textSecondary,
-          tabBarLabelStyle: {
-            fontSize: 11,
-            fontWeight: '700',
-            marginBottom: Platform.OS === 'android' ? 2 : 0,
-          },
-          tabBarStyle: {
-            position: 'absolute',
-            left: Spacing.two,
-            right: Spacing.two,
-            bottom: Math.max(insets.bottom, Spacing.two),
-            height: 62,
-            paddingTop: 6,
-            paddingBottom: 6,
-            borderTopWidth: 1,
-            borderTopColor: '#252A3D',
-            borderRadius: Radius.large,
-            backgroundColor: '#111424',
-          },
-          tabBarItemStyle: {
-            borderRadius: Radius.small,
-            marginHorizontal: 2,
-          },
-          sceneStyle: {
-            backgroundColor: theme.background,
-          },
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.muted,
+          tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
+          tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.border },
+          sceneStyle: { backgroundColor: colors.background },
         }}>
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: 'Home',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'home' : 'home-outline'} size={20} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="sermons"
-          options={{
-            title: 'Sermons',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'play-circle' : 'play-circle-outline'} size={20} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="events"
-          options={{
-            title: 'Events',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'calendar-clear' : 'calendar-clear-outline'} size={20} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="give"
-          options={{
-            title: 'Give',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'gift' : 'gift-outline'} size={20} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="account"
-          options={{
-            title: 'Profile',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={20} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="news"
-          options={{
-            href: null,
-          }}
-        />
+        <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: icon('home', 'home-outline') }} />
+        <Tabs.Screen name="sermons" options={{ title: 'Watch', tabBarIcon: icon('play-circle', 'play-circle-outline') }} />
+        <Tabs.Screen name="events" options={{ title: 'Events', tabBarIcon: icon('calendar-clear', 'calendar-clear-outline') }} />
+        <Tabs.Screen name="give" options={{ title: 'Give', tabBarIcon: icon('heart', 'heart-outline') }} />
+        <Tabs.Screen name="account" options={{ title: 'Me', tabBarIcon: icon('person-circle', 'person-circle-outline') }} />
+        <Tabs.Screen name="news" options={{ href: null }} />
       </Tabs>
     </>
   );

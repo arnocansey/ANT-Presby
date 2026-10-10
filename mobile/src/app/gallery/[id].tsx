@@ -1,19 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Alert, Linking, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandButton, BrandCard, BrandScreen } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { LoadingList, Screen, ScreenHeader } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppButton } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Corner, Fixed, MIN_TOUCH, Space } from '@/constants/tokens';
 import { getApiErrorMessage, useAlbum, useAlbumDownloadUrl } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
 import { savePhotoToLibrary } from '@/lib/save-photo';
 
 export default function AlbumScreen() {
-  const theme = useTheme();
   const params = useLocalSearchParams<{ id: string }>();
   const id = Number(params.id) || undefined;
   const albumQuery = useAlbum(id);
@@ -62,49 +62,43 @@ export default function AlbumScreen() {
   const step = (by: number) => setViewing((index) => (index === null ? index : (index + by + photos.length) % photos.length));
 
   return (
-    <BrandScreen>
-      <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()} style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: theme.border }]}>
-          <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
-        </Pressable>
-        <View style={styles.headerCopy}>
-          <ThemedText type="smallBold" style={{ color: theme.tint, textTransform: 'uppercase', letterSpacing: 1 }}>
-            Photo Gallery
-          </ThemedText>
-        </View>
-      </View>
+    <Screen>
+      <ScreenHeader back eyebrow="Gallery" title={album?.title || 'Album'} subtitle={album?.description || undefined} />
 
       {albumQuery.isLoading ? (
-        <ActivityIndicator color={theme.tint} />
+        <LoadingList count={2} height={160} />
       ) : !album ? (
-        <BrandCard>
-          <ThemedText type="small">Album not found.</ThemedText>
-        </BrandCard>
+        <EmptyState icon="images-outline" title="Album not found" message="It may have been unpublished or removed." />
       ) : (
         <>
-          <ThemedText type="subtitle">{album.title}</ThemedText>
-          {album.description ? <ThemedText themeColor="textSecondary">{album.description}</ThemedText> : null}
-          <ThemedText type="small" themeColor="textSecondary">
+          <AppText variant="small" tone="muted">
             {album.photo_count} photo{album.photo_count === 1 ? '' : 's'}
             {album.event_name ? ` · ${album.event_name}` : ''}
-          </ThemedText>
+          </AppText>
           <View style={styles.actions}>
             {photos.length > 0 ? (
-              <BrandButton label={downloadUrl.isPending ? 'Preparing...' : 'Download All'} onPress={downloadAll} />
+              <View style={styles.action}>
+                <AppButton label={downloadUrl.isPending ? 'Preparing...' : 'Download all'} onPress={downloadAll} />
+              </View>
             ) : null}
-            {album.external_url ? <BrandButton label="Open Folder" variant="outline" onPress={() => openInBrowser(album.external_url)} /> : null}
+            {album.external_url ? (
+              <View style={styles.action}>
+                <AppButton label="Open folder" variant="secondary" onPress={() => openInBrowser(album.external_url)} />
+              </View>
+            ) : null}
           </View>
 
           {photos.length === 0 ? (
-            <BrandCard>
-              <ThemedText type="small" themeColor="textSecondary">
-                No photos yet.
-              </ThemedText>
-            </BrandCard>
+            <EmptyState icon="image-outline" title="No photos yet" />
           ) : (
             <View style={styles.grid}>
               {photos.map((photo, index) => (
-                <Pressable key={photo.id} onPress={() => setViewing(index)} style={styles.cell}>
+                <Pressable
+                  key={photo.id}
+                  onPress={() => setViewing(index)}
+                  accessibilityRole="imagebutton"
+                  accessibilityLabel={`Open photo ${index + 1} of ${photos.length}`}
+                  style={styles.cell}>
                   <Image source={{ uri: photo.thumb_url }} style={styles.thumb} contentFit="cover" />
                 </Pressable>
               ))}
@@ -114,41 +108,49 @@ export default function AlbumScreen() {
       )}
 
       <Modal visible={Boolean(current)} animationType="fade" onRequestClose={() => setViewing(null)}>
-        <SafeAreaView style={styles.viewer}>
+        <SafeAreaView style={[styles.viewer, { backgroundColor: Fixed.viewer }]}>
           <View style={styles.viewerBar}>
-            <ThemedText style={styles.viewerText}>
+            <AppText style={{ color: Fixed.onMedia }}>
               {viewing !== null ? `${viewing + 1} / ${photos.length}` : ''}
-            </ThemedText>
-            <Pressable onPress={() => setViewing(null)} hitSlop={12}>
-              <Ionicons name="close" size={26} color="#FFFFFF" />
+            </AppText>
+            <Pressable onPress={() => setViewing(null)} accessibilityRole="button" accessibilityLabel="Close photo" style={styles.viewerIcon}>
+              <Ionicons name="close" size={26} color={Fixed.onMedia} />
             </Pressable>
           </View>
           {current ? <Image source={{ uri: current.url }} style={styles.viewerImage} contentFit="contain" /> : null}
           <View style={styles.viewerBar}>
-            <Pressable onPress={() => step(-1)} hitSlop={12} disabled={photos.length < 2}>
-              <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+            <Pressable
+              onPress={() => step(-1)}
+              disabled={photos.length < 2}
+              accessibilityRole="button"
+              accessibilityLabel="Previous photo"
+              style={styles.viewerIcon}>
+              <Ionicons name="chevron-back" size={28} color={Fixed.onMedia} />
             </Pressable>
-            <BrandButton label={saving ? 'Saving...' : 'Save to Photos'} onPress={saveCurrent} />
-            <Pressable onPress={() => step(1)} hitSlop={12} disabled={photos.length < 2}>
-              <Ionicons name="chevron-forward" size={28} color="#FFFFFF" />
+            <AppButton label={saving ? 'Saving...' : 'Save to Photos'} variant="secondary" onPress={saveCurrent} />
+            <Pressable
+              onPress={() => step(1)}
+              disabled={photos.length < 2}
+              accessibilityRole="button"
+              accessibilityLabel="Next photo"
+              style={styles.viewerIcon}>
+              <Ionicons name="chevron-forward" size={28} color={Fixed.onMedia} />
             </Pressable>
           </View>
         </SafeAreaView>
       </Modal>
-    </BrandScreen>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  headerCopy: { flex: 1, gap: 2 },
-  iconButton: { width: 38, height: 38, borderRadius: Radius.pill, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm },
+  action: { flexGrow: 1 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.xs },
   cell: { width: '32.5%', aspectRatio: 1 },
-  thumb: { width: '100%', height: '100%', borderRadius: Radius.small },
-  viewer: { flex: 1, backgroundColor: '#000000' },
-  viewerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.three },
-  viewerText: { color: '#FFFFFF' },
+  thumb: { width: '100%', height: '100%', borderRadius: Corner.control },
+  viewer: { flex: 1 },
+  viewerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Space.md },
+  viewerIcon: { width: MIN_TOUCH, height: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
   viewerImage: { flex: 1 },
 });

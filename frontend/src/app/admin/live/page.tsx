@@ -123,7 +123,7 @@ export default function AdminLivePage() {
         </form>
       </FormSection>
 
-      {/* Ruling 7: the same question as the old window.confirm, in the admin's own dialog. */}
+      {/* Ruling 7: the same question the old browser confirm asked, in the admin's own dialog. */}
       {confirmEnd && (
         <ConfirmDialog
           title="End the livestream?"

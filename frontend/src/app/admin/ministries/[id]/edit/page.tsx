@@ -1,15 +1,18 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import apiClient from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import PageHeader from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Field, FormActions, FormSection, formGridClass } from '@/components/admin/form-layout';
+import { CardListSkeleton, LoadError } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
 
 type MinistryForm = {
   name: string;
@@ -22,18 +25,24 @@ export default function EditMinistryPage() {
   const id = params?.id;
   const router = useRouter();
   const { register, handleSubmit, reset } = useForm<MinistryForm>();
+  const [loadState, setLoadState] = React.useState<'loading' | 'ready' | 'error'>('loading');
+  const [attempt, setAttempt] = React.useState(0);
 
   React.useEffect(() => {
     if (!id) return;
-
-    apiClient.get(`/ministries/${id}`).then((res) =>
-      reset({
-        name: res.data.data?.name || '',
-        description: res.data.data?.description || '',
-        leaderName: res.data.data?.leader_name || res.data.data?.leaderName || '',
+    setLoadState('loading');
+    apiClient
+      .get(`/ministries/${id}`)
+      .then((res) => {
+        reset({
+          name: res.data.data?.name || '',
+          description: res.data.data?.description || '',
+          leaderName: res.data.data?.leader_name || res.data.data?.leaderName || '',
+        });
+        setLoadState('ready');
       })
-    );
-  }, [id, reset]);
+      .catch(() => setLoadState('error'));
+  }, [id, reset, attempt]);
 
   const onSubmit = async (vals: MinistryForm) => {
     try {
@@ -46,34 +55,37 @@ export default function EditMinistryPage() {
   };
 
   return (
-    <div className="container-max py-12">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl tracking-tight">Edit Ministry</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="edit-ministry-name">Name</Label>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Ministries', href: '/admin/ministries' }, { label: 'Edit ministry' }]}
+        title="Edit ministry"
+      />
+
+      {loadState === 'loading' ? (
+        <CardListSkeleton count={1} label="Loading ministry" />
+      ) : loadState === 'error' ? (
+        <LoadError what="this ministry" onRetry={() => setAttempt((value) => value + 1)} />
+      ) : (
+        <FormSection title="Ministry details">
+          <form onSubmit={handleSubmit(onSubmit)} className={formGridClass}>
+            <Field label="Name" htmlFor="edit-ministry-name">
               <Input id="edit-ministry-name" {...register('name', { required: true })} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-ministry-leader-name">Leader Name</Label>
+            </Field>
+            <Field label="Leader name" htmlFor="edit-ministry-leader-name">
               <Input id="edit-ministry-leader-name" {...register('leaderName')} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-ministry-description">Description</Label>
+            </Field>
+            <Field label="Description" htmlFor="edit-ministry-description" full>
               <Textarea id="edit-ministry-description" rows={5} {...register('description')} />
-            </div>
-
-            <div className="flex justify-end">
-              <Button type="submit">Save Ministry</Button>
-            </div>
+            </Field>
+            <FormActions>
+              <Button type="submit">Save ministry</Button>
+              <Button asChild variant="secondary">
+                <Link href="/admin/ministries">Cancel</Link>
+              </Button>
+            </FormActions>
           </form>
-        </CardContent>
-      </Card>
+        </FormSection>
+      )}
     </div>
   );
 }

@@ -1,15 +1,17 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import apiClient from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import PageHeader from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Field, FormActions, FormSection, formGridClass } from '@/components/admin/form-layout';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
 
 type EventForm = {
   name: string;
@@ -39,51 +41,45 @@ export default function NewEventPage() {
   };
 
   return (
-    <div className="container-max py-12">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl tracking-tight">New Event</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="event-name">Name</Label>
-              <Input id="event-name" {...register('name')} />
-            </div>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Events', href: '/admin/events' }, { label: 'New event' }]}
+        title="New event"
+        description="You can add an image after the event is created."
+      />
 
-            <div className="space-y-2">
-              <Label htmlFor="event-description">Description</Label>
-              <Textarea id="event-description" rows={4} {...register('description')} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="event-date">Event Date</Label>
-              <Input id="event-date" type="datetime-local" {...register('eventDate')} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="event-location">Location</Label>
-              <Input id="event-location" {...register('location')} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="event-max-registrations">Max Registrations</Label>
-              <Input
-                id="event-max-registrations"
-                type="number"
-                min="1"
-                {...register('maxRegistrations', {
-                  setValueAs: (value) => (value === '' ? undefined : Number(value)),
-                })}
-              />
-            </div>
-
-            <div className="flex items-center justify-end">
-              <Button type="submit">Create Event</Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+      <FormSection title="Event details">
+        <form onSubmit={handleSubmit(onSubmit)} className={formGridClass}>
+          <Field label="Name" htmlFor="event-name" full>
+            <Input id="event-name" {...register('name')} />
+          </Field>
+          <Field label="Description" htmlFor="event-description" full>
+            <Textarea id="event-description" rows={4} {...register('description')} />
+          </Field>
+          <Field label="Event date" htmlFor="event-date">
+            <Input id="event-date" type="datetime-local" {...register('eventDate')} />
+          </Field>
+          <Field label="Location" htmlFor="event-location">
+            <Input id="event-location" {...register('location')} />
+          </Field>
+          <Field label="Max registrations" htmlFor="event-max-registrations" hint="Leave blank for no limit.">
+            <Input
+              id="event-max-registrations"
+              type="number"
+              min="1"
+              {...register('maxRegistrations', {
+                setValueAs: (value) => (value === '' ? undefined : Number(value)),
+              })}
+            />
+          </Field>
+          <FormActions>
+            <Button type="submit">Create event</Button>
+            <Button asChild variant="secondary">
+              <Link href="/admin/events">Cancel</Link>
+            </Button>
+          </FormActions>
+        </form>
+      </FormSection>
     </div>
   );
 }

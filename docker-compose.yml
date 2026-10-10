@@ -1,6 +1,7 @@
 version: '3.8'
 
-# Required: JWT_SECRET and JWT_REFRESH_SECRET (put them in a .env file next to this compose file).
+# Required: DB_USER, DB_PASSWORD, JWT_SECRET and JWT_REFRESH_SECRET (put them in a .env file next to this
+# compose file; never commit it). No credentials have defaults here.
 services:
   # PostgreSQL Database
   postgres:
@@ -8,8 +9,8 @@ services:
     container_name: antpress_db
     environment:
       POSTGRES_DB: ${DB_NAME:-antpress}
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_USER: ${DB_USER:?Set DB_USER in .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Base schema is applied once, when the data volume is first created.
@@ -17,7 +18,7 @@ services:
     ports:
       - '5432:5432'
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-postgres}']
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:?Set DB_USER in .env}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,12 +31,12 @@ services:
     container_name: antpress_backend
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-antpress}?schema=public
+      DATABASE_URL: postgresql://${DB_USER:?Set DB_USER in .env}:${DB_PASSWORD:?Set DB_PASSWORD in .env}@postgres:5432/${DB_NAME:-antpress}?schema=public
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:-antpress}
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_USER: ${DB_USER:?Set DB_USER in .env}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET in .env}
       PROXY_SHARED_SECRET: ${PROXY_SHARED_SECRET:-}

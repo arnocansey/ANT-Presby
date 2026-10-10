@@ -1,20 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Radius, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
-
-const NAV_HEIGHT = 72;
+import { AppText } from '@/components/ui/app-text';
+import { MAX_CONTENT_WIDTH, Space } from '@/constants/tokens';
+import { useAppTheme } from '@/hooks/use-app-theme';
 
 const navItems = [
   { icon: 'grid-outline', label: 'Dashboard', href: '/admin' },
@@ -30,6 +22,7 @@ type AdminTabHref =
   | '/admin-news'
   | '/admin-audit';
 
+// Frame for the mobile admin screens: scrolling content above a docked six-item admin bar.
 export function AdminShell({
   children,
   activeTab,
@@ -37,130 +30,63 @@ export function AdminShell({
   children: React.ReactNode;
   activeTab: AdminTabHref;
 }) {
-  const theme = useTheme();
-  const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme();
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
-      <ThemedView style={[styles.container, { backgroundColor: theme.background }]}>
-        <View style={[styles.glowTop, { backgroundColor: theme.tint }]} />
-        <View style={[styles.glowBottom, { backgroundColor: theme.accent }]} />
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
+        <View style={styles.content}>{children}</View>
+      </ScrollView>
 
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[
-            styles.content,
-            { paddingBottom: NAV_HEIGHT + insets.bottom + Spacing.four },
-          ]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled">
-          {children}
-        </ScrollView>
+      <SafeAreaView edges={['bottom']} style={[styles.nav, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+        <View accessibilityRole="tablist" style={styles.navRow}>
+          {navItems.map((item) => {
+            const active = item.href === activeTab;
+            const color = active ? colors.primary : colors.muted;
 
-        <View
-          pointerEvents="box-none"
-          style={[
-            styles.navWrap,
-            {
-              bottom: Math.max(insets.bottom, Spacing.two),
-            },
-          ]}>
-          <View
-            style={[
-              styles.navBar,
-              {
-                backgroundColor: '#111827',
-                borderColor: 'rgba(255,255,255,0.1)',
-              },
-            ]}>
-            {navItems.map((item) => {
-              const active = item.href === activeTab;
-
-              return (
-                <Pressable
-                  key={item.href}
-                  onPress={() => router.push(item.href as never)}
-                  style={styles.navItem}>
-                  <Ionicons
-                    name={item.icon}
-                    size={18}
-                    color={active ? theme.tint : theme.textSecondary}
-                  />
-                  <ThemedText
-                    type="small"
-                    style={[
-                      styles.navLabel,
-                      { color: active ? theme.tint : theme.textSecondary },
-                    ]}>
-                    {item.label}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
+            return (
+              <Pressable
+                key={item.href}
+                onPress={() => router.push(item.href as never)}
+                accessibilityRole="tab"
+                accessibilityLabel={item.label}
+                accessibilityState={{ selected: active }}
+                style={styles.navItem}>
+                <Ionicons name={item.icon} size={20} color={color} />
+                <AppText
+                  variant="caption"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                  style={{ color }}>
+                  {item.label}
+                </AppText>
+              </Pressable>
+            );
+          })}
         </View>
-      </ThemedView>
+      </SafeAreaView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    overflow: 'hidden',
-  },
-  scroll: {
-    flex: 1,
-  },
+  safeArea: { flex: 1 },
+  scroll: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
   content: {
-    flexGrow: 1,
-    padding: Spacing.four,
-    gap: Spacing.three,
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
+    padding: Space.md,
+    paddingBottom: Space.xl,
+    gap: Space.md,
   },
-  glowTop: {
-    position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: Radius.pill,
-    opacity: 0.08,
-    top: -140,
-    right: -90,
-  },
-  glowBottom: {
-    position: 'absolute',
-    width: 240,
-    height: 240,
-    borderRadius: Radius.pill,
-    opacity: 0.06,
-    bottom: -100,
-    left: -80,
-  },
-  navWrap: {
-    position: 'absolute',
-    left: Spacing.two,
-    right: Spacing.two,
-  },
-  navBar: {
-    minHeight: NAV_HEIGHT,
-    borderWidth: 1,
-    borderRadius: Radius.large,
-    paddingHorizontal: Spacing.one,
-    paddingVertical: Spacing.two,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 4,
-  },
-  navItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  navLabel: {
-    fontSize: 10,
-    lineHeight: 12,
-  },
+  nav: { borderTopWidth: StyleSheet.hairlineWidth },
+  navRow: { flexDirection: 'row', paddingHorizontal: Space.xs },
+  navItem: { flex: 1, minHeight: 56, alignItems: 'center', justifyContent: 'center', gap: 2, paddingHorizontal: 2 },
 });

@@ -2,12 +2,17 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { Plus } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
+import PageHeader from '@/components/ui/page-header';
 import SimpleTable from '@/components/ui/table';
-import { useAdminEvents, useDeleteEvent } from '@/hooks/useApi';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { LoadError, TableSkeleton } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
+import { statusLabel, statusTone } from '@/components/admin/status';
+import { useAdminEvents, useDeleteEvent } from '@/hooks/useApi';
 
 type AdminEvent = {
   id: number;
@@ -19,7 +24,7 @@ type AdminEvent = {
 };
 
 export default function AdminEventsPage() {
-  const { data, isLoading } = useAdminEvents();
+  const { data, isLoading, isError, refetch } = useAdminEvents();
   const del = useDeleteEvent();
   const [query, setQuery] = React.useState('');
   const [selectedEvent, setSelectedEvent] = React.useState<AdminEvent | null>(null);
@@ -31,36 +36,45 @@ export default function AdminEventsPage() {
   });
 
   return (
-    <div className="container-max space-y-6 py-12">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Manage Events</h1>
-          <p className="mt-2 text-sm text-ui-subtle">Review, edit, and prune scheduled events quickly.</p>
-        </div>
-        <div className="flex w-full gap-3 md:w-auto">
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by name or location"
-          />
-          <Button asChild><Link href="/admin/events/new">New Event</Link></Button>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Events' }]}
+        title="Events"
+        description="Review, edit and prune scheduled events."
+        actions={
+          <Button asChild>
+            <Link href="/admin/events/new">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              New event
+            </Link>
+          </Button>
+        }
+      />
+
+      <div className="w-full sm:max-w-sm">
+        <Input
+          aria-label="Search events"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search by name or location"
+        />
       </div>
 
       {isLoading ? (
-        <Card><CardContent className="p-4 text-sm text-ui-subtle">Loading events...</CardContent></Card>
-      ) : filteredEvents.length === 0 ? (
-        <Card className="border-dashed"><CardContent className="p-4 text-sm text-ui-subtle">No events found.</CardContent></Card>
+        <TableSkeleton label="Loading events" />
+      ) : isError && events.length === 0 ? (
+        <LoadError what="events" onRetry={() => refetch()} />
       ) : (
         <SimpleTable
+          emptyMessage={query.trim() ? 'No events match your search.' : 'No events yet.'}
           columns={[
             {
               key: 'name',
               header: 'Event',
               render: (event: AdminEvent) => (
                 <div>
-                  <p className="font-semibold text-slate-900 dark:text-slate-50">{event.name}</p>
-                  <p className="text-xs text-ui-subtle">{event.location || 'No location set'}</p>
+                  <p className="font-semibold text-foreground">{event.name}</p>
+                  <p className="text-xs text-muted">{event.location || 'No location set'}</p>
                 </div>
               ),
             },
@@ -73,20 +87,20 @@ export default function AdminEventsPage() {
               key: 'status',
               header: 'Status',
               render: (event: AdminEvent) => (
-                <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                  {event.status || 'active'}
-                </span>
+                <Badge tone={statusTone(event.status || 'active')}>{statusLabel(event.status || 'active')}</Badge>
               ),
             },
             {
               key: 'actions',
               header: 'Actions',
               render: (event: AdminEvent) => (
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" asChild>
-                    <Link href={`/admin/events/${event.id}/edit`}>Edit</Link>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="secondary" asChild>
+                    <Link href={`/admin/events/${event.id}/edit`} aria-label={`Edit ${event.name}`}>
+                      Edit
+                    </Link>
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setSelectedEvent(event)}>
+                  <Button size="sm" variant="secondary" onClick={() => setSelectedEvent(event)} aria-label={`Delete ${event.name}`}>
                     Delete
                   </Button>
                 </div>
@@ -101,7 +115,7 @@ export default function AdminEventsPage() {
         <ConfirmDialog
           title="Delete event?"
           description={`This will permanently remove "${selectedEvent.name}".`}
-          confirmLabel="Delete Event"
+          confirmLabel="Delete event"
           onCancel={() => setSelectedEvent(null)}
           onConfirm={() => {
             del.mutate(selectedEvent.id, {

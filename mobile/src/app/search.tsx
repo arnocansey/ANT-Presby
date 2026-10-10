@@ -1,101 +1,75 @@
 import { router } from 'expo-router';
 import React from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
 
-import { BrandButton, BrandCard, BrandHero, BrandScreen, BrandSectionHeader } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { ListGroup, ListRow, LoadingList, Screen, ScreenHeader, SectionHeader } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { TextField } from '@/components/ui/text-field';
 import { useGlobalSearch } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
 
 export default function SearchScreen() {
-  const theme = useTheme();
   const [query, setQuery] = React.useState('');
   const searchQuery = useGlobalSearch(query);
   const sermons = searchQuery.data?.sermons || [];
   const events = searchQuery.data?.events || [];
 
   return (
-    <BrandScreen>
-      <BrandHero
-        eyebrow="Search"
-        title="Find sermons and events"
-        description="The same website search idea, shaped into a mobile-first content finder."
+    <Screen>
+      <ScreenHeader back title="Search" subtitle="Find sermons and events" />
+
+      <TextField
+        label="Search"
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Search sermons, speakers, events..."
+        returnKeyType="search"
       />
 
-      <BrandCard>
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search sermons, speakers, events..."
-          placeholderTextColor={theme.textSecondary}
-          style={[
-            styles.input,
-            {
-              backgroundColor: theme.background,
-              borderColor: theme.border,
-              color: theme.text,
-            },
-          ]}
-        />
-      </BrandCard>
-
       {query.trim().length < 2 ? (
-        <BrandCard>
-          <ThemedText type="small">Enter at least 2 characters to search.</ThemedText>
-        </BrandCard>
+        <AppText variant="small" tone="muted">
+          Enter at least 2 characters to search.
+        </AppText>
+      ) : searchQuery.isLoading ? (
+        <LoadingList count={2} height={56} />
       ) : (
         <>
-          <BrandCard>
-            <BrandSectionHeader title="Sermons" description={`${sermons.length} results`} />
-            {sermons.length > 0 ? (
-              <View style={styles.list}>
-                {sermons.map((sermon: any) => (
-                  <BrandButton
-                    key={String(sermon?.id)}
-                    label={sermon?.title || 'Sermon'}
-                    onPress={() => router.push(`/sermons/${sermon?.id}` as never)}
-                    variant="outline"
-                  />
-                ))}
-              </View>
-            ) : (
-              <ThemedText type="small">No sermons found.</ThemedText>
-            )}
-          </BrandCard>
+          <SectionHeader title={`Sermons (${sermons.length})`} />
+          {sermons.length > 0 ? (
+            <ListGroup>
+              {sermons.map((sermon: any) => (
+                <ListRow
+                  key={String(sermon?.id)}
+                  icon="play-outline"
+                  label={sermon?.title || 'Sermon'}
+                  description={sermon?.speaker || undefined}
+                  onPress={() => router.push(`/sermons/${sermon?.id}` as never)}
+                />
+              ))}
+            </ListGroup>
+          ) : (
+            <AppText variant="small" tone="muted">
+              No sermons found.
+            </AppText>
+          )}
 
-          <BrandCard>
-            <BrandSectionHeader title="Events" description={`${events.length} results`} />
-            {events.length > 0 ? (
-              <View style={styles.list}>
-                {events.map((event: any) => (
-                  <BrandButton
-                    key={String(event?.id)}
-                    label={event?.name || 'Event'}
-                    onPress={() => router.push({ pathname: '/events/[id]', params: { id: String(event?.id) } })}
-                    variant="outline"
-                  />
-                ))}
-              </View>
-            ) : (
-              <ThemedText type="small">No events found.</ThemedText>
-            )}
-          </BrandCard>
+          <SectionHeader title={`Events (${events.length})`} />
+          {events.length > 0 ? (
+            <ListGroup>
+              {events.map((event: any) => (
+                <ListRow
+                  key={String(event?.id)}
+                  icon="calendar-outline"
+                  label={event?.name || 'Event'}
+                  onPress={() => router.push({ pathname: '/events/[id]', params: { id: String(event?.id) } })}
+                />
+              ))}
+            </ListGroup>
+          ) : (
+            <AppText variant="small" tone="muted">
+              No events found.
+            </AppText>
+          )}
         </>
       )}
-    </BrandScreen>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  input: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-    fontSize: 16,
-  },
-  list: {
-    gap: Spacing.two,
-  },
-});

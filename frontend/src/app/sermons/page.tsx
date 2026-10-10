@@ -2,23 +2,26 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { BookOpen, Clock, Layers, Play, Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Layers, PlayCircle, Radio } from 'lucide-react';
+import MediaPlaceholder from '@/components/site/MediaPlaceholder';
+import SearchField from '@/components/site/SearchField';
+import SkeletonGrid from '@/components/site/SkeletonGrid';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import EmptyState from '@/components/ui/empty-state';
+import { Label } from '@/components/ui/label';
+import PageHeader from '@/components/ui/page-header';
+import Section from '@/components/ui/section';
+import { Select } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useSermons, useSermonSeriesList } from '@/hooks/useApi';
 import { formatDateOnly } from '@/lib/utils';
-
-const sermonGradients = [
-  'from-indigo-600 to-purple-600',
-  'from-teal-600 to-cyan-600',
-  'from-rose-600 to-pink-600',
-  'from-orange-600 to-amber-600',
-];
 
 export default function SermonsPage() {
   const { data, isLoading, error } = useSermons(1, 24);
   const [search, setSearch] = React.useState('');
   const sermons = (data?.data ?? []) as any[];
-  const { data: seriesList } = useSermonSeriesList();
+  const { data: seriesList, isLoading: seriesLoading, isError: seriesError } = useSermonSeriesList();
 
   const speakers = React.useMemo(() => {
     const values = Array.from(
@@ -41,104 +44,149 @@ export default function SermonsPage() {
     return matchesSearch && matchesSpeaker;
   });
 
-  return (
-    <div className="container-max py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-slate-950 dark:text-white">Sermon Library</h1>
-        <p className="mt-2 text-ui-subtle">
-          Watch and revisit messages from the real ANT PRESS sermon collection.
-        </p>
-      </div>
+  const latest = sermons[0];
 
-      {seriesList && seriesList.length > 0 && (
-        <section className="mb-8">
-          <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-slate-950 dark:text-white">
-            <Layers className="h-5 w-5" /> Series
-          </h2>
-          <div className="flex gap-4 overflow-x-auto pb-2">
+  return (
+    <div className="container-max space-y-12 py-10 sm:py-12">
+      <PageHeader
+        eyebrow="Watch"
+        title="Sermons and services"
+        description="Watch the latest message, follow a series, or search every sermon."
+        actions={
+          <Button asChild variant="secondary">
+            <Link href="/live">
+              <Radio className="h-4 w-4" aria-hidden="true" />
+              Live stream
+            </Link>
+          </Button>
+        }
+      />
+
+      {/* Latest sermon */}
+      {isLoading ? (
+        <Skeleton className="h-56 w-full rounded-panel" />
+      ) : !error && latest ? (
+        <Link
+          href={`/sermons/${latest.id}`}
+          className="group grid overflow-hidden rounded-panel border border-border bg-card transition-colors hover:border-primary/40 md:grid-cols-[1.1fr_1fr]"
+        >
+          <MediaPlaceholder icon={PlayCircle} className="h-48 md:h-full md:min-h-[14rem]" />
+          <span className="flex min-w-0 flex-col justify-center gap-3 p-6 sm:p-8">
+            <Badge tone="gold" className="self-start">
+              Latest sermon
+            </Badge>
+            <span className="break-words text-2xl font-bold tracking-tight text-foreground">{latest.title}</span>
+            <span className="text-sm text-muted">
+              {latest.speaker || 'ANT PRESS'}
+              {latest.sermon_date ? ` · ${formatDateOnly(latest.sermon_date)}` : ''}
+            </span>
+            {latest.description && <span className="line-clamp-3 text-foreground/85">{latest.description}</span>}
+            <span className="text-sm font-semibold text-link group-hover:underline">Watch now →</span>
+          </span>
+        </Link>
+      ) : null}
+
+      <Section title="Series">
+        {seriesLoading ? (
+          <div className="flex gap-4 overflow-hidden" role="status">
+            <span className="sr-only">Loading…</span>
+            {[0, 1, 2].map((key) => (
+              <Skeleton key={key} className="h-28 w-56 shrink-0 rounded-card" />
+            ))}
+          </div>
+        ) : seriesError ? (
+          <EmptyState icon={Layers} title="Series couldn't load right now" message="Please try again in a moment." />
+        ) : !seriesList || seriesList.length === 0 ? (
+          <EmptyState icon={Layers} title="No series yet" message="Sermon series will appear here." />
+        ) : (
+          <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
             {seriesList.map((series) => (
               <Link
                 key={series.id}
                 href={`/sermons/series/${series.id}`}
-                className="min-w-[14rem] max-w-[16rem] shrink-0 rounded-[1.2rem] border border-slate-200 bg-white p-4 transition-colors hover:border-sky-300 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-cyan-500/40"
+                className="w-56 shrink-0 snap-start rounded-card border border-border bg-card p-4 transition-colors hover:border-primary/40"
               >
-                <p className="line-clamp-2 font-bold text-slate-950 dark:text-white">{series.title}</p>
-                <p className="mt-1 text-xs text-ui-subtle">
+                <span className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Layers className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <span className="line-clamp-2 block font-semibold text-foreground">{series.title}</span>
+                <span className="mt-1 block text-xs text-muted">
                   {series.sermon_count} {series.sermon_count === 1 ? 'sermon' : 'sermons'}
                   {series.start_date ? ` · from ${formatDateOnly(series.start_date)}` : ''}
-                </p>
+                </span>
               </Link>
             ))}
           </div>
-        </section>
-      )}
+        )}
+      </Section>
 
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ui-subtle" />
-          <Input
-            className="h-12 rounded-xl border-slate-200 bg-white pl-10 dark:border-slate-800 dark:bg-slate-950"
-            placeholder="Search sermons, speakers, and descriptions..."
+      <Section title="All sermons">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <SearchField
+            label="Search sermons"
+            className="flex-1"
+            placeholder="Search sermons, speakers and descriptions"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <div className="sm:w-56">
+            <Label htmlFor="sermon-speaker" className="sr-only">
+              Speaker
+            </Label>
+            <Select id="sermon-speaker" value={selectedSpeaker} onChange={(e) => setSelectedSpeaker(e.target.value)}>
+              {speakers.map((speaker) => (
+                <option key={speaker} value={speaker}>
+                  {speaker}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
-        <select
-          className="h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-          value={selectedSpeaker}
-          onChange={(e) => setSelectedSpeaker(e.target.value)}
-        >
-          {speakers.map((speaker) => (
-            <option key={speaker} value={speaker}>
-              {speaker}
-            </option>
-          ))}
-        </select>
-      </div>
 
-      {isLoading && <StatusState text="Loading sermons..." />}
-      {!isLoading && error && <StatusState text="Failed to load sermons." />}
-      {!isLoading && !error && filtered.length === 0 && (
-        <StatusState text="No sermons match your search right now." />
-      )}
-
-      {!isLoading && !error && filtered.length > 0 && (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {filtered.map((sermon, index) => (
-            <Link key={sermon.id} href={`/sermons/${sermon.id}`}>
-              <div className="group cursor-pointer overflow-hidden rounded-[1.4rem] border border-slate-200 bg-white transition-colors hover:border-sky-300 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-cyan-500/40">
-                <div className={`relative flex h-40 items-center justify-center bg-gradient-to-br ${sermonGradients[index % sermonGradients.length]}`}>
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 transition-transform group-hover:scale-110">
-                    <Play className="ml-1 h-7 w-7 fill-white text-white" />
-                  </div>
-                  <div className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/35 px-2 py-1 text-xs text-white">
-                    <Clock className="h-3 w-3" />
-                    Message
-                  </div>
-                </div>
-                <div className="space-y-2 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700 dark:text-cyan-300">
+        {isLoading ? (
+          <SkeletonGrid count={4} className="sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4" />
+        ) : error ? (
+          <EmptyState icon={PlayCircle} title="Sermons couldn't load right now" message="Please try again in a moment." />
+        ) : sermons.length === 0 ? (
+          <EmptyState icon={PlayCircle} title="No sermons yet" message="Recorded sermons will appear here." />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={PlayCircle}
+            title="No sermons match your search"
+            message="Try a different word or speaker."
+            action={
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setSearch('');
+                  setSelectedSpeaker('All Speakers');
+                }}
+              >
+                Clear search
+              </Button>
+            }
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {filtered.map((sermon) => (
+              <Link
+                key={sermon.id}
+                href={`/sermons/${sermon.id}`}
+                className="group flex flex-col overflow-hidden rounded-card border border-border bg-card transition-colors hover:border-primary/40"
+              >
+                <MediaPlaceholder icon={PlayCircle} className="h-36" />
+                <span className="flex flex-1 flex-col gap-1 p-4">
+                  <span className="text-xs font-semibold uppercase tracking-[0.14em] text-gold-ink">
                     {sermon.series_title || 'Sermon'}
-                  </p>
-                  <h3 className="line-clamp-2 text-lg font-bold text-slate-950 dark:text-white">
-                    {sermon.title}
-                  </h3>
-                  <p className="text-sm text-ui-subtle">{sermon.speaker || 'ANT PRESS'}</p>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StatusState({ text }: { text: string }) {
-  return (
-    <div className="rounded-[1.4rem] border border-dashed border-slate-300 bg-white p-10 text-center text-ui-subtle dark:border-slate-700 dark:bg-slate-950">
-      <BookOpen className="mx-auto mb-4 h-10 w-10 opacity-30" />
-      <p>{text}</p>
+                  </span>
+                  <span className="line-clamp-2 font-semibold text-foreground group-hover:underline">{sermon.title}</span>
+                  <span className="text-sm text-muted">{sermon.speaker || 'ANT PRESS'}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </Section>
     </div>
   );
 }

@@ -1,15 +1,18 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import apiClient from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import PageHeader from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Field, FormActions, FormSection, formGridClass } from '@/components/admin/form-layout';
+import { CardListSkeleton, LoadError } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
 import { useRemoveEventImage, useUploadEventImage } from '@/hooks/useApi';
 import { resolveAssetUrl } from '@/lib/utils';
 
@@ -29,19 +32,26 @@ export default function EditEventPage() {
   const [imageUrl, setImageUrl] = React.useState<string | null>(null);
   const uploadImage = useUploadEventImage(id);
   const removeImage = useRemoveEventImage(id);
+  const [loadState, setLoadState] = React.useState<'loading' | 'ready' | 'error'>('loading');
+  const [attempt, setAttempt] = React.useState(0);
 
   React.useEffect(() => {
     if (!id) return;
-    apiClient.get(`/admin/events/${id}`).then((res) => {
-      reset({
-        ...res.data.data,
-        eventDate: res.data.data?.event_date
-          ? new Date(res.data.data.event_date).toISOString().slice(0, 16)
-          : '',
-      });
-      setImageUrl(res.data.data?.image_url ?? null);
-    });
-  }, [id, reset]);
+    setLoadState('loading');
+    apiClient
+      .get(`/admin/events/${id}`)
+      .then((res) => {
+        reset({
+          ...res.data.data,
+          eventDate: res.data.data?.event_date
+            ? new Date(res.data.data.event_date).toISOString().slice(0, 16)
+            : '',
+        });
+        setImageUrl(res.data.data?.image_url ?? null);
+        setLoadState('ready');
+      })
+      .catch(() => setLoadState('error'));
+  }, [id, reset, attempt]);
 
   const onSubmit = async (vals: EventForm) => {
     try {
@@ -54,88 +64,97 @@ export default function EditEventPage() {
   };
 
   return (
-    <div className="container-max py-12">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl tracking-tight">Edit Event</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-6 space-y-2">
-            <Label htmlFor="edit-event-image">Image</Label>
-            {imageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={resolveAssetUrl(imageUrl)} alt="" className="h-48 w-full rounded-xl object-cover" />
-            )}
-            <div className="flex flex-wrap items-center gap-3">
-              <Input
-                id="edit-event-image"
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                className="max-w-xs"
-                disabled={uploadImage.isPending}
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = '';
-                  if (!file) return;
-                  if (file.size > 5 * 1024 * 1024) {
-                    toast.error('Choose an image under 5 MB');
-                    return;
-                  }
-                  uploadImage.mutate(file, { onSuccess: (data) => setImageUrl(data.image_url) });
-                }}
-              />
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Events', href: '/admin/events' }, { label: 'Edit event' }]}
+        title="Edit event"
+      />
+
+      {loadState === 'loading' ? (
+        <CardListSkeleton count={2} label="Loading event" />
+      ) : loadState === 'error' ? (
+        <LoadError what="this event" onRetry={() => setAttempt((value) => value + 1)} />
+      ) : (
+        <>
+          <FormSection title="Image" description="JPEG, PNG, WebP or GIF, up to 5 MB.">
+            <div className="space-y-3">
               {imageUrl && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={removeImage.isPending}
-                  onClick={() => removeImage.mutate(undefined, { onSuccess: () => setImageUrl(null) })}
-                >
-                  Remove image
-                </Button>
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={resolveAssetUrl(imageUrl)}
+                  alt=""
+                  className="h-48 w-full rounded-card border border-border object-cover"
+                />
               )}
+              <div className="flex flex-wrap items-center gap-3">
+                <label htmlFor="edit-event-image" className="sr-only">
+                  Image
+                </label>
+                <Input
+                  id="edit-event-image"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="max-w-xs"
+                  disabled={uploadImage.isPending}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = '';
+                    if (!file) return;
+                    if (file.size > 5 * 1024 * 1024) {
+                      toast.error('Choose an image under 5 MB');
+                      return;
+                    }
+                    uploadImage.mutate(file, { onSuccess: (data) => setImageUrl(data.image_url) });
+                  }}
+                />
+                {imageUrl && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={removeImage.isPending}
+                    onClick={() => removeImage.mutate(undefined, { onSuccess: () => setImageUrl(null) })}
+                  >
+                    Remove image
+                  </Button>
+                )}
+              </div>
             </div>
-            <p className="text-xs text-ui-subtle">JPEG, PNG, WebP or GIF, up to 5 MB.</p>
-          </div>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="edit-event-name">Name</Label>
-              <Input id="edit-event-name" {...register('name')} />
-            </div>
+          </FormSection>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-event-description">Description</Label>
-              <Textarea id="edit-event-description" rows={4} {...register('description')} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-event-date">Event Date</Label>
-              <Input id="edit-event-date" type="datetime-local" {...register('eventDate')} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-event-location">Location</Label>
-              <Input id="edit-event-location" {...register('location')} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-event-max-registrations">Max Registrations</Label>
-              <Input
-                id="edit-event-max-registrations"
-                type="number"
-                min="1"
-                {...register('maxRegistrations', {
-                  setValueAs: (value) => (value === '' ? undefined : Number(value)),
-                })}
-              />
-            </div>
-
-            <div className="flex justify-end">
-              <Button type="submit">Save</Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          <FormSection title="Event details">
+            <form onSubmit={handleSubmit(onSubmit)} className={formGridClass}>
+              <Field label="Name" htmlFor="edit-event-name" full>
+                <Input id="edit-event-name" {...register('name')} />
+              </Field>
+              <Field label="Description" htmlFor="edit-event-description" full>
+                <Textarea id="edit-event-description" rows={4} {...register('description')} />
+              </Field>
+              <Field label="Event date" htmlFor="edit-event-date">
+                <Input id="edit-event-date" type="datetime-local" {...register('eventDate')} />
+              </Field>
+              <Field label="Location" htmlFor="edit-event-location">
+                <Input id="edit-event-location" {...register('location')} />
+              </Field>
+              <Field label="Max registrations" htmlFor="edit-event-max-registrations" hint="Leave blank for no limit.">
+                <Input
+                  id="edit-event-max-registrations"
+                  type="number"
+                  min="1"
+                  {...register('maxRegistrations', {
+                    setValueAs: (value) => (value === '' ? undefined : Number(value)),
+                  })}
+                />
+              </Field>
+              <FormActions>
+                <Button type="submit">Save</Button>
+                <Button asChild variant="secondary">
+                  <Link href="/admin/events">Cancel</Link>
+                </Button>
+              </FormActions>
+            </form>
+          </FormSection>
+        </>
+      )}
     </div>
   );
 }

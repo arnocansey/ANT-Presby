@@ -1,49 +1,54 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AdminShell } from '@/components/admin-shell';
-import { BrandButton, BrandCard, BrandHero, BrandPill, BrandScreen } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { LoadingList, Screen, ScreenHeader, SignInPrompt, StatGrid, StatTile, statusTone } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppBadge } from '@/components/ui/badge';
+import { AppButton } from '@/components/ui/button';
+import { AppCard } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Corner, Space } from '@/constants/tokens';
 import { useAdminDonations, useUpdateDonationStatus } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
-import { useAuthStore } from '@/store/auth';
+import { useAppTheme } from '@/hooks/use-app-theme';
 import { formatCedis } from '@/lib/currency';
+import { useAuthStore } from '@/store/auth';
 
 export default function AdminDonationsScreen() {
+  const { colors } = useAppTheme();
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'admin';
   const donationsQuery = useAdminDonations(isAdmin);
   const updateDonationMutation = useUpdateDonationStatus();
-  const theme = useTheme();
 
   if (!user) {
     return (
-      <BrandScreen>
-        <BrandHero
-          eyebrow="Admin Giving"
+      <Screen>
+        <ScreenHeader back eyebrow="Admin giving" title="Finance and giving" />
+        <SignInPrompt
+          icon="shield-outline"
           title="Admin access requires sign in"
-          description="Sign in with your ANT PRESS admin account to review donation records."
-        >
-          <BrandButton label="Go To Sign In" onPress={() => router.replace('/login')} />
-        </BrandHero>
-      </BrandScreen>
+          message="Sign in with your ANT PRESS admin account to review donation records."
+          label="Go to sign in"
+          onSignIn={() => router.replace('/login')}
+        />
+      </Screen>
     );
   }
 
   if (!isAdmin) {
     return (
-      <BrandScreen>
-        <BrandHero
-          eyebrow="Admin Giving"
+      <Screen>
+        <ScreenHeader back eyebrow="Admin giving" title="Finance and giving" />
+        <EmptyState
+          icon="lock-closed-outline"
           title="Admin access is restricted"
-          description="This mobile donation review area is available only to admin accounts."
-        >
-          <BrandButton label="Back To Account" onPress={() => router.replace('/account')} />
-        </BrandHero>
-      </BrandScreen>
+          message="This mobile donation review area is available only to admin accounts."
+          action={<AppButton label="Back to account" onPress={() => router.replace('/account')} />}
+        />
+      </Screen>
     );
   }
 
@@ -56,102 +61,71 @@ export default function AdminDonationsScreen() {
 
   return (
     <AdminShell activeTab="/admin-donations">
-      <View style={styles.headerRow}>
-        <Pressable
-          onPress={() => router.back()}
-          style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: theme.border }]}>
-          <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
-        </Pressable>
-        <View style={styles.headerCopy}>
-          <ThemedText type="smallBold" style={{ color: '#34D399', textTransform: 'uppercase', letterSpacing: 1 }}>
-            Admin
-          </ThemedText>
-          <ThemedText type="subtitle">Finance & Giving</ThemedText>
-        </View>
-        <View style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: theme.border }]}>
-          <Ionicons name="download-outline" size={16} color={theme.text} />
-        </View>
-      </View>
+      <ScreenHeader back eyebrow="Admin" title="Finance and giving" />
 
-      <View style={styles.totalCard}>
-        <ThemedText type="smallBold" style={styles.totalEyebrow}>
-          Total Received
-        </ThemedText>
-        <ThemedText type="title" style={{ color: '#FFFFFF' }}>
-          {formatCedis(totalAmount)}
-        </ThemedText>
-        <View style={styles.totalMeta}>
-          <View>
-            <ThemedText type="small" style={styles.totalMetaLabel}>
-              Records
-            </ThemedText>
-            <ThemedText type="defaultSemiBold" style={{ color: '#FFFFFF' }}>
-              {donations.length}
-            </ThemedText>
-          </View>
-          <View>
-            <ThemedText type="small" style={styles.totalMetaLabel}>
-              Pending
-            </ThemedText>
-            <ThemedText type="defaultSemiBold" style={{ color: '#FFFFFF' }}>
-              {pendingCount}
-            </ThemedText>
-          </View>
-        </View>
-      </View>
+      <AppCard>
+        <AppText variant="caption" tone="gold" style={styles.eyebrow}>
+          Total received
+        </AppText>
+        <AppText variant="title">{formatCedis(totalAmount)}</AppText>
+      </AppCard>
+      <StatGrid>
+        <StatTile label="Records" value={donations.length} icon="receipt-outline" />
+        <StatTile label="Pending" value={pendingCount} icon="time-outline" />
+      </StatGrid>
 
       {donationsQuery.isLoading ? (
-        <BrandCard>
-          <ThemedText type="small">Loading donations...</ThemedText>
-        </BrandCard>
+        <LoadingList />
       ) : donations.length === 0 ? (
-        <BrandCard>
-          <ThemedText type="defaultSemiBold">No donations available</ThemedText>
-          <ThemedText type="small">Donation records will show here when members give through ANT PRESS.</ThemedText>
-        </BrandCard>
+        <EmptyState
+          icon="cash-outline"
+          title="No donations available"
+          message="Donation records will show here when members give through ANT PRESS."
+        />
       ) : (
         donations.map((donation: any) => {
           const status = String(donation?.status || 'pending');
           const isPending = ['pending', 'processing'].includes(status.toLowerCase());
 
           return (
-            <BrandCard key={String(donation?.id)}>
+            <AppCard key={String(donation?.id)}>
               <View style={styles.row}>
-                <View style={styles.identityWrap}>
-                  <View style={styles.moneyBadge}>
-                    <Ionicons name="cash-outline" size={16} color="#34D399" />
-                  </View>
-                  <ThemedText type="defaultSemiBold">
-                    {donation?.user?.email || donation?.email || `Donation #${donation?.id}`}
-                  </ThemedText>
+                <View style={[styles.money, { backgroundColor: colors.surface }]}>
+                  <Ionicons name="cash-outline" size={18} color={colors.success} />
                 </View>
-                <BrandPill>{status}</BrandPill>
+                <AppText variant="bodyStrong" style={styles.flex} numberOfLines={1}>
+                  {donation?.user?.email || donation?.email || `Donation #${donation?.id}`}
+                </AppText>
+                <AppBadge tone={statusTone(status)}>{status}</AppBadge>
               </View>
-              <ThemedText type="small">
-                Amount: {formatCedis(donation?.amount)}
-              </ThemedText>
-              <ThemedText type="small">
+              <AppText variant="small">Amount: {formatCedis(donation?.amount)}</AppText>
+              <AppText variant="small" tone="muted">
                 Type: {donation?.type || donation?.donation_type || 'general'} | Method: {donation?.payment_method || 'unknown'}
-              </ThemedText>
-              <ThemedText type="small">
+              </AppText>
+              <AppText variant="small" tone="muted">
                 {donation?.created_at || donation?.createdAt || 'Recently created'}
-              </ThemedText>
+              </AppText>
 
               {isPending ? (
                 <View style={styles.actions}>
-                  <BrandButton
-                    label="Mark Completed"
-                    onPress={() => updateDonationMutation.mutate({ id: Number(donation?.id), status: 'completed' })}
-                    variant="secondary"
-                  />
-                  <BrandButton
-                    label="Mark Failed"
-                    onPress={() => updateDonationMutation.mutate({ id: Number(donation?.id), status: 'failed' })}
-                    variant="outline"
-                  />
+                  <View style={styles.flex}>
+                    <AppButton
+                      label="Mark completed"
+                      size="sm"
+                      onPress={() => updateDonationMutation.mutate({ id: Number(donation?.id), status: 'completed' })}
+                    />
+                  </View>
+                  <View style={styles.flex}>
+                    <AppButton
+                      label="Mark failed"
+                      size="sm"
+                      variant="danger"
+                      onPress={() => updateDonationMutation.mutate({ id: Number(donation?.id), status: 'failed' })}
+                    />
+                  </View>
                 </View>
               ) : null}
-            </BrandCard>
+            </AppCard>
           );
         })
       )}
@@ -160,63 +134,9 @@ export default function AdminDonationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  headerCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: Radius.pill,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  totalCard: {
-    borderRadius: Radius.large,
-    padding: Spacing.four,
-    backgroundColor: '#047857',
-    gap: Spacing.two,
-  },
-  totalEyebrow: {
-    color: '#A7F3D0',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  totalMeta: {
-    flexDirection: 'row',
-    gap: Spacing.four,
-  },
-  totalMetaLabel: {
-    color: '#A7F3D0',
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  identityWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    flex: 1,
-  },
-  moneyBadge: {
-    width: 34,
-    height: 34,
-    borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(52,211,153,0.14)',
-  },
-  actions: {
-    gap: Spacing.two,
-    marginTop: Spacing.one,
-  },
+  eyebrow: { textTransform: 'uppercase', letterSpacing: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: Space.sm },
+  money: { width: 36, height: 36, borderRadius: Corner.pill, alignItems: 'center', justifyContent: 'center' },
+  flex: { flex: 1 },
+  actions: { flexDirection: 'row', gap: Space.sm, marginTop: Space.xs },
 });

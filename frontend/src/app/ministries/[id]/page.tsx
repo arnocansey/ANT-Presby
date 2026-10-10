@@ -1,8 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, Mic, PlayCircle } from 'lucide-react';
+import { Church, Mic, PlayCircle } from 'lucide-react';
 import { useParams } from 'next/navigation';
+import BackLink from '@/components/site/BackLink';
+import { Button } from '@/components/ui/button';
+import EmptyState from '@/components/ui/empty-state';
+import Section from '@/components/ui/section';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useMinistry } from '@/hooks/useApi';
 
 export default function MinistryDetailPage() {
@@ -12,88 +17,81 @@ export default function MinistryDetailPage() {
   const ministry = data as any;
 
   return (
-    <div className="container-max py-10">
-      <Link
-        href="/ministries"
-        className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-sky-700 hover:text-sky-800 dark:text-cyan-300 dark:hover:text-cyan-200"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to ministries
-      </Link>
+    <div className="container-max space-y-8 py-10 sm:py-12">
+      <BackLink href="/ministries" label="Back to ministries" />
 
-      {isLoading && <DetailState text="Loading ministry..." />}
-      {!isLoading && error && <DetailState text="Failed to load ministry." />}
-      {!isLoading && !error && !ministry && <DetailState text="Ministry not found." />}
+      {isLoading && (
+        <div className="space-y-4" role="status">
+          <span className="sr-only">Loading…</span>
+          <Skeleton className="h-9 w-2/3" />
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      )}
+      {!isLoading && error && (
+        <EmptyState icon={Church} title="This ministry couldn't load right now" message="Please try again in a moment." />
+      )}
+      {!isLoading && !error && !ministry && (
+        <EmptyState
+          icon={Church}
+          title="Ministry not found"
+          message="It may have been moved or removed."
+          action={
+            <Button asChild variant="secondary">
+              <Link href="/ministries">All ministries</Link>
+            </Button>
+          }
+        />
+      )}
 
       {ministry && (
-        <div className="overflow-hidden rounded-[1.8rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
-          <div className="h-52 bg-gradient-to-br from-sky-700 via-cyan-600 to-blue-600 sm:h-72" />
-          <div className="space-y-6 p-6 sm:p-10">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-700 dark:text-cyan-300">
-                Ministry
-              </p>
-              <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-4xl">
+        <>
+          <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-card bg-primary/10 text-primary">
+              <Church className="h-6 w-6" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gold-ink">Ministry</p>
+              <h1 className="break-words text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
                 {ministry.name || 'Ministry'}
               </h1>
               {ministry.description && (
-                <p className="mt-4 max-w-3xl leading-relaxed text-ui-muted">{ministry.description}</p>
+                <p className="max-w-3xl leading-relaxed text-foreground/85">{ministry.description}</p>
               )}
             </div>
+          </header>
 
-            <section aria-labelledby="ministry-sermons">
-              <h2
-                id="ministry-sermons"
-                className="text-2xl font-black tracking-tight text-slate-950 dark:text-white"
-              >
-                Sermons
-              </h2>
-
-              {!ministry.sermons || ministry.sermons.length === 0 ? (
-                <DetailState text="No sermons found for this ministry." />
-              ) : (
-                <div className="mt-4 grid gap-4">
-                  {ministry.sermons.map((sermon: any, index: number) => (
-                    <div
-                      key={sermon.id}
-                      className="flex flex-col gap-4 rounded-[1.4rem] border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-950"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${index % 2 === 0 ? 'bg-sky-100 text-sky-700 dark:bg-cyan-950/50 dark:text-cyan-300' : 'bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300'}`}>
-                          <PlayCircle className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-slate-950 dark:text-white">{sermon.title}</p>
-                          {sermon.speaker && (
-                            <p className="mt-2 inline-flex items-center gap-1 text-sm text-ui-subtle">
-                              <Mic className="h-3.5 w-3.5" />
-                              {sermon.speaker}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <Link
-                        href={`/sermons/${sermon.id}`}
-                        className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-sky-300 hover:text-sky-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-cyan-500/40 dark:hover:text-cyan-300"
-                      >
-                        Open sermon
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          </div>
-        </div>
+          <Section title="Sermons">
+            {!ministry.sermons || ministry.sermons.length === 0 ? (
+              <EmptyState icon={PlayCircle} title="No sermons for this ministry yet" message="Messages linked to this ministry will appear here." />
+            ) : (
+              <div className="grid gap-3">
+                {ministry.sermons.map((sermon: any) => (
+                  <Link
+                    key={sermon.id}
+                    href={`/sermons/${sermon.id}`}
+                    className="flex items-center gap-4 rounded-card border border-border bg-card p-4 transition-colors hover:border-primary/40"
+                  >
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <PlayCircle className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold text-foreground">{sermon.title}</span>
+                      {sermon.speaker && (
+                        <span className="mt-1 inline-flex items-center gap-1 text-sm text-muted">
+                          <Mic className="h-3.5 w-3.5" aria-hidden="true" />
+                          {sermon.speaker}
+                        </span>
+                      )}
+                    </span>
+                    <span className="hidden shrink-0 text-sm font-semibold text-link sm:inline">Open sermon</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </Section>
+        </>
       )}
-    </div>
-  );
-}
-
-function DetailState({ text }: { text: string }) {
-  return (
-    <div className="rounded-[1.4rem] border border-dashed border-slate-300 bg-white p-10 text-center text-ui-subtle dark:border-slate-700 dark:bg-slate-950">
-      <p>{text}</p>
     </div>
   );
 }

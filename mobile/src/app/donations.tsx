@@ -1,79 +1,79 @@
 import React from 'react';
 import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
 
-import { BrandButton, BrandCard, BrandHero, BrandMetric, BrandPill, BrandScreen } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
+import {
+  ErrorState,
+  ListGroup,
+  ListRow,
+  LoadingList,
+  Screen,
+  ScreenHeader,
+  SignInPrompt,
+  StatGrid,
+  StatTile,
+  statusTone,
+} from '@/components/kit';
+import { AppBadge } from '@/components/ui/badge';
+import { AppButton } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { useMyDonations } from '@/hooks/use-api';
-import { useAuthStore } from '@/store/auth';
-import { Spacing } from '@/constants/theme';
 import { formatCedis } from '@/lib/currency';
+import { useAuthStore } from '@/store/auth';
 
 export default function DonationsScreen() {
   const user = useAuthStore((state) => state.user);
-  const { data, isLoading } = useMyDonations(Boolean(user));
+  const { data, isLoading, isError, refetch } = useMyDonations(Boolean(user));
   const donations = Array.isArray(data) ? data : [];
   const completed = donations.filter((item: any) => String(item.status || '').toLowerCase() === 'completed').length;
 
   if (!user) {
     return (
-      <BrandScreen>
-        <BrandHero
-          eyebrow="Giving"
-          title="Donation history"
-          description="Sign in to see your giving history and payment statuses."
-        >
-          <BrandButton label="Go To Sign In" onPress={() => router.replace('/login')} />
-        </BrandHero>
-      </BrandScreen>
+      <Screen>
+        <ScreenHeader back title="Donation history" />
+        <SignInPrompt
+          icon="receipt-outline"
+          title="Sign in to see your giving"
+          message="Your donations and their payment status appear here."
+          label="Go to sign in"
+          onSignIn={() => router.replace('/login')}
+        />
+      </Screen>
     );
   }
 
   return (
-    <BrandScreen>
-      <BrandHero
-        eyebrow="Giving"
-        title="Donation history"
-        description="Review your recent donations and their current statuses."
-      >
-        <BrandButton label="Make A Donation" onPress={() => router.push('/donate')} />
-      </BrandHero>
+    <Screen>
+      <ScreenHeader back title="Donation history" subtitle="Your recent gifts and their status" />
 
-      <View style={styles.metrics}>
-        <BrandMetric label="Total" value={donations.length} />
-        <BrandMetric label="Completed" value={completed} />
-      </View>
+      <StatGrid>
+        <StatTile label="Total" value={donations.length} icon="receipt-outline" />
+        <StatTile label="Completed" value={completed} icon="checkmark-circle-outline" />
+      </StatGrid>
+
+      <AppButton label="Make a donation" onPress={() => router.push('/donate')} />
 
       {isLoading ? (
-        <BrandCard>
-          <ThemedText type="small">Loading donations...</ThemedText>
-        </BrandCard>
+        <LoadingList />
+      ) : isError ? (
+        <ErrorState title="Could not load your donations" onRetry={() => refetch()} />
       ) : donations.length === 0 ? (
-        <BrandCard>
-          <ThemedText type="defaultSemiBold">No donations yet</ThemedText>
-          <ThemedText type="small">Your completed and pending giving activity will appear here.</ThemedText>
-        </BrandCard>
+        <EmptyState icon="receipt-outline" title="No donations yet" message="Your completed and pending giving will appear here." />
       ) : (
-        donations.map((item: any) => (
-          <BrandCard key={item.id}>
-            <BrandPill>{item.status || 'pending'}</BrandPill>
-            <ThemedText type="defaultSemiBold">{formatCedis(item.amount)}</ThemedText>
-            <ThemedText type="small">{item.donation_type || item.donationType || 'general'}</ThemedText>
-            <ThemedText type="small">{item.payment_method || item.paymentMethod || 'payment'}</ThemedText>
-            <ThemedText type="small">
-              {item.created_at ? new Date(item.created_at).toLocaleString() : 'Recent donation'}
-            </ThemedText>
-          </BrandCard>
-        ))
+        <ListGroup>
+          {donations.map((item: any) => (
+            <ListRow
+              key={String(item.id)}
+              label={formatCedis(item.amount)}
+              description={[
+                item.donation_type || item.donationType || 'general',
+                item.payment_method || item.paymentMethod || 'payment',
+                item.created_at ? new Date(item.created_at).toLocaleString() : 'Recent donation',
+              ].join(' · ')}
+              trailing={<AppBadge tone={statusTone(item.status || 'pending')}>{String(item.status || 'pending')}</AppBadge>}
+            />
+          ))}
+        </ListGroup>
       )}
-    </BrandScreen>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  metrics: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-});

@@ -2,12 +2,16 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { Plus } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
+import PageHeader from '@/components/ui/page-header';
 import SimpleTable from '@/components/ui/table';
-import { useAdminSermons, useDeleteSermon } from '@/hooks/useApi';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import AdminSubNav from '@/components/admin/sub-nav';
+import { LoadError, TableSkeleton } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB, SERMON_TABS } from '@/components/admin/admin-nav';
+import { useAdminSermons, useDeleteSermon } from '@/hooks/useApi';
 
 type AdminSermon = {
   id: number;
@@ -18,7 +22,7 @@ type AdminSermon = {
 };
 
 export default function AdminSermonsPage() {
-  const { data, isLoading } = useAdminSermons();
+  const { data, isLoading, isError, refetch } = useAdminSermons();
   const del = useDeleteSermon();
   const [query, setQuery] = React.useState('');
   const [selectedSermon, setSelectedSermon] = React.useState<AdminSermon | null>(null);
@@ -30,36 +34,46 @@ export default function AdminSermonsPage() {
   });
 
   return (
-    <div className="container-max space-y-6 py-12">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Manage Sermons</h1>
-          <p className="mt-2 text-sm text-ui-subtle">Keep the sermon library organized and easy to maintain.</p>
-        </div>
-        <div className="flex w-full gap-3 md:w-auto">
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by title or speaker"
-          />
-          <Button asChild><Link href="/admin/sermons/new">New Sermon</Link></Button>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Sermons' }]}
+        title="Sermons"
+        description="Keep the sermon library organised and easy to maintain."
+        actions={
+          <Button asChild>
+            <Link href="/admin/sermons/new">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              New sermon
+            </Link>
+          </Button>
+        }
+      />
+      <AdminSubNav label="Sermons and series" items={SERMON_TABS} />
+
+      <div className="w-full sm:max-w-sm">
+        <Input
+          aria-label="Search sermons"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search by title or speaker"
+        />
       </div>
 
       {isLoading ? (
-        <Card><CardContent className="p-4 text-sm text-ui-subtle">Loading sermons...</CardContent></Card>
-      ) : filteredSermons.length === 0 ? (
-        <Card className="border-dashed"><CardContent className="p-4 text-sm text-ui-subtle">No sermons found.</CardContent></Card>
+        <TableSkeleton label="Loading sermons" />
+      ) : isError && sermons.length === 0 ? (
+        <LoadError what="sermons" onRetry={() => refetch()} />
       ) : (
         <SimpleTable
+          emptyMessage={query.trim() ? 'No sermons match your search.' : 'No sermons yet.'}
           columns={[
             {
               key: 'title',
               header: 'Title',
               render: (sermon: AdminSermon) => (
                 <div>
-                  <p className="font-semibold text-slate-900 dark:text-slate-50">{sermon.title}</p>
-                  <p className="text-xs text-ui-subtle">{sermon.ministry_name || 'No ministry assigned'}</p>
+                  <p className="font-semibold text-foreground">{sermon.title}</p>
+                  <p className="text-xs text-muted">{sermon.ministry_name || 'No ministry assigned'}</p>
                 </div>
               ),
             },
@@ -78,11 +92,13 @@ export default function AdminSermonsPage() {
               key: 'actions',
               header: 'Actions',
               render: (sermon: AdminSermon) => (
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" asChild>
-                    <Link href={`/admin/sermons/${sermon.id}/edit`}>Edit</Link>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="secondary" asChild>
+                    <Link href={`/admin/sermons/${sermon.id}/edit`} aria-label={`Edit ${sermon.title}`}>
+                      Edit
+                    </Link>
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setSelectedSermon(sermon)}>
+                  <Button size="sm" variant="secondary" onClick={() => setSelectedSermon(sermon)} aria-label={`Delete ${sermon.title}`}>
                     Delete
                   </Button>
                 </div>
@@ -97,7 +113,7 @@ export default function AdminSermonsPage() {
         <ConfirmDialog
           title="Delete sermon?"
           description={`This will permanently remove "${selectedSermon.title}".`}
-          confirmLabel="Delete Sermon"
+          confirmLabel="Delete sermon"
           onCancel={() => setSelectedSermon(null)}
           onConfirm={() => {
             del.mutate(selectedSermon.id, {

@@ -2,14 +2,28 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { z } from 'zod';
 
-import { BrandButton, BrandCard, BrandHero, BrandMetric, BrandPill, BrandScreen } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import {
+  ChoiceField,
+  FormMessage,
+  FormTextField,
+  LoadingList,
+  Screen,
+  ScreenHeader,
+  SignInPrompt,
+  StatGrid,
+  StatTile,
+  SwitchRow,
+} from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppBadge } from '@/components/ui/badge';
+import { AppButton } from '@/components/ui/button';
+import { AppCard } from '@/components/ui/card';
+import { Space } from '@/constants/tokens';
 import { useCreatePrayerRequest, useMyPrayerRequests } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
+import { useAppTheme } from '@/hooks/use-app-theme';
 import { useAuthStore } from '@/store/auth';
 
 const prayerSchema = z.object({
@@ -23,17 +37,11 @@ const prayerSchema = z.object({
 type PrayerFormValues = z.infer<typeof prayerSchema>;
 type PrayerFormInput = z.input<typeof prayerSchema>;
 
-const categories: PrayerFormValues['category'][] = [
-  'personal',
-  'family',
-  'health',
-  'work',
-  'financial',
-  'other',
-];
+const categories: PrayerFormValues['category'][] = ['personal', 'family', 'health', 'work', 'financial', 'other'];
+const categoryOptions = categories.map((value) => ({ value, label: value.charAt(0).toUpperCase() + value.slice(1) }));
 
 export default function PrayerScreen() {
-  const theme = useTheme();
+  const { colors } = useAppTheme();
   const user = useAuthStore((state) => state.user);
   const createPrayerMutation = useCreatePrayerRequest();
   const { data, isLoading } = useMyPrayerRequests(Boolean(user));
@@ -71,40 +79,33 @@ export default function PrayerScreen() {
 
   if (!user) {
     return (
-      <BrandScreen>
-        <BrandHero
-          eyebrow="Prayer"
+      <Screen>
+        <ScreenHeader back title="Prayer requests" />
+        <SignInPrompt
+          icon="heart-outline"
           title="Sign in first"
-          description="Prayer requests are personal to your account, so mobile requests start after sign-in."
-        >
-          <BrandButton label="Go To Sign In" onPress={() => router.replace('/login')} />
-        </BrandHero>
-      </BrandScreen>
+          message="Prayer requests are personal to your account, so mobile requests start after sign-in."
+          label="Go to sign in"
+          onSignIn={() => router.replace('/login')}
+        />
+      </Screen>
     );
   }
 
   return (
-    <BrandScreen>
-      <BrandHero
-        eyebrow="Prayer Requests"
-        title="Connect in prayer"
-        description="Submit a prayer request and track your recent requests from the same ANT PRESS member space."
-      />
+    <Screen>
+      <ScreenHeader back title="Prayer requests" subtitle="Share a request and follow the ones you have sent" />
 
-      <View style={styles.metrics}>
-        <BrandMetric label="Requests" value={requests.length} />
-        <BrandMetric
-          label="On the wall"
-          value={requests.filter((item: any) => item?.share_on_wall).length}
-        />
-      </View>
+      <StatGrid>
+        <StatTile label="Requests" value={requests.length} icon="heart-outline" />
+        <StatTile label="On the wall" value={requests.filter((item: any) => item?.share_on_wall).length} icon="people-outline" />
+      </StatGrid>
 
-      <BrandCard>
-        <BrandPill>Prayer</BrandPill>
-        <ThemedText type="defaultSemiBold">New request</ThemedText>
+      <AppCard>
+        <AppText variant="section">New request</AppText>
 
-        <Field control={control} name="title" label="Title" placeholder="Prayer request title" error={errors.title?.message} />
-        <Field
+        <FormTextField control={control} name="title" label="Title" placeholder="Prayer request title" error={errors.title?.message} />
+        <FormTextField
           control={control}
           name="description"
           label="Description"
@@ -113,231 +114,70 @@ export default function PrayerScreen() {
           error={errors.description?.message}
         />
 
-        <View style={styles.field}>
-          <ThemedText type="smallBold">Category</ThemedText>
-          <View style={styles.optionWrap}>
-            {categories.map((category) => {
-              const active = category === selectedCategory;
-              return (
-                <Pressable key={category} onPress={() => setValue('category', category)}>
-                  {({ pressed }) => (
-                    <View
-                      style={[
-                        styles.option,
-                        {
-                          backgroundColor: active ? theme.tint : theme.background,
-                          borderColor: active ? theme.tint : theme.border,
-                          opacity: pressed ? 0.88 : 1,
-                        },
-                      ]}>
-                      <ThemedText type="smallBold" style={{ color: active ? theme.white : theme.text }}>
-                        {category}
-                      </ThemedText>
-                    </View>
-                  )}
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
+        <ChoiceField
+          label="Category"
+          options={categoryOptions}
+          value={selectedCategory}
+          onChange={(category) => setValue('category', category)}
+        />
 
-        <View style={styles.switchRow}>
-          <View style={styles.switchCopy}>
-            <ThemedText type="smallBold">Submit anonymously</ThemedText>
-            <ThemedText type="small">
-              Your name can be hidden while the request still belongs to your account.
-            </ThemedText>
-          </View>
-          <Controller
-            control={control}
-            name="isAnonymous"
-            render={({ field: { onChange, value } }) => (
-              <Switch
-                trackColor={{ false: theme.backgroundSelected, true: theme.tint }}
-                thumbColor={theme.white}
-                onValueChange={onChange}
-                value={value}
-              />
-            )}
-          />
-        </View>
-
-        <View style={styles.switchRow}>
-          <View style={styles.switchCopy}>
-            <ThemedText type="smallBold">Share on the prayer wall</ThemedText>
-            <ThemedText type="small">
-              After approval, other signed-in members can see this request and pray for you.
-            </ThemedText>
-          </View>
-          <Controller
-            control={control}
-            name="shareOnWall"
-            render={({ field: { onChange, value } }) => (
-              <Switch
-                trackColor={{ false: theme.backgroundSelected, true: theme.tint }}
-                thumbColor={theme.white}
-                onValueChange={onChange}
-                value={value}
-              />
-            )}
-          />
-        </View>
-
-        <Pressable onPress={handleSubmit(onSubmit)}>
-          {({ pressed }) => (
-            <View
-              style={[
-                styles.button,
-                {
-                  backgroundColor: theme.tint,
-                  opacity: pressed || isSubmitting ? 0.88 : 1,
-                },
-              ]}>
-              {isSubmitting ? (
-                <ActivityIndicator color={theme.white} />
-              ) : (
-                <ThemedText style={[styles.buttonText, { color: theme.white }]}>
-                  Submit Request
-                </ThemedText>
-              )}
-            </View>
+        <Controller
+          control={control}
+          name="isAnonymous"
+          render={({ field: { onChange, value } }) => (
+            <SwitchRow
+              label="Submit anonymously"
+              description="Your name can be hidden while the request still belongs to your account."
+              value={Boolean(value)}
+              onValueChange={onChange}
+            />
           )}
-        </Pressable>
+        />
+        <Controller
+          control={control}
+          name="shareOnWall"
+          render={({ field: { onChange, value } }) => (
+            <SwitchRow
+              label="Share on the prayer wall"
+              description="After approval, other signed-in members can see this request and pray for you."
+              value={Boolean(value)}
+              onValueChange={onChange}
+            />
+          )}
+        />
+
+        <AppButton label="Submit request" loading={isSubmitting} onPress={handleSubmit(onSubmit)} />
 
         {createPrayerMutation.isError ? (
-          <ThemedText style={styles.errorText}>
-            Could not submit your prayer request right now.
-          </ThemedText>
+          <FormMessage tone="danger">Could not submit your prayer request right now.</FormMessage>
         ) : null}
-      </BrandCard>
+      </AppCard>
 
-      <BrandCard>
-        <ThemedText type="defaultSemiBold">Your requests</ThemedText>
+      <AppCard>
+        <AppText variant="section">Your requests</AppText>
         {isLoading ? (
-          <ActivityIndicator />
+          <LoadingList count={2} height={72} />
         ) : requests.length === 0 ? (
-          <ThemedText type="small">No prayer requests yet.</ThemedText>
+          <AppText variant="small" tone="muted">
+            No prayer requests yet.
+          </AppText>
         ) : (
           requests.map((item: any) => (
-            <View key={item.id} style={styles.requestCard}>
-              <BrandPill>{item.category}</BrandPill>
-              <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
-              <ThemedText type="small">{item.description}</ThemedText>
-              <ThemedText type="small">{`${item.status} - ${item.is_anonymous ? 'Anonymous' : 'Named'}`}</ThemedText>
+            <View key={item.id} style={[styles.request, { borderTopColor: colors.border }]}>
+              <AppBadge>{String(item.category)}</AppBadge>
+              <AppText variant="bodyStrong">{item.title}</AppText>
+              <AppText variant="small">{item.description}</AppText>
+              <AppText variant="small" tone="muted">
+                {`${item.status} - ${item.is_anonymous ? 'Anonymous' : 'Named'}`}
+              </AppText>
             </View>
           ))
         )}
-      </BrandCard>
-    </BrandScreen>
-  );
-}
-
-function Field({
-  control,
-  name,
-  label,
-  placeholder,
-  error,
-  multiline,
-}: {
-  control: any;
-  name: keyof PrayerFormInput;
-  label: string;
-  placeholder: string;
-  error?: string;
-  multiline?: boolean;
-}) {
-  const theme = useTheme();
-
-  return (
-    <View style={styles.field}>
-      <ThemedText type="smallBold">{label}</ThemedText>
-      <Controller
-        control={control}
-        name={name}
-        render={({ field: { onBlur, onChange, value } }) => (
-          <TextInput
-            onBlur={onBlur}
-            onChangeText={onChange}
-            placeholder={placeholder}
-            placeholderTextColor={theme.textSecondary}
-            multiline={multiline}
-            style={[
-              styles.input,
-              multiline && styles.textarea,
-              {
-                backgroundColor: theme.background,
-                borderColor: error ? '#F87171' : theme.border,
-                color: theme.text,
-              },
-            ]}
-            value={value}
-          />
-        )}
-      />
-      {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
-    </View>
+      </AppCard>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  metrics: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  field: {
-    gap: Spacing.one,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-    fontSize: 16,
-  },
-  textarea: {
-    minHeight: 132,
-    textAlignVertical: 'top',
-  },
-  optionWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  option: {
-    borderWidth: 1,
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  switchCopy: {
-    flex: 1,
-    gap: Spacing.one,
-  },
-  button: {
-    minHeight: 52,
-    borderRadius: Radius.medium,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  requestCard: {
-    gap: Spacing.one,
-    paddingTop: Spacing.two,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#CBD5E1',
-  },
-  errorText: {
-    color: '#B91C1C',
-  },
+  request: { gap: Space.xs, paddingTop: Space.sm, borderTopWidth: StyleSheet.hairlineWidth },
 });

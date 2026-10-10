@@ -1,8 +1,8 @@
 import { useLocalSearchParams, router } from 'expo-router';
 import React from 'react';
 
-import { BrandButton, BrandCard, BrandHero, BrandPill, BrandScreen } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
+import { ListGroup, ListRow, LoadingList, Screen, ScreenHeader } from '@/components/kit';
+import { EmptyState } from '@/components/ui/empty-state';
 import { useMinistrySermons } from '@/hooks/use-api';
 
 export default function MinistryDetailScreen() {
@@ -12,35 +12,26 @@ export default function MinistryDetailScreen() {
   const sermons = sermonsQuery.data || [];
 
   return (
-    <BrandScreen>
-      <BrandHero
-        eyebrow="Ministry Sermons"
-        title="Messages from this ministry"
-        description="A focused sermon list for the selected ministry, matching the website ministry detail flow."
-      />
+    <Screen>
+      <ScreenHeader back eyebrow="Ministry" title="Sermons from this ministry" />
 
       {sermonsQuery.isLoading ? (
-        <BrandCard>
-          <ThemedText type="small">Loading sermons...</ThemedText>
-        </BrandCard>
+        <LoadingList />
       ) : sermons.length > 0 ? (
-        sermons.map((sermon: any) => (
-          <BrandCard key={String(sermon?.id)}>
-            <BrandPill>{sermon?.speaker || 'Sermon'}</BrandPill>
-            <ThemedText type="defaultSemiBold">{sermon?.title || 'Untitled sermon'}</ThemedText>
-            <ThemedText type="small">{sermon?.description || 'No description provided.'}</ThemedText>
-            <BrandButton
-              label="Open Sermon"
+        <ListGroup>
+          {sermons.map((sermon: any) => (
+            <ListRow
+              key={String(sermon?.id)}
+              icon="play-outline"
+              label={sermon?.title || 'Untitled sermon'}
+              description={[sermon?.speaker, sermon?.description].filter(Boolean).join(' · ') || 'No description provided.'}
               onPress={() => router.push(`/sermons/${sermon?.id}` as never)}
-              variant="secondary"
             />
-          </BrandCard>
-        ))
+          ))}
+        </ListGroup>
       ) : (
-        <BrandCard>
-          <ThemedText type="small">No sermons found for this ministry.</ThemedText>
-        </BrandCard>
+        <EmptyState icon="play-circle-outline" title="No sermons found for this ministry" />
       )}
-    </BrandScreen>
+    </Screen>
   );
 }

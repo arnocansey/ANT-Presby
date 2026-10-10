@@ -1,15 +1,15 @@
-import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, router } from 'expo-router';
 import React from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { Alert, StyleSheet, TextInput, View } from 'react-native';
+import { useForm } from 'react-hook-form';
+import { Alert } from 'react-native';
 
-import { BrandButton, BrandCard, BrandHero, BrandPill, BrandScreen, BrandSectionHeader } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { FormMessage, FormTextField, LoadingList, MediaFrame, Screen, ScreenHeader } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppButton } from '@/components/ui/button';
+import { AppCard } from '@/components/ui/card';
+import { Corner } from '@/constants/tokens';
 import { getApiErrorMessage, useAdminEvents, useRemoveEventImage, useUpdateAdminEvent, useUploadEventImage } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
 import { resolveImageUrl } from '@/lib/media';
 import { useAuthStore } from '@/store/auth';
 
@@ -84,87 +84,62 @@ export default function AdminEventEditScreen() {
 
   if (!user || !isAdmin) {
     return (
-      <BrandScreen>
-        <BrandHero eyebrow="Edit Event" title="Admin access required" description="Sign in with an admin account to edit events." />
-      </BrandScreen>
+      <Screen>
+        <ScreenHeader back eyebrow="Edit event" title="Admin access required" subtitle="Sign in with an admin account to edit events." />
+      </Screen>
     );
   }
 
   return (
-    <BrandScreen>
-      <BrandHero eyebrow="Edit Event" title={event?.name || 'Edit event'} description="Update an event record from the mobile admin app." />
-      <BrandCard>
-        <BrandPill>Edit</BrandPill>
-        <BrandSectionHeader title="Edit event" description="Adjust the key event details and save them back to ANT PRESS." />
-        {!event ? (
-          <ThemedText type="small">Loading event...</ThemedText>
-        ) : (
-          <>
-            <View style={styles.imageBlock}>
-              {imageUri ? <Image source={{ uri: imageUri }} style={styles.eventImage} contentFit="cover" /> : null}
-              <BrandButton
-                label={uploadImage.isPending ? 'Uploading...' : imageUri ? 'Change Image' : 'Add Image'}
-                onPress={() => !uploadImage.isPending && pickImage()}
-                variant="outline"
+    <Screen>
+      <ScreenHeader back eyebrow="Edit event" title={event?.name || 'Edit event'} />
+      {!event ? (
+        <LoadingList count={3} height={72} />
+      ) : (
+        <>
+          <AppCard>
+            <AppText variant="bodyStrong">Cover image</AppText>
+            {imageUri ? <MediaFrame uri={imageUri} height={180} radius={Corner.control} accessibilityLabel="Event cover image" /> : null}
+            <AppButton
+              label={uploadImage.isPending ? 'Uploading...' : imageUri ? 'Change image' : 'Add image'}
+              variant="secondary"
+              onPress={() => !uploadImage.isPending && pickImage()}
+            />
+            {imageUri ? (
+              <AppButton
+                label="Remove image"
+                variant="danger"
+                onPress={() =>
+                  !removeImage.isPending &&
+                  removeImage.mutate(undefined, {
+                    onError: (error) => Alert.alert('Could not remove', getApiErrorMessage(error, 'Please try again.')),
+                  })
+                }
               />
-              {imageUri ? (
-                <BrandButton
-                  label="Remove Image"
-                  onPress={() =>
-                    !removeImage.isPending &&
-                    removeImage.mutate(undefined, {
-                      onError: (error) => Alert.alert('Could not remove', getApiErrorMessage(error, 'Please try again.')),
-                    })
-                  }
-                  variant="outline"
-                />
-              ) : null}
-            </View>
-            <Field control={control} name="name" label="Name" placeholder="Event name" />
-            <Field control={control} name="description" label="Description" placeholder="Event description" multiline />
-            <Field control={control} name="eventDate" label="Event Date" placeholder="2026-04-12T09:00:00.000Z" />
-            <Field control={control} name="location" label="Location" placeholder="Event location" />
-            <Field control={control} name="maxRegistrations" label="Max Registrations" placeholder="Optional capacity" />
-            <BrandButton label="Save Changes" onPress={handleSubmit(onSubmit)} variant="secondary" />
-            {updateMutation.isError ? (
-              <ThemedText style={styles.errorText}>{getApiErrorMessage(updateMutation.error, 'Failed to update event.')}</ThemedText>
             ) : null}
-          </>
-        )}
-      </BrandCard>
-    </BrandScreen>
+          </AppCard>
+
+          <AppCard>
+            <AppText variant="bodyStrong">Details</AppText>
+            <FormTextField control={control} name="name" label="Name" placeholder="Event name" />
+            <FormTextField control={control} name="description" label="Description" placeholder="Event description" multiline />
+            <FormTextField
+              control={control}
+              name="eventDate"
+              label="Event date"
+              placeholder="2026-04-12T09:00:00.000Z"
+              hint="ISO format, for example 2026-04-12T09:00:00.000Z"
+              autoCapitalize="none"
+            />
+            <FormTextField control={control} name="location" label="Location" placeholder="Event location" />
+            <FormTextField control={control} name="maxRegistrations" label="Max registrations" placeholder="Optional capacity" keyboardType="number-pad" />
+            <AppButton label="Save changes" onPress={handleSubmit(onSubmit)} loading={updateMutation.isPending} />
+            {updateMutation.isError ? (
+              <FormMessage tone="danger">{getApiErrorMessage(updateMutation.error, 'Failed to update event.')}</FormMessage>
+            ) : null}
+          </AppCard>
+        </>
+      )}
+    </Screen>
   );
 }
-
-function Field({ control, name, label, placeholder, multiline = false }: { control: any; name: keyof EventFormValues; label: string; placeholder: string; multiline?: boolean }) {
-  const theme = useTheme();
-  return (
-    <View style={styles.field}>
-      <ThemedText type="smallBold">{label}</ThemedText>
-      <Controller
-        control={control}
-        name={name}
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
-            value={String(value ?? '')}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            placeholder={placeholder}
-            placeholderTextColor={theme.textSecondary}
-            multiline={multiline}
-            style={[styles.input, multiline && styles.multiline, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-          />
-        )}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  imageBlock: { gap: Spacing.two },
-  eventImage: { width: '100%', height: 180, borderRadius: Radius.medium },
-  field: { gap: Spacing.one },
-  input: { borderWidth: 1, borderRadius: Radius.medium, paddingHorizontal: Spacing.three, paddingVertical: Spacing.three, fontSize: 16 },
-  multiline: { minHeight: 110, textAlignVertical: 'top' },
-  errorText: { color: '#B91C1C' },
-});

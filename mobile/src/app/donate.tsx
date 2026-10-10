@@ -4,16 +4,18 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { z } from 'zod';
 
-import { BrandCard, BrandMetric, BrandPill, BrandScreen } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { ChoiceField, FormTextField, IconButton, Screen, ScreenHeader, SignInPrompt } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppBadge } from '@/components/ui/badge';
+import { AppButton } from '@/components/ui/button';
+import { AppCard } from '@/components/ui/card';
+import { Space } from '@/constants/tokens';
 import { useInitializeDonationPayment, useVerifyDonationPayment } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
-import { useAuthStore } from '@/store/auth';
 import { formatCedis } from '@/lib/currency';
+import { useAuthStore } from '@/store/auth';
 
 const donationSchema = z.object({
   amount: z.coerce.number().min(0.01, 'Enter an amount greater than 0'),
@@ -25,16 +27,33 @@ const donationSchema = z.object({
 type DonationFormValues = z.infer<typeof donationSchema>;
 type DonationFormInput = z.input<typeof donationSchema>;
 
+const DONATION_TYPES: { value: DonationFormValues['donationType']; label: string }[] = [
+  { value: 'general', label: 'General' },
+  { value: 'tithe', label: 'Tithe' },
+  { value: 'offering', label: 'Offering' },
+  { value: 'ministry', label: 'Ministry' },
+  { value: 'emergency', label: 'Emergency' },
+];
+
+const PAYMENT_METHODS: { value: DonationFormValues['paymentMethod']; label: string }[] = [
+  { value: 'card', label: 'Card' },
+  { value: 'momo', label: 'Mobile money' },
+  { value: 'bank_transfer', label: 'Bank transfer' },
+  { value: 'cash', label: 'Cash' },
+];
+
 export default function DonateScreen() {
-  const theme = useTheme();
   const user = useAuthStore((state) => state.user);
-  const params = useLocalSearchParams<{ reference?: string | string[] }>();
+  const params = useLocalSearchParams<{ reference?: string | string[]; amount?: string | string[] }>();
   const donationMutation = useInitializeDonationPayment();
   const verifyDonationMutation = useVerifyDonationPayment();
-  const [verifiedReference, setVerifiedReference] = React.useState<string | null>(null);
+  const verifyDonation = verifyDonationMutation.mutateAsync;
+  // Set before the request (not after it), so re-renders while it is pending never send it again.
+  const verifiedReferenceRef = React.useRef<string | null>(null);
   const {
     control,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<DonationFormInput, unknown, DonationFormValues>({
     resolver: zodResolver(donationSchema),
@@ -52,18 +71,19 @@ export default function DonateScreen() {
     WebBrowser.maybeCompleteAuthSession();
   }, []);
 
+  // A quick-amount link (e.g. GH₵50 on the Events tab) opens Give with that amount filled in.
+  const incomingAmount = Number(Array.isArray(params.amount) ? params.amount[0] : params.amount);
   React.useEffect(() => {
-    const verify = async () => {
-      if (!user || !incomingReference || verifiedReference === incomingReference) return;
-      try {
-        await verifyDonationMutation.mutateAsync(incomingReference);
-      } finally {
-        setVerifiedReference(incomingReference);
-      }
-    };
+    if (Number.isFinite(incomingAmount) && incomingAmount > 0) {
+      setValue('amount', incomingAmount, { shouldValidate: true });
+    }
+  }, [incomingAmount, setValue]);
 
-    void verify();
-  }, [incomingReference, user, verifiedReference, verifyDonationMutation]);
+  React.useEffect(() => {
+    if (!user || !incomingReference || verifiedReferenceRef.current === incomingReference) return;
+    verifiedReferenceRef.current = incomingReference;
+    verifyDonation(incomingReference).catch(() => undefined);
+  }, [incomingReference, user, verifyDonation]);
 
   const onSubmit = async (values: DonationFormValues) => {
     const callbackUrl = Linking.createURL('donate');
@@ -100,110 +120,62 @@ export default function DonateScreen() {
 
   if (!user) {
     return (
-      <BrandScreen>
-        <View style={styles.headerBlock}>
-          <ThemedText type="title" style={styles.headerTitle}>
-            Give
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Support the mission securely
-          </ThemedText>
-        </View>
-        <View style={[styles.heroCard, { backgroundColor: '#2C1E18' }]}>
-          <View style={[styles.heroOrb, styles.heroOrbTop, { backgroundColor: 'rgba(245,158,11,0.18)' }]} />
-          <View style={[styles.heroOrb, styles.heroOrbBottom, { backgroundColor: 'rgba(124,58,237,0.18)' }]} />
-          <ThemedText type="smallBold" style={styles.heroEyebrow}>
-            Support
-          </ThemedText>
-          <ThemedText type="title" style={styles.heroTitle}>
-            Give securely
-          </ThemedText>
-          <ThemedText type="default" style={styles.heroDescription}>
-            Sign in first so your donations stay connected to your ANT PRESS account.
-          </ThemedText>
-        </View>
-        <BrandCard>
-          <BrandPill>Account required</BrandPill>
-          <ThemedText type="defaultSemiBold">Sign in before you give</ThemedText>
-          <ThemedText type="small">
-            Your giving history, payment verification, and donation receipts all stay linked to your ANT PRESS profile.
-          </ThemedText>
-          <Pressable onPress={() => router.push('/login')}>
-            {({ pressed }) => (
-              <View style={[styles.button, { backgroundColor: theme.tint, opacity: pressed ? 0.88 : 1 }]}>
-                <ThemedText style={[styles.buttonText, { color: theme.white }]}>Go To Sign In</ThemedText>
-              </View>
-            )}
-          </Pressable>
-        </BrandCard>
-      </BrandScreen>
+      <Screen>
+        <ScreenHeader title="Give" subtitle="Support the mission securely" />
+        <SignInPrompt
+          icon="heart-outline"
+          title="Sign in before you give"
+          message="Your giving history, payment checks and receipts stay linked to your ANT PRESS account."
+          label="Go to sign in"
+          onSignIn={() => router.push('/login')}
+        />
+      </Screen>
     );
   }
 
   return (
-    <BrandScreen>
-      <View style={styles.headerBlock}>
-        <ThemedText type="title" style={styles.headerTitle}>
-          Give
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          Support the mission from mobile
-        </ThemedText>
-      </View>
-
-      <View style={[styles.heroCard, { backgroundColor: '#2C1E18' }]}>
-        <View style={[styles.heroOrb, styles.heroOrbTop, { backgroundColor: 'rgba(245,158,11,0.18)' }]} />
-        <View style={[styles.heroOrb, styles.heroOrbBottom, { backgroundColor: 'rgba(124,58,237,0.18)' }]} />
-        <ThemedText type="smallBold" style={styles.heroEyebrow}>
-          Support
-        </ThemedText>
-        <ThemedText type="title" style={styles.heroTitle}>
-          Give securely
-        </ThemedText>
-        <ThemedText type="default" style={styles.heroDescription}>
-          Use the same ANT PRESS giving flow from the website, shaped for mobile checkout.
-        </ThemedText>
-      </View>
-
-      <View style={styles.metrics}>
-        <BrandMetric label="Mode" value="Secure" />
-        <BrandMetric label="Account" value="Linked" />
-      </View>
+    <Screen>
+      <ScreenHeader
+        title="Give"
+        subtitle="Support the mission from your phone"
+        right={<IconButton icon="receipt-outline" accessibilityLabel="Donation history" onPress={() => router.push('/donations')} />}
+      />
 
       {incomingReference ? (
-        <BrandCard>
-          <BrandPill>{verifyDonationMutation.isSuccess ? 'Donation verified' : 'Donation return'}</BrandPill>
-          <ThemedText type="small">
+        <AppCard>
+          <AppBadge tone={verifyDonationMutation.isSuccess ? 'success' : 'neutral'}>
+            {verifyDonationMutation.isSuccess ? 'Donation verified' : 'Donation return'}
+          </AppBadge>
+          <AppText variant="small">
             {verifyDonationMutation.isPending
               ? `Verifying donation reference ${incomingReference}...`
               : verifyDonationMutation.isSuccess
                 ? `Status: ${verifyDonationMutation.data?.donation?.status || 'completed'}`
                 : 'We received the return reference and will confirm the payment status.'}
-          </ThemedText>
-        </BrandCard>
+          </AppText>
+        </AppCard>
       ) : null}
 
-      <BrandCard>
-        <BrandPill>Giving</BrandPill>
-        <ThemedText type="defaultSemiBold">Start a donation</ThemedText>
-        <ThemedText type="small">Choose an amount, giving type, and payment path to continue.</ThemedText>
+      <AppCard>
+        <AppText variant="section">Start a donation</AppText>
+        <AppText variant="small" tone="muted">
+          Choose an amount, giving type and payment method to continue.
+        </AppText>
+
         <View style={styles.amountRow}>
           {[25, 50, 100].map((amount) => (
-            <Pressable
-              key={amount}
-              onPress={() => {
-                const currentValues = control._formValues as DonationFormInput;
-                control._reset({
-                  ...currentValues,
-                  amount,
-                });
-              }}
-              style={[styles.amountButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: theme.border }]}>
-              <ThemedText type="defaultSemiBold">{formatCedis(amount, 0)}</ThemedText>
-            </Pressable>
+            <View key={amount} style={styles.amount}>
+              <AppButton
+                label={formatCedis(amount, 0)}
+                variant="secondary"
+                size="sm"
+                onPress={() => setValue('amount', amount, { shouldValidate: true })}
+              />
+            </View>
           ))}
         </View>
-        <Field
+
+        <FormTextField
           control={control}
           name="amount"
           label="Amount"
@@ -211,165 +183,48 @@ export default function DonateScreen() {
           keyboardType="decimal-pad"
           error={errors.amount?.message}
         />
-        <Field control={control} name="donationType" label="Donation Type" placeholder="general" error={errors.donationType?.message} />
-        <Field control={control} name="paymentMethod" label="Payment Method" placeholder="card" error={errors.paymentMethod?.message} />
-        <Field control={control} name="notes" label="Notes" placeholder="Optional note" multiline error={errors.notes?.message} />
-
-        <Pressable onPress={handleSubmit(onSubmit)}>
-          {({ pressed }) => (
-            <View style={[styles.button, { backgroundColor: theme.tint, opacity: pressed || isSubmitting ? 0.88 : 1 }]}>
-              {isSubmitting ? (
-                <ActivityIndicator color={theme.white} />
-              ) : (
-                <ThemedText style={[styles.buttonText, { color: theme.white }]}>Start Donation</ThemedText>
-              )}
-            </View>
+        <Controller
+          control={control}
+          name="donationType"
+          render={({ field: { value, onChange } }) => (
+            <ChoiceField
+              label="Giving type"
+              options={DONATION_TYPES}
+              value={value}
+              onChange={onChange}
+              error={errors.donationType?.message}
+            />
           )}
-        </Pressable>
-      </BrandCard>
-    </BrandScreen>
-  );
-}
+        />
+        <Controller
+          control={control}
+          name="paymentMethod"
+          render={({ field: { value, onChange } }) => (
+            <ChoiceField
+              label="Payment method"
+              options={PAYMENT_METHODS}
+              value={value}
+              onChange={onChange}
+              error={errors.paymentMethod?.message}
+            />
+          )}
+        />
+        <FormTextField
+          control={control}
+          name="notes"
+          label="Notes"
+          placeholder="Optional note"
+          multiline
+          error={errors.notes?.message}
+        />
 
-function Field({
-  control,
-  name,
-  label,
-  placeholder,
-  error,
-  multiline,
-  keyboardType,
-}: {
-  control: any;
-  name: keyof DonationFormInput;
-  label: string;
-  placeholder: string;
-  error?: string;
-  multiline?: boolean;
-  keyboardType?: 'default' | 'decimal-pad';
-}) {
-  const theme = useTheme();
-
-  return (
-    <View style={styles.field}>
-      <ThemedText type="smallBold">{label}</ThemedText>
-      <Controller
-        control={control}
-        name={name}
-        render={({ field: { onBlur, onChange, value } }) => (
-          <TextInput
-            onBlur={onBlur}
-            onChangeText={onChange}
-            placeholder={placeholder}
-            placeholderTextColor={theme.textSecondary}
-            keyboardType={keyboardType}
-            multiline={multiline}
-            style={[
-              styles.input,
-              multiline && styles.textarea,
-              {
-                backgroundColor: theme.background,
-                borderColor: error ? '#F87171' : theme.border,
-                color: theme.text,
-              },
-            ]}
-            value={value ? String(value) : ''}
-          />
-        )}
-      />
-      {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
-    </View>
+        <AppButton label="Start donation" loading={isSubmitting} onPress={handleSubmit(onSubmit)} />
+      </AppCard>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  metrics: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  headerBlock: {
-    gap: Spacing.one,
-  },
-  headerTitle: {
-    fontSize: 30,
-    lineHeight: 34,
-  },
-  heroCard: {
-    borderRadius: Radius.large,
-    padding: Spacing.four,
-    overflow: 'hidden',
-    gap: Spacing.two,
-    position: 'relative',
-    minHeight: 200,
-  },
-  heroOrb: {
-    position: 'absolute',
-    borderRadius: Radius.pill,
-  },
-  heroOrbTop: {
-    width: 180,
-    height: 180,
-    top: -30,
-    right: -10,
-  },
-  heroOrbBottom: {
-    width: 160,
-    height: 160,
-    left: -30,
-    bottom: -40,
-  },
-  heroEyebrow: {
-    color: '#FACC15',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-  heroTitle: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    lineHeight: 32,
-  },
-  heroDescription: {
-    color: '#E5E7EB',
-    maxWidth: 260,
-  },
-  amountRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  amountButton: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: Radius.medium,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  field: {
-    gap: Spacing.one,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-    fontSize: 16,
-  },
-  textarea: {
-    minHeight: 120,
-    textAlignVertical: 'top',
-  },
-  button: {
-    minHeight: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: Radius.medium,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  errorText: {
-    color: '#B91C1C',
-  },
+  amountRow: { flexDirection: 'row', gap: Space.sm },
+  amount: { flex: 1 },
 });

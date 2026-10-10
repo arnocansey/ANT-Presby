@@ -1,41 +1,48 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { Radio } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import EmptyState from '@/components/ui/empty-state';
+import PageHeader from '@/components/ui/page-header';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useLiveStream } from '@/hooks/useApi';
 import { formatDateTime } from '@/lib/utils';
 
 export default function LivePage() {
-  const { data: live, isLoading } = useLiveStream(60_000);
+  const { data: live, isLoading, isError } = useLiveStream(60_000);
 
   return (
-    <div className="container-max space-y-6 py-12 sm:py-16">
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Livestream</h1>
-        <p className="mt-2 text-sm text-ui-subtle">Join our services live on YouTube or Facebook.</p>
-      </div>
+    <div className="container-max space-y-8 py-10 sm:py-12">
+      <PageHeader eyebrow="Watch" title="Livestream" description="Join our services live on YouTube or Facebook." />
 
       {isLoading ? (
-        <p className="text-sm text-ui-subtle">Loading...</p>
+        <Skeleton className="aspect-video w-full rounded-panel" />
+      ) : isError && !live ? (
+        <EmptyState icon={Radio} title="The livestream couldn't load right now" message="Please try again in a moment." />
       ) : !live?.is_live ? (
-        <div className="rounded-xl border border-slate-200 p-8 text-center dark:border-slate-800">
-          <p className="text-lg font-semibold">We&apos;re not live right now</p>
-          <p className="mt-2 text-sm text-ui-subtle">When a service is streaming, it will appear here.</p>
-        </div>
+        <EmptyState
+          icon={Radio}
+          title="We're not live right now"
+          message="When a service is streaming, it will appear here."
+          action={
+            <Button asChild variant="secondary">
+              <Link href="/sermons">Watch past sermons</Link>
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-5">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
-              <Radio className="h-3.5 w-3.5" aria-hidden="true" />
-              Live
-            </span>
-            <h2 className="text-xl font-bold">{live.title || 'Livestream'}</h2>
+            <Badge tone="live">Live</Badge>
+            <h2 className="min-w-0 break-words text-xl font-semibold text-foreground">{live.title || 'Livestream'}</h2>
           </div>
-          {live.started_at && <p className="text-sm text-ui-subtle">Started {formatDateTime(live.started_at)}</p>}
+          {live.started_at && <p className="text-sm text-muted">Started {formatDateTime(live.started_at)}</p>}
 
           {live.youtube_embed_url && (
-            <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
+            <div className="aspect-video w-full overflow-hidden rounded-panel bg-black">
               <iframe
                 src={live.youtube_embed_url}
                 title={live.title || 'Livestream'}
@@ -56,7 +63,7 @@ export default function LivePage() {
               </Button>
             )}
             {live.facebook_url && (
-              <Button asChild variant="outline">
+              <Button asChild variant="secondary">
                 <a href={live.facebook_url} target="_blank" rel="noopener noreferrer">
                   Watch on Facebook
                 </a>

@@ -9,11 +9,18 @@ import {
   useDeleteNewsPost,
   useUploadNewsImage,
 } from '@/hooks/useApi';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import ConfirmDialog from '@/components/ui/confirm-dialog';
+import PageHeader from '@/components/ui/page-header';
+import SimpleTable from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { CheckboxField, Field, FormActions, FormSection, formGridClass } from '@/components/admin/form-layout';
+import { LoadError, TableSkeleton } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
+import { statusLabel, statusTone } from '@/components/admin/status';
 
 type NewsStatus = 'draft' | 'review' | 'scheduled' | 'published' | 'archived';
 
@@ -28,12 +35,23 @@ type NewsForm = {
   featured: boolean;
 };
 
+type NewsRow = {
+  id: number;
+  title: string;
+  summary?: string;
+  slug?: string;
+  status?: string;
+  featured?: boolean;
+  scheduled_for?: string | null;
+};
+
 const statusOptions: NewsStatus[] = ['draft', 'review', 'scheduled', 'published', 'archived'];
 
 export default function AdminNewsPage() {
   const [statusFilter, setStatusFilter] = React.useState<string>('');
   const [search, setSearch] = React.useState('');
-  const { data, isLoading } = useAdminNews(1, 30, statusFilter || undefined, search || undefined);
+  const [pendingDelete, setPendingDelete] = React.useState<NewsRow | null>(null);
+  const { data, isLoading, isError, refetch } = useAdminNews(1, 30, statusFilter || undefined, search || undefined);
   const { data: auditData } = useAuditLogs(1, 8, 'news_post');
   const createNews = useCreateNewsPost();
   const deleteNews = useDeleteNewsPost();
@@ -46,8 +64,9 @@ export default function AdminNewsPage() {
   });
 
   const selectedStatus = watch('status');
-  const posts = data?.data || [];
+  const posts = (data?.data || []) as NewsRow[];
   const auditLogs = auditData?.data || [];
+  const filtering = Boolean(search.trim() || statusFilter);
 
   const onSubmit = async (values: NewsForm) => {
     await createNews.mutateAsync({
@@ -76,175 +95,174 @@ export default function AdminNewsPage() {
   };
 
   return (
-    <div className="container-max space-y-8 py-12">
-      <section>
-        <h1 className="mb-4 text-2xl font-extrabold tracking-tight sm:text-3xl">News Workflow</h1>
-        <Card>
-          <CardHeader>
-            <CardTitle>Create Announcement</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="news-title">Title</Label>
-                <Input id="news-title" {...register('title')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="news-slug">Slug</Label>
-                <Input id="news-slug" {...register('slug')} placeholder="optional-custom-slug" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="news-summary">Summary</Label>
-                <Textarea id="news-summary" rows={3} {...register('summary')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="news-content">Content</Label>
-                <Textarea id="news-content" rows={6} {...register('content')} />
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="news-status">Status</Label>
-                  <select
-                    id="news-status"
-                    {...register('status')}
-                    className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950"
-                  >
-                    {statusOptions.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="news-scheduled-for">Scheduled For</Label>
-                  <Input
-                    id="news-scheduled-for"
-                    type="datetime-local"
-                    {...register('scheduledFor')}
-                    disabled={selectedStatus !== 'scheduled'}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="news-image-upload">Upload Image</Label>
-                <Input
-                  id="news-image-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="news-image-url">Image URL</Label>
-                <Input id="news-image-url" {...register('imageUrl')} />
-              </div>
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input type="checkbox" {...register('featured')} className="h-4 w-4" />
-                Mark as featured
-              </label>
-              <div className="flex justify-end">
-                <Button type="submit" disabled={createNews.isPending || uploadNewsImage.isPending}>
-                  {createNews.isPending ? 'Saving...' : 'Create Post'}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </section>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'News' }]}
+        title="News"
+        description="Write, review, schedule and publish news posts."
+      />
+
+      <FormSection title="New post">
+        <form onSubmit={handleSubmit(onSubmit)} className={formGridClass}>
+          <Field label="Title" htmlFor="news-title">
+            <Input id="news-title" {...register('title')} />
+          </Field>
+          <Field label="Slug" htmlFor="news-slug" hint="Optional. Made from the title when left blank.">
+            <Input id="news-slug" {...register('slug')} placeholder="optional-custom-slug" />
+          </Field>
+          <Field label="Summary" htmlFor="news-summary" full>
+            <Textarea id="news-summary" rows={3} {...register('summary')} />
+          </Field>
+          <Field label="Content" htmlFor="news-content" full>
+            <Textarea id="news-content" rows={6} {...register('content')} />
+          </Field>
+          <Field label="Status" htmlFor="news-status">
+            <Select id="news-status" {...register('status')}>
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {statusLabel(status)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Scheduled for" htmlFor="news-scheduled-for" hint="Only used when the status is Scheduled.">
+            <Input
+              id="news-scheduled-for"
+              type="datetime-local"
+              {...register('scheduledFor')}
+              disabled={selectedStatus !== 'scheduled'}
+            />
+          </Field>
+          <Field label="Upload image" htmlFor="news-image-upload">
+            <Input id="news-image-upload" type="file" accept="image/*" onChange={handleImageUpload} />
+          </Field>
+          <Field label="Image URL" htmlFor="news-image-url">
+            <Input id="news-image-url" {...register('imageUrl')} />
+          </Field>
+          <CheckboxField label="Mark as featured" {...register('featured')} />
+          <FormActions>
+            <Button type="submit" disabled={createNews.isPending || uploadNewsImage.isPending}>
+              {createNews.isPending ? 'Saving...' : 'Create post'}
+            </Button>
+          </FormActions>
+        </form>
+      </FormSection>
 
       <section className="grid gap-6 xl:grid-cols-[2fr,1fr]">
-        <div>
-          <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <h2 className="text-xl font-bold tracking-tight">Existing Posts</h2>
-            <div className="flex flex-col gap-3 md:flex-row">
+        <div className="min-w-0 space-y-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <h2 className="text-xl font-semibold text-foreground">Posts</h2>
+            <div className="flex flex-col gap-3 sm:flex-row">
               <Input
+                aria-label="Search posts"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search title, summary, content..."
               />
-              <select
+              <Select
+                aria-label="Filter by status"
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
-                className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950"
+                className="sm:w-44"
               >
                 <option value="">All statuses</option>
                 {statusOptions.map((status) => (
                   <option key={status} value={status}>
-                    {status}
+                    {statusLabel(status)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
-          <div className="grid gap-4">
-            {isLoading && (
-              <Card>
-                <CardContent className="p-4 text-ui-subtle">Loading news posts...</CardContent>
-              </Card>
-            )}
 
-            {!isLoading && posts.length === 0 && (
-              <Card className="border-dashed">
-                <CardContent className="p-4 text-ui-subtle">No news posts match the current filters.</CardContent>
-              </Card>
-            )}
-
-            {posts.map((post: any) => (
-              <Card key={post.id}>
-                <CardHeader>
-                  <CardTitle className="text-lg">{post.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-sm text-ui-subtle">{post.summary}</p>
-                  <p className="text-xs text-ui-subtle">Slug: {post.slug}</p>
-                  <p className="text-xs text-ui-subtle">
-                    Status: {post.status} {post.featured ? '• Featured' : ''}
-                  </p>
-                  {post.scheduled_for && (
-                    <p className="text-xs text-ui-subtle">
-                      Scheduled: {new Date(post.scheduled_for).toLocaleString()}
-                    </p>
-                  )}
-                  <div className="flex justify-end">
+          {isLoading ? (
+            <TableSkeleton label="Loading news posts" />
+          ) : isError && posts.length === 0 ? (
+            <LoadError what="news posts" onRetry={() => refetch()} />
+          ) : (
+            <SimpleTable
+              emptyMessage={filtering ? 'No news posts match the current filters.' : 'No news posts yet.'}
+              columns={[
+                {
+                  key: 'title',
+                  header: 'Post',
+                  render: (post: NewsRow) => (
+                    <div className="space-y-1">
+                      <p className="font-semibold text-foreground">{post.title}</p>
+                      {post.summary && <p className="line-clamp-2 text-sm text-muted">{post.summary}</p>}
+                      <p className="text-xs text-muted">Slug: {post.slug}</p>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  render: (post: NewsRow) => (
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap gap-2">
+                        <Badge tone={statusTone(post.status)}>{statusLabel(post.status)}</Badge>
+                        {post.featured && <Badge tone="gold">Featured</Badge>}
+                      </div>
+                      {post.scheduled_for && (
+                        <p className="text-xs text-muted">Scheduled: {new Date(post.scheduled_for).toLocaleString()}</p>
+                      )}
+                    </div>
+                  ),
+                },
+                {
+                  key: 'actions',
+                  header: 'Actions',
+                  render: (post: NewsRow) => (
                     <Button
-                      variant="outline"
-                      onClick={() => deleteNews.mutate(post.id)}
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setPendingDelete(post)}
                       disabled={deleteNews.isPending}
+                      aria-label={`Delete ${post.title}`}
                     >
                       Delete
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  ),
+                },
+              ]}
+              data={posts}
+            />
+          )}
         </div>
 
-        <div>
-          <h2 className="mb-3 text-xl font-bold tracking-tight">Recent Audit Trail</h2>
-          <div className="grid gap-4">
-            {auditLogs.map((log: any) => (
-              <Card key={log.id}>
-                <CardContent className="space-y-1 p-4">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{log.summary}</p>
-                  <p className="text-xs text-ui-subtle">
-                    {log.actor_name || log.actor_email || 'System'}
-                  </p>
-                  <p className="text-xs text-ui-subtle">
-                    {new Date(log.created_at).toLocaleString()}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-            {!auditLogs.length && (
-              <Card className="border-dashed">
-                <CardContent className="p-4 text-ui-subtle">No audit entries yet.</CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
+        <aside className="space-y-4">
+          <h2 className="text-xl font-semibold text-foreground">Recent changes</h2>
+          {auditLogs.length === 0 ? (
+            <p className="rounded-card border border-dashed border-input bg-surface/50 px-4 py-6 text-center text-sm text-muted">
+              No audit entries yet.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border rounded-card border border-border bg-card">
+              {auditLogs.map((log: any) => (
+                <li key={log.id} className="space-y-1 p-4">
+                  <p className="text-sm font-semibold text-foreground">{log.summary}</p>
+                  <p className="text-xs text-muted">{log.actor_name || log.actor_email || 'System'}</p>
+                  <p className="text-xs text-muted">{new Date(log.created_at).toLocaleString()}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
       </section>
+
+      {/* Ruling 7: deleting a post now asks first, like every other delete in admin. */}
+      {pendingDelete && (
+        <ConfirmDialog
+          title={`Delete "${pendingDelete.title}"?`}
+          description="This post will be removed for everyone. This cannot be undone."
+          confirmLabel="Delete post"
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            deleteNews.mutate(pendingDelete.id);
+            setPendingDelete(null);
+          }}
+        />
+      )}
     </div>
   );
 }

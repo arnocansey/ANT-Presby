@@ -1,24 +1,31 @@
+import Scripture from '@/components/ui/scripture';
 import type { Devotional } from '@/hooks/useApi';
 import { formatDateOnly } from '@/lib/utils';
 
-export default function DevotionalBody({ devotional }: { devotional: Devotional }) {
+export default function DevotionalBody({
+  devotional,
+  headingLevel = 'h2',
+}: {
+  devotional: Devotional;
+  headingLevel?: 'h1' | 'h2';
+}) {
+  const Heading = headingLevel;
   return (
-    <article className="space-y-5">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-700 dark:text-amber-300">
+    <article className="max-w-3xl space-y-6">
+      <header className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gold-ink">
           {devotional.is_today === false ? `Devotional · ${formatDateOnly(devotional.publish_date)}` : formatDateOnly(devotional.publish_date)}
         </p>
-        <h2 className="mt-1 text-3xl font-black text-slate-950 dark:text-white">{devotional.title}</h2>
+        <Heading className="break-words text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{devotional.title}</Heading>
       </header>
-      <blockquote className="rounded-2xl border-l-4 border-amber-400 bg-amber-50 p-5 dark:bg-amber-950/30">
-        <p className="whitespace-pre-line italic">{devotional.scripture_text}</p>
-        <footer className="mt-2 text-sm font-semibold">{devotional.scripture_reference}</footer>
-      </blockquote>
-      <div className="max-w-3xl whitespace-pre-line leading-relaxed">{devotional.body}</div>
+      <Scripture reference={devotional.scripture_reference}>
+        <span className="whitespace-pre-line">{devotional.scripture_text}</span>
+      </Scripture>
+      <div className="whitespace-pre-line text-base leading-relaxed text-foreground">{devotional.body}</div>
       {devotional.prayer && (
-        <div className="rounded-2xl bg-slate-100 p-5 dark:bg-slate-900">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.22em] text-ui-subtle">Prayer</p>
-          <p className="whitespace-pre-line">{devotional.prayer}</p>
+        <div className="rounded-card border border-border bg-surface p-5">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Prayer</p>
+          <p className="whitespace-pre-line font-serif text-lg italic text-foreground">{devotional.prayer}</p>
         </div>
       )}
     </article>

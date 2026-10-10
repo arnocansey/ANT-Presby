@@ -3,10 +3,16 @@
 import React from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { UsersRound } from 'lucide-react';
+import BackLink from '@/components/site/BackLink';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
+import EmptyState from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useDecideGroupRequest, useGroup, useGroupRequests, useJoinGroup, useLeaveGroup, useSendAnnouncement } from '@/hooks/useApi';
 import { isGroupFull, meetingLine } from '@/lib/groups';
@@ -30,7 +36,7 @@ export default function GroupDetailPage() {
   const isAdmin = user?.role === 'admin';
   const isLeader = group?.my_role === 'leader' && group?.my_status === 'active';
   const canManage = Boolean(isAdmin || isLeader);
-  const { data: requests } = useGroupRequests(groupId, canManage);
+  const { data: requests, isLoading: requestsLoading, isError: requestsError } = useGroupRequests(groupId, canManage);
   const decide = useDecideGroupRequest(groupId);
   const sendMessage = useSendAnnouncement();
   const [messageTitle, setMessageTitle] = React.useState('');
@@ -38,65 +44,81 @@ export default function GroupDetailPage() {
 
   if (!groupId || (error as any)?.response?.status === 404) {
     return (
-      <div className="container-max py-12">
-        <p className="text-ui-subtle">This group could not be found.</p>
-        <Link href="/groups" className="text-sm font-semibold text-sky-700">
-          ← All groups
-        </Link>
+      <div className="container-max space-y-6 py-10 sm:py-12">
+        <BackLink href="/groups" label="All groups" />
+        <EmptyState
+          icon={UsersRound}
+          title="This group could not be found"
+          message="It may have been closed or removed."
+          action={
+            <Button asChild variant="secondary">
+              <Link href="/groups">Browse groups</Link>
+            </Button>
+          }
+        />
       </div>
     );
   }
 
   if (isLoading || !group) {
     return (
-      <div className="container-max py-12 text-sm text-ui-subtle">
-        {error ? 'Could not load this group.' : 'Loading group...'}
+      <div className="container-max space-y-6 py-10 sm:py-12">
+        <BackLink href="/groups" label="All groups" />
+        {error ? (
+          <EmptyState icon={UsersRound} title="This group couldn't load right now" message="Please try again in a moment." />
+        ) : (
+          <div className="space-y-4" role="status">
+            <span className="sr-only">Loading…</span>
+            <Skeleton className="h-9 w-2/3" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="container-max space-y-6 py-12 sm:py-16">
-      <div className="space-y-2">
-        <Link href="/groups" className="text-sm font-semibold text-sky-700 dark:text-cyan-300">
-          ← All groups
-        </Link>
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{group.name}</h1>
-        {group.ministry_name && <p className="text-sm text-ui-subtle">{group.ministry_name}</p>}
-        {!group.is_active && <p className="text-sm font-semibold text-red-700">This group is inactive.</p>}
-        {meetingLine(group) && <p className="text-sm">{meetingLine(group)}</p>}
-        <p className="text-sm text-ui-subtle">
+    <div className="container-max space-y-8 py-10 sm:py-12">
+      <BackLink href="/groups" label="All groups" />
+
+      <header className="space-y-3 border-b border-border pb-6">
+        <h1 className="break-words text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{group.name}</h1>
+        {group.ministry_name && <p className="text-sm text-muted">{group.ministry_name}</p>}
+        {!group.is_active && <Badge tone="danger">This group is inactive.</Badge>}
+        {meetingLine(group) && <p className="text-sm text-foreground">{meetingLine(group)}</p>}
+        <p className="text-sm text-muted">
           {group.member_count} {group.member_count === 1 ? 'member' : 'members'}
           {group.capacity !== null ? ` of ${group.capacity}` : ''}
           {group.leaders.length > 0 ? ` · Led by ${group.leaders.map(personName).join(', ')}` : ''}
         </p>
-        {group.description && <p className="max-w-2xl whitespace-pre-line pt-2">{group.description}</p>}
+        {group.description && <p className="max-w-2xl whitespace-pre-line pt-1 text-foreground/85">{group.description}</p>}
 
         <div className="pt-2">
           {!isAuthenticated ? (
-            <Button asChild variant="outline">
+            <Button asChild variant="secondary">
               <Link href={`/login?next=${encodeURIComponent(`/groups/${group.id}`)}`}>Sign in to join</Link>
             </Button>
           ) : group.my_status === 'active' ? (
-            <Button variant="outline" disabled={leave.isPending} onClick={() => setConfirmLeave(true)}>
+            <Button variant="secondary" disabled={leave.isPending} onClick={() => setConfirmLeave(true)}>
               Leave group
             </Button>
           ) : group.my_status === 'pending' ? (
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">Request pending</span>
-              <Button size="sm" variant="outline" disabled={leave.isPending} onClick={() => leave.mutate(group.id)}>
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge tone="warning">Request pending</Badge>
+              <Button size="sm" variant="secondary" disabled={leave.isPending} onClick={() => leave.mutate(group.id)}>
                 Cancel request
               </Button>
             </div>
           ) : isGroupFull(group) ? (
-            <span className="text-sm text-ui-subtle">This group is full.</span>
+            <Badge tone="neutral">This group is full.</Badge>
           ) : group.is_active ? (
-            <Button disabled={join.isPending} onClick={() => join.mutate(group.id)}>
+            <Button loading={join.isPending} onClick={() => join.mutate(group.id)}>
               Ask to join
             </Button>
           ) : null}
         </div>
-      </div>
+      </header>
 
       {canManage && (
         <Card>
@@ -104,15 +126,23 @@ export default function GroupDetailPage() {
             <CardTitle className="text-lg">Join requests ({requests?.length ?? 0})</CardTitle>
           </CardHeader>
           <CardContent>
-            {!requests || requests.length === 0 ? (
-              <p className="text-sm text-ui-subtle">No pending requests.</p>
+            {requestsLoading ? (
+              <div className="space-y-2" role="status">
+                <span className="sr-only">Loading…</span>
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : requestsError ? (
+              <p className="text-sm text-danger">Join requests couldn&apos;t load right now.</p>
+            ) : !requests || requests.length === 0 ? (
+              <p className="text-sm text-muted">No pending requests.</p>
             ) : (
-              <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+              <ul className="divide-y divide-border">
                 {requests.map((request) => (
-                  <li key={request.user_id} className="flex flex-wrap items-center justify-between gap-3 py-2">
+                  <li key={request.user_id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                     <span className="min-w-0">
-                      <span className="block truncate font-medium">{personName(request)}</span>
-                      <span className="block truncate text-xs text-ui-subtle">
+                      <span className="block truncate font-medium text-foreground">{personName(request)}</span>
+                      <span className="block truncate text-xs text-muted">
                         {request.email} · asked {formatDateTime(request.requested_at)}
                       </span>
                     </span>
@@ -126,7 +156,7 @@ export default function GroupDetailPage() {
                       </Button>
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="secondary"
                         disabled={decide.isPending}
                         onClick={() => decide.mutate({ userId: request.user_id, decision: 'decline' })}
                       >
@@ -148,7 +178,7 @@ export default function GroupDetailPage() {
           </CardHeader>
           <CardContent>
             <form
-              className="space-y-3"
+              className="space-y-4"
               onSubmit={(event) => {
                 event.preventDefault();
                 sendMessage.mutate(
@@ -162,9 +192,34 @@ export default function GroupDetailPage() {
                 );
               }}
             >
-              <Input value={messageTitle} onChange={(event) => setMessageTitle(event.target.value)} placeholder="Title" maxLength={255} required />
-              <Textarea value={messageBody} onChange={(event) => setMessageBody(event.target.value)} placeholder="Message" rows={3} maxLength={2000} required />
-              <Button type="submit" disabled={sendMessage.isPending || !messageTitle.trim() || !messageBody.trim()}>
+              <div className="space-y-2">
+                <Label htmlFor="group-message-title">Title</Label>
+                <Input
+                  id="group-message-title"
+                  value={messageTitle}
+                  onChange={(event) => setMessageTitle(event.target.value)}
+                  placeholder="Title"
+                  maxLength={255}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="group-message-body">Message</Label>
+                <Textarea
+                  id="group-message-body"
+                  value={messageBody}
+                  onChange={(event) => setMessageBody(event.target.value)}
+                  placeholder="Message"
+                  rows={3}
+                  maxLength={2000}
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                loading={sendMessage.isPending}
+                disabled={!messageTitle.trim() || !messageBody.trim()}
+              >
                 Send to members
               </Button>
             </form>
@@ -178,18 +233,18 @@ export default function GroupDetailPage() {
             <CardTitle className="text-lg">Members ({group.members.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-              {group.members.map((member) => (
-                <li key={member.user_id} className="flex items-center justify-between gap-3 py-2">
-                  <span className="truncate">{personName(member)}</span>
-                  {member.role === 'leader' && (
-                    <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">
-                      Leader
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
+            {group.members.length === 0 ? (
+              <p className="text-sm text-muted">No members yet.</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {group.members.map((member) => (
+                  <li key={member.user_id} className="flex items-center justify-between gap-3 py-3">
+                    <span className="min-w-0 truncate text-foreground">{personName(member)}</span>
+                    {member.role === 'leader' && <Badge tone="gold">Leader</Badge>}
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
       )}

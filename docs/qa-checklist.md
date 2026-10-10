@@ -147,3 +147,50 @@ Use this checklist for final smoke testing on web and Android.
 - [ ] (Dev/store build) Save a photo to the phone's photo library; denying the permission shows a clear message
 - [ ] (Dev/store build) Upload several photos from the phone as an admin
 - [ ] Delete a photo and then the album; both disappear from the Cloudinary `antpresby/albums/` folder
+
+## Website restyle (8b)
+
+Check each page at 375px and 1280px wide, in Light and in Dark (header theme toggle).
+
+- [ ] No public or member page scrolls sideways at 375px; rows of buttons wrap
+- [ ] No light boxes, gradients or unreadable text remain on any public or member page in Dark
+- [ ] Watch (`/sermons`): "Live stream" button, latest-sermon panel, series row, search plus speaker filter, and "Clear search" all work
+- [ ] With the backend running, every list shows skeletons while loading and a friendly message when empty: sermons, series, events, news, gallery, album, devotionals, groups, prayer wall, my requests, ministries, community, registrations, search and notifications
+- [ ] With the backend stopped, each of those pages (plus the dashboard metrics and profile) says it "couldn't load right now" instead of showing a blank page, a "0" or an empty form
+- [ ] Give: the GH₵ box never overlaps the "Other amount" placeholder or the digits; fund and quick-amount buttons show their selected state
+- [ ] Contact, sign in, register, profile, prayer request and group message have a label above every field; submitting empty shows red messages under the fields
+- [ ] Tab shows a visible focus ring on every link, button, field, photo and lightbox control
+- [ ] About shows tiles for Ministries, Contact, FAQ, Privacy and Terms; FAQ, Privacy and Terms link back to About
+- [ ] A draft album's public link still says "Album not found"
+
+## Admin Redesign (Phase 8c)
+
+Check each item at 375px and 1280px wide, in light and dark mode.
+
+- [ ] The sidebar has five groups: Overview (Dashboard, Activity log), Content (Sermons & series, Devotionals, News, Gallery, Announcements, Livestream), Church life (Events, Attendance, Ministries, Small groups, Prayer requests), People & giving (Members, Donations) and Settings
+- [ ] The current page is highlighted in the sidebar, including sub-pages (`/admin/series`, `/admin/events/new`, `/admin/gallery/<id>`)
+- [ ] On desktop, "Collapse sidebar" shrinks it to icons and the choice survives a reload
+- [ ] On a phone, Menu opens the admin drawer; focus goes to Close, Tab stays inside, Escape or the dimmed area closes it, the page behind does not scroll, and focus returns to Menu
+- [ ] Choosing a link in the drawer opens the page and closes the drawer; widening the window to desktop closes it too
+- [ ] The dashboard shows Members, Giving this month (GH₵), Upcoming events and Pending prayer requests, each linking to its page; quick actions and recent activity work
+- [ ] Every admin page has a title with a breadcrumb starting "Admin"
+- [ ] Every list shows skeletons while loading, a friendly message when empty (a different one when a search finds nothing), and "Couldn't load …" with Try again when the backend is down
+- [ ] On a phone, every table row shows its actions (Edit, Delete, Approve, Mark completed, Make admin, Check in…) and nothing scrolls sideways
+- [ ] Forms are two columns on desktop and one column on phones; required fields still refuse to submit when empty
+- [ ] Deleting a sermon, series, devotional, event, ministry, album, photo or news post, deactivating a group, and ending the livestream all ask for confirmation first, with Cancel focused
+- [ ] Sermons and Series switch with the tabs under the page title
+- [ ] Dark mode: no white panels, grey chips or unreadable text anywhere in admin
+
+## Mobile App Redesign (Phase 8d)
+
+Check each item on a phone or simulator twice: with the phone in Light mode and again in Dark mode.
+
+- [ ] The bottom tabs read Home · Watch · Events · Give · Me, and every tab, the bar and the status bar match the phone's theme
+- [ ] Home shows the greeting, the live card (only while live), today's devotional, eight tiles (Live, Devotional, Small groups, Prayer wall, Gallery, News, Community, Ministries) and up to three upcoming events; every tile opens its screen
+- [ ] Watch shows the live card while live, series chips that filter, the latest sermon and recent messages; Search opens from the icon
+- [ ] Me shows the profile, my groups, my registrations, activity, settings and help, Admin (admins only) and Sign out with a confirm dialog
+- [ ] Links into the app still land on the same screens: a push for an event, album, devotional, prayer or news item; `/donate?reference=…` after Paystack
+- [ ] No screen has white text on a white card or navy text on a navy background; every status badge has a word, not just a colour
+- [ ] Every button, chip, tab and icon button is easy to tap (at least 44 points), including the photo viewer arrows and the album star/trash icons
+- [ ] Admin: every create, edit, delete, publish, check-in, undo, role, status, upload, cover, go-live and end action still works and asks for confirmation where it did before
+- [ ] Loading shows grey placeholders, empty lists show a friendly message, and turning on airplane mode shows "Could not load" with "Try again"

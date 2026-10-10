@@ -4,14 +4,16 @@ import * as Google from 'expo-auth-session/providers/google';
 import { router } from 'expo-router';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { z } from 'zod';
 
-import { BrandScreen } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { CheckboxRow, FormMessage, FormTextField, Screen, ScreenHeader } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppButton } from '@/components/ui/button';
+import { AppCard } from '@/components/ui/card';
+import { Space } from '@/constants/tokens';
 import { getApiErrorMessage, useGoogleLogin, useRegister } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
+import { useAppTheme } from '@/hooks/use-app-theme';
 
 const registerSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -27,7 +29,7 @@ const registerSchema = z.object({
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterScreen() {
-  const theme = useTheme();
+  const { colors } = useAppTheme();
   const registerMutation = useRegister();
   const googleLoginMutation = useGoogleLogin();
   const [showPassword, setShowPassword] = React.useState(false);
@@ -98,357 +100,103 @@ export default function RegisterScreen() {
   }, [googleLoginMutation, googleResponse]);
 
   return (
-    <BrandScreen scroll={false}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.progressRow}>
-          <Pressable onPress={() => router.back()} style={[styles.backButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.1)' }]}>
-            <Ionicons name="chevron-back" size={18} color={theme.textSecondary} />
-          </Pressable>
-          <View style={styles.progressWrap}>
-            <View style={styles.progressMeta}>
-              <ThemedText type="small" themeColor="textSecondary">
-                Step 1 of 2
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                50%
-              </ThemedText>
-            </View>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { backgroundColor: theme.tint }]} />
-            </View>
-          </View>
-        </View>
+    <Screen>
+      <ScreenHeader
+        back
+        title="Join ANT PRESS"
+        subtitle="Create your account and keep your giving, events, and member activity connected across web and mobile."
+      />
 
-        <View style={styles.header}>
-          <View style={[styles.crossTile, { backgroundColor: theme.tint }]}>
-            <Ionicons name="add" size={26} color="#FFFFFF" />
+      {registeredEmail ? (
+        <AppCard>
+          <View style={[styles.successIcon, { backgroundColor: colors.surface }]}>
+            <Ionicons name="mail-open-outline" size={26} color={colors.success} />
           </View>
-          <ThemedText type="title">Join ANT PRESS</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Create your account and keep your giving, events, and member activity connected across web and mobile.
-          </ThemedText>
-        </View>
-
-        <View style={styles.form}>
-          {registeredEmail ? (
-            <View style={[styles.successPanel, { borderColor: 'rgba(52,211,153,0.35)', backgroundColor: 'rgba(16,185,129,0.12)' }]}>
-              <View style={[styles.successIconWrap, { backgroundColor: 'rgba(52,211,153,0.18)' }]}>
-                <Ionicons name="mail-open-outline" size={22} color="#6EE7B7" />
-              </View>
-              <ThemedText type="subtitle">Check your email</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
-                We sent a verification link to {registeredEmail}. Open that message and verify your
-                account before signing in.
-              </ThemedText>
-              <Pressable onPress={() => router.replace('/login')}>
-                {({ pressed }) => (
-                  <View style={[styles.primaryButton, { backgroundColor: theme.tint, opacity: pressed ? 0.88 : 1 }]}>
-                    <ThemedText style={[styles.primaryButtonText, { color: theme.white }]}>Go To Sign In</ThemedText>
-                    <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
-                  </View>
-                )}
-              </Pressable>
-              <Pressable onPress={() => setRegisteredEmail('')}>
-                <ThemedText type="smallBold" style={[styles.centerText, { color: theme.tint }]}>
-                  Create another account
-                </ThemedText>
-              </Pressable>
-            </View>
-          ) : (
-            <>
-          <View style={styles.twoCol}>
-            <Field control={control} name="firstName" label="First Name" placeholder="John" icon="person-outline" error={errors.firstName?.message} />
-            <Field control={control} name="lastName" label="Last Name" placeholder="Doe" icon="person-outline" error={errors.lastName?.message} />
-          </View>
-
-          <Field control={control} name="email" label="Email Address" placeholder="you@example.com" icon="mail-outline" keyboardType="email-address" autoCapitalize="none" error={errors.email?.message} />
-          <Field control={control} name="phone" label="Phone Number" placeholder="Optional phone number" icon="call-outline" keyboardType="default" autoCapitalize="none" error={errors.phone?.message} />
-          <Field
+          <AppText variant="section" accessibilityRole="header" style={styles.center}>
+            Check your email
+          </AppText>
+          <AppText variant="small" tone="muted" style={styles.center}>
+            We sent a verification link to {registeredEmail}. Open that message and verify your account before signing in.
+          </AppText>
+          <AppButton label="Go to sign in" onPress={() => router.replace('/login')} />
+          <AppButton label="Create another account" variant="ghost" onPress={() => setRegisteredEmail('')} />
+        </AppCard>
+      ) : (
+        <>
+          <FormTextField control={control} name="firstName" label="First name" placeholder="John" error={errors.firstName?.message} />
+          <FormTextField control={control} name="lastName" label="Last name" placeholder="Doe" error={errors.lastName?.message} />
+          <FormTextField
+            control={control}
+            name="email"
+            label="Email address"
+            placeholder="you@example.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            error={errors.email?.message}
+          />
+          <FormTextField
+            control={control}
+            name="phone"
+            label="Phone number"
+            placeholder="Optional phone number"
+            keyboardType="default"
+            autoCapitalize="none"
+            error={errors.phone?.message}
+          />
+          <FormTextField
             control={control}
             name="password"
             label="Password"
             placeholder="Min. 8 characters"
-            icon="lock-closed-outline"
             secureTextEntry={!showPassword}
             autoCapitalize="none"
             error={errors.password?.message}
-            trailing={
-              <Pressable onPress={() => setShowPassword((value) => !value)}>
-                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color={theme.textSecondary} />
-              </Pressable>
-            }
           />
+          <CheckboxRow label="Show password" checked={showPassword} onToggle={() => setShowPassword((value) => !value)} />
 
           <Controller
             control={control}
             name="acceptedTerms"
             render={({ field: { value, onChange } }) => (
-              <Pressable onPress={() => onChange(!value)} style={styles.termsRow}>
-                <View style={[styles.checkbox, value ? { backgroundColor: theme.tint, borderColor: theme.tint } : { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.18)' }]}>
-                  {value ? <Ionicons name="checkmark" size={13} color="#FFFFFF" /> : null}
-                </View>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.termsText}>
-                  I agree to the Terms of Service and Privacy Policy, and consent to receive church communications.
-                </ThemedText>
-              </Pressable>
+              <CheckboxRow
+                label="I agree to the Terms of Service and Privacy Policy, and consent to receive church communications."
+                checked={Boolean(value)}
+                onToggle={() => onChange(!value)}
+              />
             )}
           />
-          {errors.acceptedTerms ? <ThemedText style={styles.errorText}>{errors.acceptedTerms.message}</ThemedText> : null}
-
-          <Pressable onPress={handleSubmit(onSubmit)}>
-            {({ pressed }) => (
-              <View style={[styles.primaryButton, { backgroundColor: theme.tint, opacity: pressed || isSubmitting ? 0.88 : 1 }]}>
-                {isSubmitting ? (
-                  <ActivityIndicator color={theme.white} />
-                ) : (
-                  <>
-                    <ThemedText style={[styles.primaryButtonText, { color: theme.white }]}>Create Account</ThemedText>
-                    <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
-                  </>
-                )}
-              </View>
-            )}
-          </Pressable>
-
-          {registerMutation.isError ? (
-            <View style={[styles.errorPanel, { borderColor: '#7F1D1D', backgroundColor: '#2A0E12' }]}>
-              <ThemedText style={styles.errorText}>{registerErrorMessage}</ThemedText>
-            </View>
+          {errors.acceptedTerms ? (
+            <AppText variant="small" tone="danger">
+              {errors.acceptedTerms.message}
+            </AppText>
           ) : null}
 
-          <Pressable
-            onPress={() => googlePromptAsync()}
+          <AppButton label="Create account" loading={isSubmitting} onPress={handleSubmit(onSubmit)} />
+          {registerMutation.isError ? <FormMessage tone="danger">{registerErrorMessage}</FormMessage> : null}
+
+          <AppButton
+            label={googleLoginMutation.isPending ? 'Connecting to Google...' : 'Continue with Google'}
+            variant="secondary"
+            icon={<Ionicons name="logo-google" size={18} color={colors.text} />}
             disabled={!googleRequest || googleLoginMutation.isPending}
-            style={[
-              styles.googleButton,
-              {
-                backgroundColor: 'rgba(255,255,255,0.06)',
-                borderColor: 'rgba(255,255,255,0.12)',
-                opacity: !googleRequest || googleLoginMutation.isPending ? 0.55 : 1,
-              },
-            ]}>
-            <Ionicons name="logo-google" size={18} color="#FFFFFF" />
-            <ThemedText type="defaultSemiBold">
-              {googleLoginMutation.isPending ? 'Connecting to Google...' : 'Continue with Google'}
-            </ThemedText>
-          </Pressable>
-
-          {googleLoginMutation.isError ? (
-            <View style={[styles.errorPanel, { borderColor: '#7F1D1D', backgroundColor: '#2A0E12' }]}>
-              <ThemedText style={styles.errorText}>{googleErrorMessage}</ThemedText>
-            </View>
-          ) : null}
+            onPress={() => googlePromptAsync()}
+          />
+          {googleLoginMutation.isError ? <FormMessage tone="danger">{googleErrorMessage}</FormMessage> : null}
 
           <View style={styles.footer}>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
+            <AppText variant="small" tone="muted">
               Already have an account?
-            </ThemedText>
-            <Pressable onPress={() => router.replace('/login')}>
-              <ThemedText type="smallBold" style={{ color: theme.tint }}>
-                Sign In
-              </ThemedText>
-            </Pressable>
+            </AppText>
+            <AppButton label="Sign in" variant="ghost" onPress={() => router.replace('/login')} />
           </View>
-            </>
-          )}
-        </View>
-      </ScrollView>
-    </BrandScreen>
-  );
-}
-
-function Field({
-  control,
-  name,
-  label,
-  placeholder,
-  error,
-  icon,
-  trailing,
-  ...rest
-}: {
-  control: any;
-  name: keyof RegisterFormValues;
-  label: string;
-  placeholder: string;
-  error?: string;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  trailing?: React.ReactNode;
-  secureTextEntry?: boolean;
-  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  keyboardType?: 'default' | 'email-address';
-}) {
-  const theme = useTheme();
-
-  return (
-    <View style={styles.field}>
-      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.fieldLabel}>
-        {label}
-      </ThemedText>
-      <Controller
-        control={control}
-        name={name}
-        render={({ field: { onBlur, onChange, value } }) => (
-          <View style={[styles.inputShell, { backgroundColor: 'rgba(255,255,255,0.06)', borderColor: error ? '#F87171' : 'rgba(255,255,255,0.12)' }]}>
-            <Ionicons name={icon} size={17} color={error ? '#FCA5A5' : theme.textSecondary} />
-            <TextInput
-              onBlur={onBlur}
-              onChangeText={onChange}
-              placeholder={placeholder}
-              placeholderTextColor={theme.textSecondary}
-              style={[styles.input, { color: theme.text }]}
-              value={value ? String(value) : ''}
-              {...rest}
-            />
-            {trailing}
-          </View>
-        )}
-      />
-      {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
-    </View>
+        </>
+      )}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollContent: {
-    gap: Spacing.four,
-    paddingBottom: Spacing.seven,
-  },
-  progressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.pill,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  progressWrap: {
-    flex: 1,
-    gap: 6,
-  },
-  progressMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  progressTrack: {
-    height: 6,
-    borderRadius: Radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    width: '50%',
-    height: '100%',
-    borderRadius: Radius.pill,
-  },
-  header: {
-    gap: Spacing.two,
-  },
-  crossTile: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  form: {
-    gap: Spacing.three,
-  },
-  successPanel: {
-    gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.large,
-    padding: Spacing.four,
-    alignItems: 'center',
-  },
-  successIconWrap: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  twoCol: {
-    gap: Spacing.three,
-  },
-  field: {
-    gap: Spacing.one,
-  },
-  fieldLabel: {
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  inputShell: {
-    minHeight: 54,
-    borderRadius: Radius.medium,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    paddingVertical: Spacing.three,
-  },
-  termsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.two,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  termsText: {
-    flex: 1,
-    lineHeight: 18,
-  },
-  primaryButton: {
-    minHeight: 54,
-    borderRadius: Radius.medium,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  googleButton: {
-    minHeight: 54,
-    borderRadius: Radius.medium,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.two,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  errorPanel: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    padding: Spacing.three,
-  },
-  errorText: {
-    color: '#FCA5A5',
-  },
-  footer: {
-    alignItems: 'center',
-    gap: Spacing.one,
-  },
-  centerText: {
-    textAlign: 'center',
-  },
+  successIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+  center: { textAlign: 'center' },
+  footer: { alignItems: 'center', gap: Space.xs },
 });

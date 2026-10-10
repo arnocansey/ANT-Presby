@@ -1,16 +1,21 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import apiClient from '@/lib/api';
 import { useRefreshSermonData, useSermonSeriesList } from '@/hooks/useApi';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import PageHeader from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { Field, FormActions, FormSection, formGridClass } from '@/components/admin/form-layout';
+import { CardListSkeleton, LoadError } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
 
 type SermonForm = {
   title: string;
@@ -29,21 +34,28 @@ export default function EditSermonPage() {
   const router = useRouter();
   const { data: seriesList } = useSermonSeriesList();
   const refreshSermonData = useRefreshSermonData();
+  const [loadState, setLoadState] = React.useState<'loading' | 'ready' | 'error'>('loading');
+  const [attempt, setAttempt] = React.useState(0);
 
   React.useEffect(() => {
     if (!id) return;
-    apiClient.get(`/admin/sermons/${id}`).then((res) =>
-      reset({
-        ...res.data.data,
-        videoUrl: res.data.data?.video_url || '',
-        sermonDate: res.data.data?.sermon_date
-          ? new Date(res.data.data.sermon_date).toISOString().slice(0, 16)
-          : '',
-        ministryId: res.data.data?.ministry_id,
-        seriesId: res.data.data?.series_id ? String(res.data.data.series_id) : '',
+    setLoadState('loading');
+    apiClient
+      .get(`/admin/sermons/${id}`)
+      .then((res) => {
+        reset({
+          ...res.data.data,
+          videoUrl: res.data.data?.video_url || '',
+          sermonDate: res.data.data?.sermon_date
+            ? new Date(res.data.data.sermon_date).toISOString().slice(0, 16)
+            : '',
+          ministryId: res.data.data?.ministry_id,
+          seriesId: res.data.data?.series_id ? String(res.data.data.series_id) : '',
+        });
+        setLoadState('ready');
       })
-    );
-  }, [id, reset]);
+      .catch(() => setLoadState('error'));
+  }, [id, reset, attempt]);
 
   const onSubmit = async (vals: SermonForm) => {
     try {
@@ -60,76 +72,67 @@ export default function EditSermonPage() {
   };
 
   return (
-    <div className="container-max py-12">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl tracking-tight">Edit Sermon</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="edit-sermon-title">Title</Label>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Sermons', href: '/admin/sermons' }, { label: 'Edit sermon' }]}
+        title="Edit sermon"
+      />
+
+      {loadState === 'loading' ? (
+        <CardListSkeleton count={1} label="Loading sermon" />
+      ) : loadState === 'error' ? (
+        <LoadError what="this sermon" onRetry={() => setAttempt((value) => value + 1)} />
+      ) : (
+        <FormSection title="Sermon details">
+          <form onSubmit={handleSubmit(onSubmit)} className={formGridClass}>
+            <Field label="Title" htmlFor="edit-sermon-title" full>
               <Input id="edit-sermon-title" {...register('title')} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-sermon-speaker">Speaker</Label>
+            </Field>
+            <Field label="Speaker" htmlFor="edit-sermon-speaker">
               <Input id="edit-sermon-speaker" {...register('speaker')} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-sermon-video-url">Video URL</Label>
-              <Input id="edit-sermon-video-url" {...register('videoUrl')} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-sermon-date">Sermon Date</Label>
+            </Field>
+            <Field label="Sermon date" htmlFor="edit-sermon-date">
               <Input id="edit-sermon-date" type="datetime-local" {...register('sermonDate')} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-sermon-ministry-id">Ministry ID</Label>
+            </Field>
+            <Field label="Video URL" htmlFor="edit-sermon-video-url" full>
+              <Input id="edit-sermon-video-url" {...register('videoUrl')} />
+            </Field>
+            <Field label="Ministry ID" htmlFor="edit-sermon-ministry-id">
               <Input
                 id="edit-sermon-ministry-id"
                 type="number"
                 min="1"
                 {...register('ministryId', { valueAsNumber: true })}
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-sermon-series">Series</Label>
+            </Field>
+            <Field label="Series" htmlFor="edit-sermon-series">
               {/* Mount the select only once its options exist, so the sermon's saved series
                   is selected even when the series list loads after the sermon. */}
               {seriesList ? (
-                <select
-                  id="edit-sermon-series"
-                  {...register('seriesId')}
-                  className="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950"
-                >
+                <Select id="edit-sermon-series" {...register('seriesId')}>
                   <option value="">No series</option>
                   {seriesList.map((series) => (
                     <option key={series.id} value={String(series.id)}>
                       {series.title}
                     </option>
                   ))}
-                </select>
+                </Select>
               ) : (
-                <p className="text-sm text-ui-subtle">Loading series...</p>
+                <Skeleton className="h-11 w-full" />
               )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-sermon-description">Description</Label>
+            </Field>
+            <Field label="Description" htmlFor="edit-sermon-description" full>
               <Textarea id="edit-sermon-description" rows={6} {...register('description')} />
-            </div>
-
-            <div className="flex justify-end">
+            </Field>
+            <FormActions>
               <Button type="submit">Save</Button>
-            </div>
+              <Button asChild variant="secondary">
+                <Link href="/admin/sermons">Cancel</Link>
+              </Button>
+            </FormActions>
           </form>
-        </CardContent>
-      </Card>
+        </FormSection>
+      )}
     </div>
   );
 }

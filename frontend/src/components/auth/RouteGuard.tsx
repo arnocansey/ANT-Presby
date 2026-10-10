@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 
 type RouteGuardProps = {
@@ -49,14 +50,11 @@ export default function RouteGuard({ children, requiredRole }: RouteGuardProps) 
     (requiredRole === 'admin' && user.role !== 'admin')
   ) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center px-6 py-16">
-        <div className="text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-ui-subtle">
-            Securing Session
-          </p>
-          <p className="mt-3 text-sm text-ui-muted">
-            Verifying your access before we open this workspace.
-          </p>
+      <div className="flex min-h-[50vh] items-center justify-center px-6 py-16" role="status">
+        <div className="flex flex-col items-center text-center">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
+          <p className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Securing session</p>
+          <p className="mt-2 text-sm text-foreground/85">Verifying your access before we open this workspace.</p>
         </div>
       </div>
     );

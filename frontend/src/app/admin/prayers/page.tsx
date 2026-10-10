@@ -1,11 +1,15 @@
 'use client';
 
 import React from 'react';
+import PageHeader from '@/components/ui/page-header';
 import SimpleTable from '@/components/ui/table';
-import { useAdminPrayerRequests, useApprovePrayer, useSetPrayerSharing } from '@/hooks/useApi';
-import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { LoadError, TableSkeleton } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
+import { statusLabel, statusTone } from '@/components/admin/status';
+import { useAdminPrayerRequests, useApprovePrayer, useSetPrayerSharing } from '@/hooks/useApi';
 
 type AdminPrayer = {
   id: number;
@@ -19,7 +23,7 @@ type AdminPrayer = {
 };
 
 export default function AdminPrayersPage() {
-  const { data, isLoading } = useAdminPrayerRequests();
+  const { data, isLoading, isError, refetch } = useAdminPrayerRequests();
   const approve = useApprovePrayer();
   const setSharing = useSetPrayerSharing();
   const [query, setQuery] = React.useState('');
@@ -31,62 +35,60 @@ export default function AdminPrayersPage() {
   });
 
   return (
-    <div className="container-max space-y-6 py-12">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Prayer Requests</h1>
-          <p className="mt-2 text-sm text-ui-subtle">Review incoming requests and approve them quickly.</p>
-        </div>
-        <div className="w-full md:max-w-sm">
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by title or category"
-          />
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Prayer requests' }]}
+        title="Prayer requests"
+        description="Review incoming requests and approve them."
+      />
+
+      <div className="w-full sm:max-w-sm">
+        <Input
+          aria-label="Search prayer requests"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search by title or category"
+        />
       </div>
 
       {isLoading ? (
-        <Card><CardContent className="p-4 text-sm text-ui-subtle">Loading prayer requests...</CardContent></Card>
-      ) : filteredPrayers.length === 0 ? (
-        <Card className="border-dashed"><CardContent className="p-4 text-sm text-ui-subtle">No prayer requests found.</CardContent></Card>
+        <TableSkeleton label="Loading prayer requests" />
+      ) : isError && prayers.length === 0 ? (
+        <LoadError what="prayer requests" onRetry={() => refetch()} />
       ) : (
         <SimpleTable
+          emptyMessage={query.trim() ? 'No prayer requests match your search.' : 'No prayer requests yet.'}
           columns={[
             {
               key: 'title',
               header: 'Request',
               render: (prayer: AdminPrayer) => (
                 <div>
-                  <p className="font-semibold text-slate-900 dark:text-slate-50">{prayer.title}</p>
-                  <p className="line-clamp-2 text-xs text-ui-subtle">{prayer.description}</p>
+                  <p className="font-semibold text-foreground">{prayer.title}</p>
+                  <p className="line-clamp-2 text-xs text-muted">{prayer.description}</p>
                 </div>
               ),
             },
             {
               key: 'category',
               header: 'Category',
-              render: (prayer: AdminPrayer) => prayer.category || 'general',
+              render: (prayer: AdminPrayer) => <span className="capitalize">{prayer.category || 'general'}</span>,
             },
             {
               key: 'share_on_wall',
               header: 'Wall',
               render: (prayer: AdminPrayer) =>
                 prayer.share_on_wall ? (
-                  <span className="inline-flex rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">
-                    {prayer.is_anonymous ? 'Shared (anonymous)' : 'Shared'}
-                  </span>
+                  <Badge tone="gold">{prayer.is_anonymous ? 'Shared (anonymous)' : 'Shared'}</Badge>
                 ) : (
-                  <span className="text-xs text-ui-subtle">Private</span>
+                  <span className="text-xs text-muted">Private</span>
                 ),
             },
             {
               key: 'status',
               header: 'Status',
               render: (prayer: AdminPrayer) => (
-                <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                  {prayer.status || 'pending'}
-                </span>
+                <Badge tone={statusTone(prayer.status || 'pending')}>{statusLabel(prayer.status || 'pending')}</Badge>
               ),
             },
             {
@@ -96,7 +98,7 @@ export default function AdminPrayersPage() {
                 <div className="flex flex-wrap gap-2">
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="secondary"
                     onClick={() => approve.mutate(prayer.id)}
                     disabled={approve.isPending || prayer.status === 'approved'}
                   >
@@ -105,7 +107,7 @@ export default function AdminPrayersPage() {
                   {prayer.share_on_wall && (
                     <Button
                       size="sm"
-                      variant="outline"
+                      variant="secondary"
                       disabled={setSharing.isPending}
                       onClick={() =>
                         setSharing.mutate({

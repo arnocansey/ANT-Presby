@@ -1,12 +1,14 @@
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
 import { AdminShell } from '@/components/admin-shell';
-import { BrandButton, BrandCard, BrandPill } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { ErrorState, FormMessage, ListGroup, ListRow, LoadingList, ScreenHeader } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppBadge } from '@/components/ui/badge';
+import { AppButton } from '@/components/ui/button';
+import { AppCard } from '@/components/ui/card';
+import { TextField } from '@/components/ui/text-field';
+import { MIN_TOUCH, Space } from '@/constants/tokens';
 import {
   getApiErrorMessage,
   useAttendanceSummary,
@@ -16,14 +18,14 @@ import {
   useMemberSearch,
   useUndoCheckIn,
 } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
+import { useAppTheme } from '@/hooks/use-app-theme';
 import { useAuthStore } from '@/store/auth';
 
 const fullName = (person: { first_name: string; last_name: string }) =>
   `${person.first_name || ''} ${person.last_name || ''}`.trim() || 'Member';
 
 export default function AdminAttendanceScreen() {
-  const theme = useTheme();
+  const { colors } = useAppTheme();
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'admin';
   const [selectedEventId, setSelectedEventId] = React.useState<number | undefined>();
@@ -61,25 +63,14 @@ export default function AdminAttendanceScreen() {
     setGuestName('');
   };
 
-  const header = (title: string, onBack: () => void) => (
-    <View style={styles.headerRow}>
-      <Pressable
-        onPress={onBack}
-        style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: theme.border }]}>
-        <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
-      </Pressable>
-      <View style={styles.headerCopy}>
-        <ThemedText type="smallBold" style={{ color: '#34D399', textTransform: 'uppercase', letterSpacing: 1 }}>
-          Admin
-        </ThemedText>
-        <ThemedText type="subtitle" numberOfLines={1}>
-          {title}
-        </ThemedText>
-      </View>
+  const personRow = (key: string, name: string, action: React.ReactNode) => (
+    <View key={key} style={[styles.row, { borderTopColor: colors.border }]}>
+      <AppText variant="small" style={styles.flex} numberOfLines={1}>
+        {name}
+      </AppText>
+      {action}
     </View>
   );
-
-  const inputStyle = [styles.input, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }];
 
   if (!selectedEventId) {
     const events = Array.isArray(eventsQuery.data) ? eventsQuery.data : [];
@@ -87,43 +78,35 @@ export default function AdminAttendanceScreen() {
 
     return (
       <AdminShell activeTab="/admin-events">
-        {header('Attendance', () => router.back())}
+        <ScreenHeader back eyebrow="Admin" title="Attendance" subtitle="Choose an event to check people in" />
 
-        <ThemedText type="defaultSemiBold">Choose an event to check people in</ThemedText>
-        {eventsQuery.isLoading ? <ActivityIndicator color={theme.tint} /> : null}
+        {eventsQuery.isLoading ? <LoadingList count={2} height={56} /> : null}
         {!eventsQuery.isLoading && events.length === 0 ? (
-          <ThemedText type="small" themeColor="textSecondary">
+          <AppText variant="small" tone="muted">
             No events in the last or next two weeks.
-          </ThemedText>
+          </AppText>
         ) : null}
-        {events.map((event) => (
-          <Pressable key={String(event.id)} onPress={() => openEvent(Number(event.id))}>
-            <BrandCard>
-              <View style={styles.row}>
-                <View style={styles.rowCopy}>
-                  <ThemedText type="defaultSemiBold">{event?.name || 'Event'}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {event?.event_date ? new Date(event.event_date).toLocaleString() : 'Date TBD'}
-                  </ThemedText>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
-              </View>
-            </BrandCard>
-          </Pressable>
-        ))}
+        {events.length > 0 ? (
+          <ListGroup>
+            {events.map((event) => (
+              <ListRow
+                key={String(event.id)}
+                icon="calendar-outline"
+                label={event?.name || 'Event'}
+                description={event?.event_date ? new Date(event.event_date).toLocaleString() : 'Date TBD'}
+                onPress={() => openEvent(Number(event.id))}
+              />
+            ))}
+          </ListGroup>
+        ) : null}
 
         {summary.length > 0 ? (
-          <BrandCard>
-            <ThemedText type="defaultSemiBold">Recent headcounts</ThemedText>
-            {summary.map((row) => (
-              <View key={row.event_id} style={styles.row}>
-                <ThemedText type="small" style={styles.rowCopy} numberOfLines={1}>
-                  {row.name}
-                </ThemedText>
-                <BrandPill>{`${row.total} (${row.guests} guests)`}</BrandPill>
-              </View>
-            ))}
-          </BrandCard>
+          <AppCard>
+            <AppText variant="bodyStrong">Recent headcounts</AppText>
+            {summary.map((row) =>
+              personRow(String(row.event_id), row.name, <AppBadge>{`${row.total} (${row.guests} guests)`}</AppBadge>)
+            )}
+          </AppCard>
         ) : null}
       </AdminShell>
     );
@@ -139,124 +122,105 @@ export default function AdminAttendanceScreen() {
 
   return (
     <AdminShell activeTab="/admin-events">
-      {header(sheet?.event.name || 'Check-in', () => setSelectedEventId(undefined))}
+      <ScreenHeader onBack={() => setSelectedEventId(undefined)} eyebrow="Check-in" title={sheet?.event.name || 'Check-in'} />
 
       {sheetQuery.isLoading ? (
-        <ActivityIndicator color={theme.tint} />
+        <LoadingList count={3} height={72} />
       ) : sheetQuery.isError || !sheet ? (
-        <BrandCard>
-          <ThemedText type="small">Could not load this event.</ThemedText>
-          <BrandButton label="Try again" onPress={() => sheetQuery.refetch()} />
-        </BrandCard>
+        <ErrorState title="Could not load this event" onRetry={() => sheetQuery.refetch()} />
       ) : (
         <>
-          <View style={styles.pills}>
-            <BrandPill>{`${sheet.totals.total} present`}</BrandPill>
-            <BrandPill>{`${sheet.totals.checked_in_members} members`}</BrandPill>
-            <BrandPill>{`${sheet.totals.guests} guests`}</BrandPill>
-            <BrandPill>{`${sheet.totals.registered} registered`}</BrandPill>
+          <View style={styles.badges}>
+            <AppBadge tone="success">{`${sheet.totals.total} present`}</AppBadge>
+            <AppBadge>{`${sheet.totals.checked_in_members} members`}</AppBadge>
+            <AppBadge>{`${sheet.totals.guests} guests`}</AppBadge>
+            <AppBadge>{`${sheet.totals.registered} registered`}</AppBadge>
           </View>
-          {cancelled ? (
-            <ThemedText type="smallBold" style={styles.errorText}>
-              This event was cancelled; check-in is closed.
-            </ThemedText>
-          ) : null}
+          {cancelled ? <FormMessage tone="danger">This event was cancelled; check-in is closed.</FormMessage> : null}
 
-          <BrandCard>
-            <ThemedText type="defaultSemiBold">Registered ({sheet.registered.length})</ThemedText>
+          <AppCard>
+            <AppText variant="bodyStrong">{`Registered (${sheet.registered.length})`}</AppText>
             {sheet.registered.length === 0 ? (
-              <ThemedText type="small" themeColor="textSecondary">
+              <AppText variant="small" tone="muted">
                 Nobody registered for this event.
-              </ThemedText>
+              </AppText>
             ) : (
-              sheet.registered.map((person) => (
-                <View key={person.user_id} style={styles.row}>
-                  <ThemedText type="small" style={styles.rowCopy} numberOfLines={1}>
-                    {fullName(person)}
-                  </ThemedText>
-                  {person.checked_in && person.record_id ? (
-                    <BrandButton label="Undo" variant="outline" onPress={() => !busy && undo(person.record_id as number)} />
+              sheet.registered.map((person) =>
+                personRow(
+                  String(person.user_id),
+                  fullName(person),
+                  person.checked_in && person.record_id ? (
+                    <AppButton label="Undo" size="sm" variant="secondary" onPress={() => !busy && undo(person.record_id as number)} />
                   ) : (
-                    <BrandButton
-                      label="Check in"
-                      onPress={() => !busy && !cancelled && checkInMember(person.user_id)}
-                    />
-                  )}
-                </View>
-              ))
+                    <AppButton label="Check in" size="sm" onPress={() => !busy && !cancelled && checkInMember(person.user_id)} />
+                  )
+                )
+              )
             )}
-          </BrandCard>
+          </AppCard>
 
           {!cancelled ? (
-            <BrandCard>
-              <ThemedText type="defaultSemiBold">Add someone</ThemedText>
-              <TextInput
+            <AppCard>
+              <AppText variant="bodyStrong">Add someone</AppText>
+              <TextField
+                label="Find a member"
                 value={searchInput}
                 onChangeText={setSearchInput}
-                placeholder="Find a member (name or email)"
-                placeholderTextColor={theme.textSecondary}
+                placeholder="Name or email"
                 autoCapitalize="none"
-                style={inputStyle}
               />
               {searchTerm.trim().length >= 2 ? (
                 searchQuery.isFetching ? (
-                  <ActivityIndicator color={theme.tint} />
+                  <ActivityIndicator color={colors.primary} />
                 ) : searchResults.length === 0 ? (
-                  <ThemedText type="small" themeColor="textSecondary">
+                  <AppText variant="small" tone="muted">
                     No members match.
-                  </ThemedText>
+                  </AppText>
                 ) : (
                   searchResults.map((member) => {
                     const already = checkedInIds.has(member.id);
-                    return (
-                      <View key={member.id} style={styles.row}>
-                        <ThemedText type="small" style={styles.rowCopy} numberOfLines={1}>
-                          {fullName(member)}
-                        </ThemedText>
-                        <BrandButton
-                          label={already ? 'Checked in' : 'Check in'}
-                          variant={already ? 'outline' : 'primary'}
-                          onPress={() => !already && !busy && checkInMember(member.id)}
-                        />
-                      </View>
+                    return personRow(
+                      String(member.id),
+                      fullName(member),
+                      <AppButton
+                        label={already ? 'Checked in' : 'Check in'}
+                        size="sm"
+                        variant={already ? 'secondary' : 'primary'}
+                        onPress={() => !already && !busy && checkInMember(member.id)}
+                      />
                     );
                   })
                 )
               ) : null}
 
-              <TextInput
+              <TextField
+                label="Walk-in guest"
                 value={guestName}
                 onChangeText={setGuestName}
-                placeholder="Walk-in guest's name"
-                placeholderTextColor={theme.textSecondary}
+                placeholder="Guest's name"
                 maxLength={255}
-                style={inputStyle}
               />
-              <BrandButton label="Add guest" variant="secondary" onPress={() => !busy && addGuest()} />
-            </BrandCard>
+              <AppButton label="Add guest" variant="secondary" onPress={() => !busy && addGuest()} />
+            </AppCard>
           ) : null}
 
-          <BrandCard>
-            <ThemedText type="defaultSemiBold">
-              Walk-ins ({sheet.walk_in_members.length + sheet.guests.length})
-            </ThemedText>
-            {sheet.walk_in_members.map((person) => (
-              <View key={`m-${person.record_id}`} style={styles.row}>
-                <ThemedText type="small" style={styles.rowCopy} numberOfLines={1}>
-                  {`${fullName(person)} · member`}
-                </ThemedText>
-                <BrandButton label="Undo" variant="outline" onPress={() => !busy && undo(person.record_id)} />
-              </View>
-            ))}
-            {sheet.guests.map((guest) => (
-              <View key={`g-${guest.record_id}`} style={styles.row}>
-                <ThemedText type="small" style={styles.rowCopy} numberOfLines={1}>
-                  {`${guest.guest_name} · guest`}
-                </ThemedText>
-                <BrandButton label="Undo" variant="outline" onPress={() => !busy && undo(guest.record_id)} />
-              </View>
-            ))}
-          </BrandCard>
+          <AppCard>
+            <AppText variant="bodyStrong">{`Walk-ins (${sheet.walk_in_members.length + sheet.guests.length})`}</AppText>
+            {sheet.walk_in_members.map((person) =>
+              personRow(
+                `m-${person.record_id}`,
+                `${fullName(person)} · member`,
+                <AppButton label="Undo" size="sm" variant="secondary" onPress={() => !busy && undo(person.record_id)} />
+              )
+            )}
+            {sheet.guests.map((guest) =>
+              personRow(
+                `g-${guest.record_id}`,
+                `${guest.guest_name} · guest`,
+                <AppButton label="Undo" size="sm" variant="secondary" onPress={() => !busy && undo(guest.record_id)} />
+              )
+            )}
+          </AppCard>
         </>
       )}
     </AdminShell>
@@ -264,12 +228,14 @@ export default function AdminAttendanceScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  headerCopy: { flex: 1, gap: 2 },
-  iconButton: { width: 38, height: 38, borderRadius: Radius.pill, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.two },
-  rowCopy: { flex: 1, gap: 2 },
-  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  input: { borderWidth: 1, borderRadius: Radius.medium, paddingHorizontal: Spacing.three, paddingVertical: Spacing.three, fontSize: 16 },
-  errorText: { color: '#B91C1C' },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.sm,
+    minHeight: MIN_TOUCH + 8,
+    paddingTop: Space.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  flex: { flex: 1 },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm },
 });

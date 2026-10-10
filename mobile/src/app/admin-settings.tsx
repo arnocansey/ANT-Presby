@@ -1,15 +1,12 @@
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import React from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useForm } from 'react-hook-form';
 
 import { AdminShell } from '@/components/admin-shell';
-import { BrandButton, BrandCard, BrandHero, BrandMetric, BrandPill, BrandScreen, BrandSectionHeader } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { ErrorState, FormMessage, FormTextField, LoadingList, Screen, ScreenHeader } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppButton } from '@/components/ui/button';
+import { AppCard } from '@/components/ui/card';
 import { getApiErrorMessage, useAdminSettings, useUpdateAdminSettings } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/store/auth';
 
 type SettingsFormValues = {
@@ -22,7 +19,6 @@ type SettingsFormValues = {
 export default function AdminSettingsScreen() {
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'admin';
-  const theme = useTheme();
   const settingsQuery = useAdminSettings(isAdmin);
   const updateMutation = useUpdateAdminSettings();
   const { control, handleSubmit, reset } = useForm<SettingsFormValues>({
@@ -55,13 +51,14 @@ export default function AdminSettingsScreen() {
 
   if (!user || !isAdmin) {
     return (
-      <BrandScreen>
-        <BrandHero
-          eyebrow="Admin Settings"
+      <Screen>
+        <ScreenHeader
+          back
+          eyebrow="Admin settings"
           title="Admin access required"
-          description="Sign in with an admin account to manage platform settings from mobile."
+          subtitle="Sign in with an admin account to manage platform settings from mobile."
         />
-      </BrandScreen>
+      </Screen>
     );
   }
 
@@ -73,133 +70,50 @@ export default function AdminSettingsScreen() {
 
   return (
     <AdminShell activeTab="/admin-settings">
-      <View style={styles.headerRow}>
-        <Pressable
-          onPress={() => router.back()}
-          style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: theme.border }]}>
-          <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
-        </Pressable>
-        <View style={styles.headerCopy}>
-          <ThemedText type="smallBold" style={{ color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1 }}>
-            Admin
-          </ThemedText>
-          <ThemedText type="subtitle">Settings</ThemedText>
-        </View>
-        <View style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: theme.border }]}>
-          <Ionicons name="settings-outline" size={16} color={theme.text} />
-        </View>
-      </View>
+      <ScreenHeader back eyebrow="Admin" title="Settings" />
 
-      <BrandCard>
-        <BrandMetric label="Config" value="Live" />
-        <BrandMetric label="Mode" value="Admin" />
-      </BrandCard>
-
-      <BrandCard>
-        <BrandPill>Settings</BrandPill>
-        <BrandSectionHeader title="Site configuration" description="Edit the title, contact email, payment key, and donation success message." />
+      <AppCard>
+        <AppText variant="section">Site configuration</AppText>
+        <AppText variant="small" tone="muted">
+          Edit the title, contact email, payment key, and donation success message.
+        </AppText>
         {settingsQuery.isLoading ? (
-          <ThemedText type="small">Loading settings...</ThemedText>
+          <LoadingList count={4} height={44} />
+        ) : settingsQuery.isError && !settingsQuery.data ? (
+          // Never show an empty form after a failed load: saving it would wipe the real settings.
+          <ErrorState title="Could not load settings" onRetry={() => settingsQuery.refetch()} />
         ) : (
           <>
-            <Field control={control} name="siteTitle" label="Site Title" placeholder="ANT PRESS" />
-            <Field control={control} name="contactEmail" label="Contact Email" placeholder="team@example.com" />
-            <Field control={control} name="paymentPublicKey" label="Payment Public Key" placeholder="Public payment key" />
-            <Field
+            <FormTextField control={control} name="siteTitle" label="Site title" placeholder="ANT PRESS" />
+            <FormTextField
+              control={control}
+              name="contactEmail"
+              label="Contact email"
+              placeholder="team@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <FormTextField
+              control={control}
+              name="paymentPublicKey"
+              label="Payment public key"
+              placeholder="Public payment key"
+              autoCapitalize="none"
+            />
+            <FormTextField
               control={control}
               name="donationSuccessMessage"
-              label="Donation Success Message"
+              label="Donation success message"
               placeholder="Thank you for your donation."
               multiline
             />
-            <BrandButton label="Save Settings" onPress={handleSubmit(onSubmit)} variant="secondary" />
+            <AppButton label="Save settings" onPress={handleSubmit(onSubmit)} loading={updateMutation.isPending} />
             {statusMessage ? (
-              <ThemedText style={{ color: updateMutation.isSuccess ? '#0369A1' : '#B91C1C' }}>
-                {statusMessage}
-              </ThemedText>
+              <FormMessage tone={updateMutation.isSuccess ? 'success' : 'danger'}>{statusMessage}</FormMessage>
             ) : null}
           </>
         )}
-      </BrandCard>
+      </AppCard>
     </AdminShell>
   );
 }
-
-function Field({
-  control,
-  name,
-  label,
-  placeholder,
-  multiline = false,
-}: {
-  control: any;
-  name: keyof SettingsFormValues;
-  label: string;
-  placeholder: string;
-  multiline?: boolean;
-}) {
-  const theme = useTheme();
-
-  return (
-    <View style={styles.field}>
-      <ThemedText type="smallBold">{label}</ThemedText>
-      <Controller
-        control={control}
-        name={name}
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
-            value={String(value ?? '')}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            placeholder={placeholder}
-            placeholderTextColor={theme.textSecondary}
-            multiline={multiline}
-            style={[
-              styles.input,
-              multiline && styles.multiline,
-              {
-                backgroundColor: theme.background,
-                borderColor: theme.border,
-                color: theme.text,
-              },
-            ]}
-          />
-        )}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  headerCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: Radius.pill,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  field: {
-    gap: Spacing.one,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-    fontSize: 16,
-  },
-  multiline: {
-    minHeight: 110,
-    textAlignVertical: 'top',
-  },
-});

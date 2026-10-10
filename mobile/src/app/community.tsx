@@ -1,18 +1,24 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import {
-  BrandButton,
-  BrandCard,
-  BrandHero,
-  BrandPill,
-  BrandScreen,
-  BrandSectionHeader,
-} from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+  Avatar,
+  Chip,
+  FormMessage,
+  IconButton,
+  InfoLine,
+  LoadingList,
+  Screen,
+  ScreenHeader,
+} from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppBadge } from '@/components/ui/badge';
+import { AppButton } from '@/components/ui/button';
+import { AppCard } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { TextField } from '@/components/ui/text-field';
+import { Corner, Space } from '@/constants/tokens';
 import {
   getApiErrorMessage,
   useCommunityFeed,
@@ -22,7 +28,7 @@ import {
   useDeleteCommunityPost,
   useToggleCommunityLike,
 } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
+import { useAppTheme } from '@/hooks/use-app-theme';
 import { useAuthStore } from '@/store/auth';
 
 function getDisplayName(person: any) {
@@ -44,7 +50,7 @@ function getInitials(person: any) {
 }
 
 export default function CommunityScreen() {
-  const theme = useTheme();
+  const { colors } = useAppTheme();
   const user = useAuthStore((state) => state.user);
   const feedQuery = useCommunityFeed();
   const createPost = useCreateCommunityPost();
@@ -86,302 +92,155 @@ export default function CommunityScreen() {
   };
 
   return (
-    <BrandScreen>
-      <BrandHero
-        eyebrow="Community"
-        title="Stay close to the conversation"
-        description="Read what members are sharing, celebrate updates, and add your own voice to the ANT PRESS community feed."
-      >
-        <View style={styles.heroActions}>
-          <BrandPill>{posts.length} posts live</BrandPill>
-          <BrandPill>
-            {posts.reduce((sum, post) => sum + Number(post.comment_count || 0), 0)} comments
-          </BrandPill>
-        </View>
-      </BrandHero>
+    <Screen>
+      <ScreenHeader back title="Community" subtitle="Stories, updates and encouragement from members" />
 
-      <BrandCard>
-        <BrandSectionHeader
-          title="Share something with the community"
-          description={
-            user
-              ? 'Post a testimony, update, invitation, or word of encouragement.'
-              : 'You can browse the feed now. Sign in when you are ready to post and comment.'
-          }
-        />
+      <View style={styles.badges}>
+        <AppBadge>{`${posts.length} posts`}</AppBadge>
+        <AppBadge>{`${posts.reduce((sum, post) => sum + Number(post.comment_count || 0), 0)} comments`}</AppBadge>
+      </View>
+
+      <AppCard>
+        <AppText variant="bodyStrong">Share something with the community</AppText>
+        <AppText variant="small" tone="muted">
+          {user
+            ? 'Post a testimony, update, invitation, or word of encouragement.'
+            : 'You can browse the feed now. Sign in when you are ready to post and comment.'}
+        </AppText>
 
         {user ? (
           <>
-            <TextInput
+            <TextField
+              label="Your post"
               value={draft}
               onChangeText={setDraft}
               placeholder="What would you like to share today?"
-              placeholderTextColor={theme.textSecondary}
               multiline
-              textAlignVertical="top"
-              style={[
-                styles.textArea,
-                {
-                  backgroundColor: theme.backgroundSelected,
-                  borderColor: theme.border,
-                  color: theme.text,
-                },
-              ]}
             />
-            <BrandButton label="Share Post" onPress={handleCreatePost} />
+            <AppButton label="Share post" onPress={handleCreatePost} />
           </>
         ) : (
-          <View style={styles.guestActions}>
-            <BrandButton label="Sign In To Post" onPress={() => router.push('/login')} />
-            <BrandButton label="Create Account" onPress={() => router.push('/register' as never)} variant="outline" />
+          <View style={styles.stack}>
+            <AppButton label="Sign in to post" onPress={() => router.push('/login')} />
+            <AppButton label="Create account" variant="secondary" onPress={() => router.push('/register' as never)} />
           </View>
         )}
 
-        {errorMessage ? (
-          <ThemedText type="small" style={{ color: '#F87171' }}>
-            {errorMessage}
-          </ThemedText>
-        ) : null}
-      </BrandCard>
+        {errorMessage ? <FormMessage tone="danger">{errorMessage}</FormMessage> : null}
+      </AppCard>
 
-      {feedQuery.isLoading ? (
-        <BrandCard>
-          <ThemedText type="small">Loading community feed...</ThemedText>
-        </BrandCard>
-      ) : null}
+      {feedQuery.isLoading ? <LoadingList count={2} height={180} /> : null}
 
       {!feedQuery.isLoading && posts.length === 0 ? (
-        <BrandCard>
-          <ThemedText type="defaultSemiBold">No posts yet</ThemedText>
-          <ThemedText type="small">
-            The community feed is ready. The first story shared by a member will appear here.
-          </ThemedText>
-        </BrandCard>
+        <EmptyState
+          icon="chatbubbles-outline"
+          title="No posts yet"
+          message="The community feed is ready. The first story shared by a member will appear here."
+        />
       ) : null}
 
       {posts.map((post) => {
         const canDeletePost = user?.role === 'admin' || Number(user?.id) === Number(post.author?.id);
+        const comments = Array.isArray(post.comments) ? post.comments : [];
 
         return (
-          <BrandCard key={post.id}>
+          <AppCard key={post.id}>
             <View style={styles.postHeader}>
-              <View style={styles.authorRow}>
-                <View style={[styles.avatar, { backgroundColor: theme.accentSoft }]}>
-                  <ThemedText type="smallBold" style={{ color: theme.tint }}>
-                    {getInitials(post.author)}
-                  </ThemedText>
-                </View>
-                <View style={styles.authorCopy}>
-                  <ThemedText type="defaultSemiBold">{getDisplayName(post.author)}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {post.created_at ? new Date(post.created_at).toLocaleString() : 'Recent post'}
-                  </ThemedText>
-                </View>
+              <Avatar initials={getInitials(post.author)} size={44} />
+              <View style={styles.flex}>
+                <AppText variant="bodyStrong">{getDisplayName(post.author)}</AppText>
+                <AppText variant="caption" tone="muted">
+                  {post.created_at ? new Date(post.created_at).toLocaleString() : 'Recent post'}
+                </AppText>
               </View>
-
               {canDeletePost ? (
-                <Pressable onPress={() => deletePost.mutate(post.id)} style={styles.iconButton}>
-                  <Ionicons name="trash-outline" size={18} color="#F87171" />
-                </Pressable>
+                <IconButton icon="trash-outline" variant="danger" accessibilityLabel="Delete post" onPress={() => deletePost.mutate(post.id)} />
               ) : null}
             </View>
 
-            <ThemedText type="default" style={styles.postContent}>
-              {post.content}
-            </ThemedText>
+            <AppText>{post.content}</AppText>
 
             <View style={styles.postActions}>
-              <Pressable
-                onPress={() => toggleLike.mutate(post.id)}
+              <Chip
+                icon={post.liked_by_me ? 'heart' : 'heart-outline'}
+                label={`${post.like_count || 0} likes`}
+                selected={Boolean(post.liked_by_me)}
                 disabled={!user || toggleLike.isPending}
-                style={[
-                  styles.actionChip,
-                  {
-                    backgroundColor: post.liked_by_me ? 'rgba(244,63,94,0.12)' : theme.backgroundSelected,
-                    borderColor: post.liked_by_me ? 'rgba(244,63,94,0.28)' : theme.border,
-                  },
-                ]}>
-                <Ionicons
-                  name={post.liked_by_me ? 'heart' : 'heart-outline'}
-                  size={16}
-                  color={post.liked_by_me ? '#F43F5E' : theme.textSecondary}
-                />
-                <ThemedText
-                  type="smallBold"
-                  style={{ color: post.liked_by_me ? '#F43F5E' : theme.textSecondary }}>
-                  {post.like_count || 0} likes
-                </ThemedText>
-              </Pressable>
-
-              <View style={[styles.actionChip, { backgroundColor: theme.backgroundSelected, borderColor: theme.border }]}>
-                <Ionicons name="chatbubble-ellipses-outline" size={16} color={theme.textSecondary} />
-                <ThemedText type="smallBold" themeColor="textSecondary">
-                  {post.comment_count || 0} comments
-                </ThemedText>
-              </View>
+                accessibilityLabel={`${post.liked_by_me ? 'Unlike' : 'Like'} this post, ${post.like_count || 0} likes`}
+                onPress={() => toggleLike.mutate(post.id)}
+              />
+              <InfoLine icon="chatbubble-ellipses-outline">{`${post.comment_count || 0} comments`}</InfoLine>
             </View>
 
-            <View style={[styles.commentWrap, { backgroundColor: theme.backgroundSelected, borderColor: theme.border }]}>
-              {Array.isArray(post.comments) && post.comments.length > 0 ? (
-                post.comments.map((comment: any) => {
-                  const canDeleteThisComment =
-                    user?.role === 'admin' || Number(user?.id) === Number(comment.author?.id);
+            <View style={[styles.comments, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              {comments.length > 0 ? (
+                comments.map((comment: any) => {
+                  const canDeleteThisComment = user?.role === 'admin' || Number(user?.id) === Number(comment.author?.id);
 
                   return (
-                    <View key={comment.id} style={[styles.commentCard, { borderColor: theme.border }]}>
+                    <View key={comment.id} style={[styles.comment, { backgroundColor: colors.card, borderColor: colors.border }]}>
                       <View style={styles.commentHeader}>
-                        <View style={styles.commentCopy}>
-                          <ThemedText type="smallBold">{getDisplayName(comment.author)}</ThemedText>
-                          <ThemedText type="small" themeColor="textSecondary">
+                        <View style={styles.flex}>
+                          <AppText variant="small" style={styles.bold}>
+                            {getDisplayName(comment.author)}
+                          </AppText>
+                          <AppText variant="caption" tone="muted">
                             {comment.created_at ? new Date(comment.created_at).toLocaleString() : 'Recent comment'}
-                          </ThemedText>
+                          </AppText>
                         </View>
                         {canDeleteThisComment ? (
-                          <Pressable
-                            onPress={() =>
-                              deleteComment.mutate({ postId: post.id, commentId: comment.id })
-                            }
-                            style={styles.iconButton}>
-                            <Ionicons name="trash-outline" size={16} color="#F87171" />
-                          </Pressable>
+                          <IconButton
+                            icon="trash-outline"
+                            variant="danger"
+                            accessibilityLabel="Delete comment"
+                            onPress={() => deleteComment.mutate({ postId: post.id, commentId: comment.id })}
+                          />
                         ) : null}
                       </View>
-                      <ThemedText type="small">{comment.content}</ThemedText>
+                      <AppText variant="small">{comment.content}</AppText>
                     </View>
                   );
                 })
               ) : (
-                <ThemedText type="small" themeColor="textSecondary">
+                <AppText variant="small" tone="muted">
                   No comments yet. Be the first to respond.
-                </ThemedText>
+                </AppText>
               )}
 
               {user ? (
-                <View style={styles.commentComposer}>
-                  <TextInput
+                <View style={styles.stack}>
+                  <TextField
+                    label="Add a comment"
                     value={commentDrafts[post.id] || ''}
-                    onChangeText={(value) =>
-                      setCommentDrafts((state) => ({ ...state, [post.id]: value }))
-                    }
+                    onChangeText={(value) => setCommentDrafts((state) => ({ ...state, [post.id]: value }))}
                     placeholder="Add a thoughtful comment..."
-                    placeholderTextColor={theme.textSecondary}
                     multiline
-                    style={[
-                      styles.commentInput,
-                      {
-                        backgroundColor: theme.background,
-                        borderColor: theme.border,
-                        color: theme.text,
-                      },
-                    ]}
+                    style={styles.commentInput}
                   />
-                  <BrandButton label="Reply" onPress={() => handleAddComment(post.id)} variant="secondary" />
+                  <AppButton label="Reply" variant="secondary" onPress={() => handleAddComment(post.id)} />
                 </View>
               ) : (
-                <ThemedText type="small" themeColor="textSecondary">
+                <AppText variant="small" tone="muted">
                   Sign in to join the discussion.
-                </ThemedText>
+                </AppText>
               )}
             </View>
-          </BrandCard>
+          </AppCard>
         );
       })}
-    </BrandScreen>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  heroActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-    marginTop: Spacing.two,
-  },
-  textArea: {
-    minHeight: 120,
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    padding: Spacing.three,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  guestActions: {
-    gap: Spacing.two,
-  },
-  postHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: Spacing.two,
-  },
-  authorRow: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: Spacing.two,
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.medium,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  authorCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  iconButton: {
-    padding: 6,
-  },
-  postContent: {
-    lineHeight: 24,
-  },
-  postActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  actionChip: {
-    minHeight: 38,
-    paddingHorizontal: 14,
-    borderRadius: Radius.pill,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  commentWrap: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  commentCard: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    padding: Spacing.two,
-    gap: 6,
-  },
-  commentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
-  commentCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  commentComposer: {
-    gap: Spacing.two,
-  },
-  commentInput: {
-    minHeight: 84,
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    padding: Spacing.three,
-    fontSize: 14,
-    lineHeight: 20,
-    textAlignVertical: 'top',
-  },
+  badges: { flexDirection: 'row', gap: Space.sm },
+  stack: { gap: Space.sm },
+  flex: { flex: 1, gap: 2 },
+  bold: { fontWeight: '600' },
+  postHeader: { flexDirection: 'row', alignItems: 'center', gap: Space.sm + 4 },
+  postActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Space.md },
+  comments: { borderWidth: 1, borderRadius: Corner.control, padding: Space.sm + 4, gap: Space.sm },
+  comment: { borderWidth: 1, borderRadius: Corner.control, padding: Space.sm, gap: Space.xs },
+  commentHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: Space.sm },
+  commentInput: { minHeight: 84 },
 });

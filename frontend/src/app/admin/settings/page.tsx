@@ -4,11 +4,13 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import apiClient from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import PageHeader from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Field, FormActions, FormSection, formGridClass } from '@/components/admin/form-layout';
+import { CardListSkeleton, LoadError } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
 
 type SettingsForm = {
   siteTitle: string;
@@ -20,22 +22,27 @@ type SettingsForm = {
 export default function AdminSettingsPage() {
   const { register, handleSubmit, reset } = useForm<SettingsForm>();
   const [isLoading, setIsLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const load = async () => {
+      setIsLoading(true);
+      setLoadFailed(false);
       try {
         const res = await apiClient.get('/admin/settings');
         reset(res.data?.data || {});
       } catch {
         toast.error('Failed to load settings');
+        setLoadFailed(true);
       } finally {
         setIsLoading(false);
       }
     };
 
     load();
-  }, [reset]);
+  }, [reset, attempt]);
 
   const onSubmit = async (values: SettingsForm) => {
     setIsSaving(true);
@@ -51,45 +58,45 @@ export default function AdminSettingsPage() {
   };
 
   return (
-    <div className="container-max py-12">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl tracking-tight">Site Settings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <p className="text-sm text-ui-subtle">Loading settings...</p>
-          ) : (
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="settings-site-title">Site Title</Label>
-                <Input id="settings-site-title" {...register('siteTitle')} />
-              </div>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Settings' }]}
+        title="Settings"
+        description="Site details and giving options."
+      />
 
-              <div className="space-y-2">
-                <Label htmlFor="settings-contact-email">Contact Email</Label>
-                <Input id="settings-contact-email" type="email" {...register('contactEmail')} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="settings-payment-key">Payment Public Key</Label>
-                <Input id="settings-payment-key" {...register('paymentPublicKey')} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="settings-donation-message">Donation Success Message</Label>
-                <Textarea id="settings-donation-message" rows={3} {...register('donationSuccessMessage')} />
-              </div>
-
-              <div className="flex justify-end">
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? 'Saving...' : 'Save Settings'}
-                </Button>
-              </div>
-            </form>
-          )}
-        </CardContent>
-      </Card>
+      {isLoading ? (
+        <CardListSkeleton count={1} label="Loading settings" />
+      ) : loadFailed ? (
+        <LoadError what="settings" onRetry={() => setAttempt((value) => value + 1)} />
+      ) : (
+        <FormSection title="Site settings">
+          <form onSubmit={handleSubmit(onSubmit)} className={formGridClass}>
+            <Field label="Site title" htmlFor="settings-site-title">
+              <Input id="settings-site-title" {...register('siteTitle')} />
+            </Field>
+            <Field label="Contact email" htmlFor="settings-contact-email">
+              <Input id="settings-contact-email" type="email" {...register('contactEmail')} />
+            </Field>
+            <Field
+              label="Payment public key"
+              htmlFor="settings-payment-key"
+              hint="The public key only. Never paste a secret key here."
+              full
+            >
+              <Input id="settings-payment-key" {...register('paymentPublicKey')} />
+            </Field>
+            <Field label="Donation success message" htmlFor="settings-donation-message" full>
+              <Textarea id="settings-donation-message" rows={3} {...register('donationSuccessMessage')} />
+            </Field>
+            <FormActions>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? 'Saving...' : 'Save settings'}
+              </Button>
+            </FormActions>
+          </form>
+        </FormSection>
+      )}
     </div>
   );
 }

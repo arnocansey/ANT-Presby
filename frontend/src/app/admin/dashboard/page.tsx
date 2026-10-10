@@ -1,6 +1,26 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
+import {
+  BellRing,
+  BookOpenText,
+  CalendarDays,
+  Church,
+  HeartHandshake,
+  Megaphone,
+  Radio,
+  Users,
+  Wallet,
+} from 'lucide-react';
+import PageHeader from '@/components/ui/page-header';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import StatCard from '@/components/admin/stat-card';
+import { LoadError } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
 import { formatCurrency } from '@/lib/utils';
 import {
   useDashboardContentStats,
@@ -8,18 +28,10 @@ import {
   useDashboardOverview,
   useRecentActivities,
   useRevenueStats,
-  useUserGrowthStats,
 } from '@/hooks/useApi';
 
-type MonthlyCountStat = {
-  month?: string;
-  count?: number | string;
-};
-
-type MonthlyRevenueStat = {
-  month?: string;
-  total?: number | string;
-};
+type MonthlyRevenueStat = { month?: string; total?: number | string };
+type ActivityItem = { type: string; description: string; created_at: string };
 
 const toNumber = (value: number | string | undefined) => {
   if (typeof value === 'number') return value;
@@ -27,180 +39,304 @@ const toNumber = (value: number | string | undefined) => {
   return 0;
 };
 
+// Month starts arrive as UTC midnight; format in UTC so they never show as the previous month.
 const formatMonth = (value?: string) =>
-  value ? new Date(value).toLocaleDateString(undefined, { month: 'short', year: '2-digit' }) : 'N/A';
+  value ? new Date(value).toLocaleDateString(undefined, { month: 'short', year: '2-digit', timeZone: 'UTC' }) : 'N/A';
+
+const isThisMonth = (value?: string) => {
+  if (!value) return false;
+  const month = new Date(value);
+  const now = new Date();
+  return month.getUTCFullYear() === now.getFullYear() && month.getUTCMonth() === now.getMonth();
+};
+
+const QUICK_ACTIONS = [
+  { href: '/admin/sermons/new', label: 'New sermon', icon: Megaphone },
+  { href: '/admin/events/new', label: 'New event', icon: CalendarDays },
+  { href: '/admin/ministries/new', label: 'New ministry', icon: Church },
+  { href: '/admin/devotionals', label: 'Write devotional', icon: BookOpenText },
+  { href: '/admin/announcements', label: 'Send announcement', icon: BellRing },
+  { href: '/admin/live', label: 'Go live', icon: Radio },
+];
 
 export default function AdminDashboardPage() {
-  const { data: overview } = useDashboardOverview();
-  const { data: users } = useUserGrowthStats();
-  const { data: revenue } = useRevenueStats();
-  const { data: contentStats } = useDashboardContentStats();
-  const { data: engagementStats } = useDashboardEngagementStats();
-  const { data: activities } = useRecentActivities();
+  const overviewQuery = useDashboardOverview();
+  const revenueQuery = useRevenueStats();
+  const { data: contentStats, isLoading: contentLoading } = useDashboardContentStats();
+  const { data: engagementStats, isLoading: engagementLoading } = useDashboardEngagementStats();
+  const activitiesQuery = useRecentActivities();
 
-  const userStats = (users ?? []) as MonthlyCountStat[];
-  const revenueStats = (revenue ?? []) as MonthlyRevenueStat[];
-  const totalUsers = overview?.users?.total ?? 0;
-  const totalEvents = overview?.events?.total ?? 0;
-  const upcomingEvents = overview?.events?.upcoming ?? 0;
-  const totalSermons = overview?.content?.sermons ?? 0;
+  const overview = overviewQuery.data;
+  const revenueStats = (revenueQuery.data ?? []) as MonthlyRevenueStat[];
+  const givingThisMonth = toNumber(revenueStats.find((row) => isThisMonth(row.month))?.total);
   const revenueThisYear = revenueStats.reduce((sum, item) => sum + toNumber(item.total), 0);
+  const maxRevenue = Math.max(...revenueStats.map((item) => toNumber(item.total)), 1);
   const newsStats = contentStats?.news || {};
   const topEvents = contentStats?.top_events_by_registrations || [];
   const donationMix = engagementStats?.donations_by_type_last_30_days || [];
-  const recentItems = (activities ?? []) as Array<{ type: string; description: string; created_at: string }>;
-  const maxRevenue = Math.max(...revenueStats.map((item) => toNumber(item.total)), 1);
+  const recentItems = (activitiesQuery.data ?? []) as ActivityItem[];
+  const figuresLoading = overviewQuery.isLoading;
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-6 py-10 text-white shadow-xl sm:px-10">
-        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-300">Admin Dashboard</p>
-        <h1 className="mt-3 text-4xl font-black tracking-tight">Operations at a glance</h1>
-        <p className="mt-3 max-w-2xl text-slate-200">
-          Review publishing, engagement, growth, and giving from one connected admin overview.
-        </p>
-      </section>
+    <div className="space-y-8">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Dashboard' }]}
+        title="Dashboard"
+        description="Members, giving, events and prayer at a glance."
+      />
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          ['Total Users', totalUsers, 'Members and admins currently in the system', 'from-sky-600 to-blue-600'],
-          ['Events', totalEvents, `Upcoming active events: ${upcomingEvents}`, 'from-emerald-600 to-green-600'],
-          ['Sermons', totalSermons, 'Published sermon records in the system', 'from-violet-600 to-purple-600'],
-          ['Revenue', formatCurrency(revenueThisYear), 'Completed donations in the last 12 months', 'from-amber-500 to-orange-500'],
-        ].map(([label, value, text, gradient]) => (
-          <div key={label} className={`rounded-[1.5rem] bg-gradient-to-br p-6 text-white shadow-lg ${gradient}`}>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/80">{label}</p>
-            <p className="mt-4 text-4xl font-black tracking-tight">{value}</p>
-            <p className="mt-3 text-sm text-white/80">{text}</p>
-          </div>
-        ))}
-      </section>
+      {overviewQuery.isError && !overview ? (
+        <LoadError
+          what="the key figures"
+          onRetry={() => {
+            overviewQuery.refetch();
+            revenueQuery.refetch();
+          }}
+        />
+      ) : (
+        <section aria-label="Key figures" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="Members"
+            icon={Users}
+            href="/admin/users"
+            loading={figuresLoading}
+            value={overview?.users?.members ?? 0}
+            hint={`${overview?.users?.total ?? 0} accounts · ${overview?.users?.admins ?? 0} admins`}
+          />
+          <StatCard
+            label="Giving this month"
+            icon={Wallet}
+            href="/admin/donations"
+            loading={revenueQuery.isLoading}
+            value={formatCurrency(givingThisMonth)}
+            hint={`${formatCurrency(revenueThisYear)} in the last 12 months`}
+          />
+          <StatCard
+            label="Upcoming events"
+            icon={CalendarDays}
+            href="/admin/events"
+            loading={figuresLoading}
+            value={overview?.events?.upcoming ?? 0}
+            hint={`${overview?.events?.total ?? 0} events in total`}
+          />
+          <StatCard
+            label="Pending prayer requests"
+            icon={HeartHandshake}
+            href="/admin/prayers"
+            loading={figuresLoading}
+            value={overview?.prayers?.pending_count ?? 0}
+            hint="Waiting for approval"
+          />
+        </section>
+      )}
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Publishing Workflow">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              ['Draft', newsStats.draft || 0],
-              ['Review', newsStats.review || 0],
-              ['Scheduled', newsStats.scheduled || 0],
-              ['Published', newsStats.published || 0],
-              ['Archived', newsStats.archived || 0],
-              ['Featured', newsStats.featured || 0],
-            ].map(([label, value]) => (
-              <StatBox key={label as string} label={label as string} value={String(value)} />
+      <section className="grid gap-6 lg:grid-cols-3">
+        <Panel title="Quick actions">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+            {QUICK_ACTIONS.map((action) => (
+              <Button key={action.href} asChild variant="secondary" className="justify-start">
+                <Link href={action.href}>
+                  <action.icon className="h-4 w-4" aria-hidden="true" />
+                  {action.label}
+                </Link>
+              </Button>
             ))}
           </div>
         </Panel>
 
-        <Panel title="Engagement Snapshot">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              ['Unread Notifications', engagementStats?.notifications?.unread || 0],
-              ['Unread Contacts', engagementStats?.contacts?.unread || 0],
-              ['Registrations (30d)', engagementStats?.registrations_last_30_days || 0],
-              ['Completed Donations (30d)', engagementStats?.completed_donations_last_30_days || 0],
-              ['Admin Actions (30d)', engagementStats?.admin_actions_last_30_days || 0],
-              ['Total Notifications', engagementStats?.notifications?.total || 0],
-            ].map(([label, value]) => (
-              <StatBox key={label as string} label={label as string} value={String(value)} />
-            ))}
-          </div>
+        <Panel
+          title="Recent activity"
+          className="lg:col-span-2"
+          action={
+            <Link href="/admin/audit" className="text-sm font-semibold text-link hover:underline">
+              View activity log
+            </Link>
+          }
+        >
+          {activitiesQuery.isLoading ? (
+            <PanelSkeleton />
+          ) : activitiesQuery.isError && recentItems.length === 0 ? (
+            <LoadError what="recent activity" onRetry={() => activitiesQuery.refetch()} />
+          ) : recentItems.length === 0 ? (
+            <PanelEmpty>No activity recorded yet.</PanelEmpty>
+          ) : (
+            <ul className="max-h-[28rem] divide-y divide-border overflow-y-auto">
+              {recentItems.map((item, index) => (
+                <li
+                  key={`${item.type}-${item.created_at}-${index}`}
+                  className="flex flex-col gap-1 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+                >
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-sm font-medium text-foreground">{item.description}</p>
+                    <Badge tone="neutral">{item.type}</Badge>
+                  </div>
+                  <time dateTime={item.created_at} className="shrink-0 text-xs text-muted">
+                    {new Date(item.created_at).toLocaleString()}
+                  </time>
+                </li>
+              ))}
+            </ul>
+          )}
         </Panel>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <Panel title="Revenue Trend">
-          <div className="space-y-3">
-            {revenueStats.length === 0 && <p className="text-sm text-ui-subtle">No revenue data yet.</p>}
-            {revenueStats.map((item) => {
-              const total = toNumber(item.total);
-              const width = `${Math.max((total / maxRevenue) * 100, 6)}%`;
-              return (
-                <div key={`${item.month}-${total}`} className="space-y-1">
-                  <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
-                    <span className="text-ui-muted">{formatMonth(item.month)}</span>
-                    <span className="font-semibold">{formatCurrency(total)}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800">
-                    <div className="h-2 rounded-full bg-violet-600 dark:bg-violet-400" style={{ width }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        <Panel title="Giving by month">
+          {revenueQuery.isLoading ? (
+            <PanelSkeleton />
+          ) : revenueStats.length === 0 ? (
+            <PanelEmpty>No giving recorded in the last 12 months.</PanelEmpty>
+          ) : (
+            <ul className="space-y-3">
+              {revenueStats.map((item) => {
+                const total = toNumber(item.total);
+                const width = `${Math.max((total / maxRevenue) * 100, 6)}%`;
+                return (
+                  <li key={`${item.month}-${total}`} className="space-y-1">
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-muted">{formatMonth(item.month)}</span>
+                      <span className="font-semibold text-foreground">{formatCurrency(total)}</span>
+                    </div>
+                    <div className="h-2 rounded-full border border-border bg-surface" aria-hidden="true">
+                      <div className="h-full rounded-full bg-primary" style={{ width }} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </Panel>
 
-        <Panel title="Recent Activity">
-          <div className="space-y-3">
-            {recentItems.length === 0 && <p className="text-sm text-ui-subtle">No activity recorded yet.</p>}
-            {recentItems.map((item, index) => (
-              <div key={`${item.type}-${item.created_at}-${index}`} className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
-                <p className="text-sm font-semibold text-slate-950 dark:text-slate-50">{item.description}</p>
-                <div className="mt-1 flex flex-col gap-1 text-xs text-ui-subtle sm:flex-row sm:items-center sm:justify-between">
-                  <span>{item.type}</span>
-                  <span>{new Date(item.created_at).toLocaleString()}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Panel>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-2">
-        <Panel title="Top Events by Registration">
-          <div className="space-y-3">
-            {topEvents.length === 0 && <p className="text-sm text-ui-subtle">No event registrations yet.</p>}
-            {topEvents.map((item: any) => (
-              <div key={`${item.id}-${item.registrations}`} className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="font-semibold text-slate-950 dark:text-slate-50">{item.name}</p>
-                    <p className="text-sm text-ui-subtle">{formatMonth(item.event_date)}</p>
-                  </div>
-                  <span className="text-lg font-black">{item.registrations}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Panel>
-
-        <Panel title="Donation Mix (30 Days)">
-          <div className="space-y-3">
-            {donationMix.length === 0 && <p className="text-sm text-ui-subtle">No completed donations in the last 30 days.</p>}
-            {donationMix.map((item: any) => (
-              <div key={item.donation_type} className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold capitalize text-slate-900 dark:text-slate-50">
+        <Panel title="Donation mix (30 days)">
+          {engagementLoading ? (
+            <PanelSkeleton />
+          ) : donationMix.length === 0 ? (
+            <PanelEmpty>No completed donations in the last 30 days.</PanelEmpty>
+          ) : (
+            <ul className="divide-y divide-border">
+              {donationMix.map((item: any) => (
+                <li key={item.donation_type} className="flex items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold capitalize text-foreground">
                       {String(item.donation_type).replace(/_/g, ' ')}
                     </p>
-                    <p className="text-xs text-ui-subtle">{item.count} completed donation{item.count === 1 ? '' : 's'}</p>
+                    <p className="text-xs text-muted">
+                      {item.count} completed donation{item.count === 1 ? '' : 's'}
+                    </p>
                   </div>
-                  <p className="text-lg font-black">{formatCurrency(toNumber(item.total_amount))}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+                  <p className="shrink-0 text-base font-bold text-foreground">{formatCurrency(toNumber(item.total_amount))}</p>
+                </li>
+              ))}
+            </ul>
+          )}
         </Panel>
       </section>
+
+      <section className="grid gap-6 xl:grid-cols-2">
+        <Panel title="Publishing">
+          {contentLoading || figuresLoading ? (
+            <PanelSkeleton />
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <StatBox label="Sermons" value={overview?.content?.sermons ?? 0} />
+              <StatBox label="News drafts" value={newsStats.draft || 0} />
+              <StatBox label="In review" value={newsStats.review || 0} />
+              <StatBox label="Scheduled" value={newsStats.scheduled || 0} />
+              <StatBox label="Published" value={newsStats.published || 0} />
+              <StatBox label="Archived" value={newsStats.archived || 0} />
+              <StatBox label="Featured" value={newsStats.featured || 0} />
+            </div>
+          )}
+        </Panel>
+
+        <Panel title="Engagement">
+          {engagementLoading ? (
+            <PanelSkeleton />
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <StatBox label="Unread notifications" value={engagementStats?.notifications?.unread || 0} />
+              <StatBox label="Total notifications" value={engagementStats?.notifications?.total || 0} />
+              <StatBox label="Unread messages" value={engagementStats?.contacts?.unread || 0} />
+              <StatBox label="Registrations (30d)" value={engagementStats?.registrations_last_30_days || 0} />
+              <StatBox label="Completed gifts (30d)" value={engagementStats?.completed_donations_last_30_days || 0} />
+              <StatBox label="Admin actions (30d)" value={engagementStats?.admin_actions_last_30_days || 0} />
+            </div>
+          )}
+        </Panel>
+      </section>
+
+      <Panel title="Top events by registration">
+        {contentLoading ? (
+          <PanelSkeleton />
+        ) : topEvents.length === 0 ? (
+          <PanelEmpty>No event registrations yet.</PanelEmpty>
+        ) : (
+          <ul className="divide-y divide-border">
+            {topEvents.map((item: any) => (
+              <li key={`${item.id}-${item.registrations}`} className="flex items-center justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-foreground">{item.name}</p>
+                  <p className="text-sm text-muted">{formatMonth(item.event_date)}</p>
+                </div>
+                <span className="shrink-0 text-lg font-bold text-foreground">
+                  {item.registrations}
+                  <span className="sr-only"> registrations</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
     </div>
   );
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({
+  title,
+  action,
+  className,
+  children,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="rounded-[1.6rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-      <h2 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">{title}</h2>
-      <div className="mt-5">{children}</div>
+    <Card className={`p-5 sm:p-6 ${className ?? ''}`}>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+        {action}
+      </div>
+      {children}
+    </Card>
+  );
+}
+
+function StatBox({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border bg-surface p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
+      <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">{value}</p>
     </div>
   );
 }
 
-function StatBox({ label, value }: { label: string; value: string }) {
+function PanelEmpty({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ui-subtle">{label}</p>
-      <p className="mt-3 text-3xl font-black tracking-tight text-slate-950 dark:text-white">{value}</p>
+    <p className="rounded-lg border border-dashed border-input bg-surface/50 px-4 py-6 text-center text-sm text-muted">
+      {children}
+    </p>
+  );
+}
+
+function PanelSkeleton() {
+  return (
+    <div className="space-y-3" role="status" aria-live="polite">
+      <span className="sr-only">Loading</span>
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-5/6" />
+      <Skeleton className="h-4 w-2/3" />
     </div>
   );
 }

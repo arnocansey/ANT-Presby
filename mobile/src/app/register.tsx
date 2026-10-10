@@ -1,18 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as Google from 'expo-auth-session/providers/google';
 import { router } from 'expo-router';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 import { z } from 'zod';
 
+import { GoogleSignIn, isGoogleSignInConfigured } from '@/components/google-sign-in';
 import { CheckboxRow, FormMessage, FormTextField, Screen, ScreenHeader } from '@/components/kit';
 import { AppText } from '@/components/ui/app-text';
 import { AppButton } from '@/components/ui/button';
 import { AppCard } from '@/components/ui/card';
 import { Space } from '@/constants/tokens';
-import { getApiErrorMessage, useGoogleLogin, useRegister } from '@/hooks/use-api';
+import { getApiErrorMessage, useRegister } from '@/hooks/use-api';
 import { useAppTheme } from '@/hooks/use-app-theme';
 
 const registerSchema = z.object({
@@ -31,20 +31,10 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function RegisterScreen() {
   const { colors } = useAppTheme();
   const registerMutation = useRegister();
-  const googleLoginMutation = useGoogleLogin();
   const [showPassword, setShowPassword] = React.useState(false);
   const [registeredEmail, setRegisteredEmail] = React.useState('');
-  const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    scopes: ['openid', 'profile', 'email'],
-    responseType: 'token',
-  });
   const registerErrorMessage = registerMutation.isError
     ? getApiErrorMessage(registerMutation.error, 'Could not create your account right now.')
-    : '';
-  const googleErrorMessage = googleLoginMutation.isError
-    ? getApiErrorMessage(googleLoginMutation.error, 'Google sign-in failed.')
     : '';
 
   const {
@@ -71,33 +61,6 @@ export default function RegisterScreen() {
       // Inline error panel handles feedback.
     }
   };
-
-  React.useEffect(() => {
-    const handleGoogleResponse = async () => {
-      if (googleResponse?.type !== 'success') {
-        return;
-      }
-
-      const accessToken =
-        googleResponse.authentication?.accessToken ||
-        (typeof googleResponse.params?.access_token === 'string'
-          ? googleResponse.params.access_token
-          : '');
-
-      if (!accessToken) {
-        return;
-      }
-
-      try {
-        const session = await googleLoginMutation.mutateAsync(accessToken);
-        router.replace(session.user?.role === 'admin' ? '/admin' : '/account');
-      } catch {
-        // Inline error panel handles feedback.
-      }
-    };
-
-    handleGoogleResponse();
-  }, [googleLoginMutation, googleResponse]);
 
   return (
     <Screen>
@@ -174,14 +137,7 @@ export default function RegisterScreen() {
           <AppButton label="Create account" loading={isSubmitting} onPress={handleSubmit(onSubmit)} />
           {registerMutation.isError ? <FormMessage tone="danger">{registerErrorMessage}</FormMessage> : null}
 
-          <AppButton
-            label={googleLoginMutation.isPending ? 'Connecting to Google...' : 'Continue with Google'}
-            variant="secondary"
-            icon={<Ionicons name="logo-google" size={18} color={colors.text} />}
-            disabled={!googleRequest || googleLoginMutation.isPending}
-            onPress={() => googlePromptAsync()}
-          />
-          {googleLoginMutation.isError ? <FormMessage tone="danger">{googleErrorMessage}</FormMessage> : null}
+          {isGoogleSignInConfigured() ? <GoogleSignIn pendingLabel="Connecting to Google..." /> : null}
 
           <View style={styles.footer}>
             <AppText variant="small" tone="muted">

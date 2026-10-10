@@ -1,17 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as Google from 'expo-auth-session/providers/google';
 import { Link, router } from 'expo-router';
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { z } from 'zod';
 
+import { GoogleSignIn, isGoogleSignInConfigured } from '@/components/google-sign-in';
 import { CheckboxRow, FormMessage, FormTextField, Screen } from '@/components/kit';
 import { AppText } from '@/components/ui/app-text';
 import { AppButton } from '@/components/ui/button';
 import { Corner, MIN_TOUCH, Space } from '@/constants/tokens';
-import { getApiErrorMessage, useGoogleLogin, useLogin } from '@/hooks/use-api';
+import { getApiErrorMessage, useLogin } from '@/hooks/use-api';
 import { useAppTheme } from '@/hooks/use-app-theme';
 
 const loginSchema = z.object({
@@ -24,19 +24,9 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginScreen() {
   const { colors } = useAppTheme();
   const loginMutation = useLogin();
-  const googleLoginMutation = useGoogleLogin();
   const [showPassword, setShowPassword] = React.useState(false);
-  const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    scopes: ['openid', 'profile', 'email'],
-    responseType: 'token',
-  });
   const loginErrorMessage = loginMutation.isError
     ? getApiErrorMessage(loginMutation.error, 'Could not sign in. Please confirm your email and password.')
-    : '';
-  const googleErrorMessage = googleLoginMutation.isError
-    ? getApiErrorMessage(googleLoginMutation.error, 'Google sign-in failed.')
     : '';
   const {
     control,
@@ -58,33 +48,6 @@ export default function LoginScreen() {
       // Inline error panel handles feedback.
     }
   };
-
-  React.useEffect(() => {
-    const handleGoogleResponse = async () => {
-      if (googleResponse?.type !== 'success') {
-        return;
-      }
-
-      const accessToken =
-        googleResponse.authentication?.accessToken ||
-        (typeof googleResponse.params?.access_token === 'string'
-          ? googleResponse.params.access_token
-          : '');
-
-      if (!accessToken) {
-        return;
-      }
-
-      try {
-        const session = await googleLoginMutation.mutateAsync(accessToken);
-        router.replace(session.user?.role === 'admin' ? '/admin' : '/account');
-      } catch {
-        // Inline error panel handles feedback.
-      }
-    };
-
-    handleGoogleResponse();
-  }, [googleLoginMutation, googleResponse]);
 
   return (
     <Screen>
@@ -123,22 +86,19 @@ export default function LoginScreen() {
       <AppButton label="Sign in" loading={isSubmitting} onPress={handleSubmit(onSubmit)} />
       {loginMutation.isError ? <FormMessage tone="danger">{loginErrorMessage}</FormMessage> : null}
 
-      <View style={styles.dividerRow}>
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        <AppText variant="small" tone="muted">
-          or continue with
-        </AppText>
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-      </View>
+      {isGoogleSignInConfigured() ? (
+        <>
+          <View style={styles.dividerRow}>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <AppText variant="small" tone="muted">
+              or continue with
+            </AppText>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          </View>
 
-      <AppButton
-        label={googleLoginMutation.isPending ? 'Connecting...' : 'Continue with Google'}
-        variant="secondary"
-        icon={<Ionicons name="logo-google" size={18} color={colors.text} />}
-        disabled={!googleRequest || googleLoginMutation.isPending}
-        onPress={() => googlePromptAsync()}
-      />
-      {googleLoginMutation.isError ? <FormMessage tone="danger">{googleErrorMessage}</FormMessage> : null}
+          <GoogleSignIn />
+        </>
+      ) : null}
 
       <View style={styles.footer}>
         <AppText variant="small" tone="muted" style={styles.center}>

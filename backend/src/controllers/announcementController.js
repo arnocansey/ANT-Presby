@@ -64,16 +64,25 @@ const sendAnnouncement = async (req, res, next) => {
       entityType: audience === 'group' ? 'group' : audience === 'event' ? 'event' : 'announcement',
       entityId: groupId || eventId || announcement.id,
     });
-    await announcementModel.setPushCount(announcement.id, result.push);
-
-    await auditLogModel.createAuditLog({
-      actorUserId: req.user.userId,
-      entityType: 'announcement',
-      entityId: announcement.id,
-      action: 'send',
-      summary: `Sent announcement "${announcement.title}" to ${audience} (${recipients.length} people)`,
-      metadata: { audience, groupId, eventId },
-    });
+    // The announcement has been delivered; bookkeeping failures must not report an error
+    // (that would invite the sender to resend it to everyone).
+    try {
+      await announcementModel.setPushCount(announcement.id, result.push);
+    } catch (error) {
+      console.warn('Announcement push count not saved:', error.message);
+    }
+    try {
+      await auditLogModel.createAuditLog({
+        actorUserId: req.user.userId,
+        entityType: 'announcement',
+        entityId: announcement.id,
+        action: 'send',
+        summary: `Sent announcement "${announcement.title}" to ${audience} (${recipients.length} people)`,
+        metadata: { audience, groupId, eventId },
+      });
+    } catch (error) {
+      console.warn('Announcement audit entry not saved:', error.message);
+    }
 
     res.status(201).json(
       apiResponse(

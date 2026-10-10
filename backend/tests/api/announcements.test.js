@@ -71,6 +71,19 @@ describe('Announcements API', () => {
     expect(models.auditLogModel.createAuditLog).toHaveBeenCalledWith(expect.objectContaining({ entityType: 'announcement', action: 'send' }));
   });
 
+  test('once delivered, a failure to save the push count or audit still answers 201 (no resend prompt)', async () => {
+    models.announcementModel.setPushCount.mockRejectedValue(new Error('db blip'));
+    models.auditLogModel.createAuditLog.mockRejectedValue(new Error('db blip'));
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const response = await send(admin(), { title: 'Service time', message: 'We start at 9.', audience: 'everyone' });
+
+    expect(response.status).toBe(201);
+    expect(models.notificationService.notify).toHaveBeenCalledTimes(1);
+    expect(response.body.data.recipient_count).toBe(2);
+    warn.mockRestore();
+  });
+
   test('a member cannot announce to everyone or to an event', async () => {
     const everyone = await send(as(7), { title: 't', message: 'm', audience: 'everyone' });
     const event = await send(as(7), { title: 't', message: 'm', audience: 'event', eventId: 7 });

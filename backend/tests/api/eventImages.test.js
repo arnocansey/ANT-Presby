@@ -76,6 +76,17 @@ describe('Event images (admin)', () => {
     expect(storage.uploadImage).not.toHaveBeenCalled();
   });
 
+  test('if the event was deleted during the upload, the new image is removed and 404 returned', async () => {
+    eventModel.setEventImage.mockResolvedValue(0);
+
+    const response = await upload(admin());
+
+    expect(response.status).toBe(404);
+    expect(storage.deleteImage).toHaveBeenCalledWith(`${CLOUD}/new123.png`);
+    expect(storage.deleteImage).not.toHaveBeenCalledWith(`${CLOUD}/old123.png`);
+    expect(auditLogModel.createAuditLog).not.toHaveBeenCalled();
+  });
+
   test('uploading without a file returns 400', async () => {
     const response = await request(app).post('/api/admin/events/4/image').set('Authorization', admin());
 

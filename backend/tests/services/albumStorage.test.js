@@ -271,4 +271,19 @@ describe('imageStorage album helpers', () => {
     jest.spyOn(console, 'warn').mockImplementation(() => {});
     await expect(storage.deleteAlbumFolder(1)).resolves.toBe(false);
   });
+
+  test('deleteAlbumFolder keeps going past 1,000 photos (Cloudinary deletes in pages)', async () => {
+    configure();
+    const storage = load();
+    cloudinary.v2.api.delete_resources_by_prefix
+      .mockResolvedValueOnce({ deleted: {}, partial: true, next_cursor: 'page-2' })
+      .mockResolvedValueOnce({ deleted: {}, partial: false });
+
+    await expect(storage.deleteAlbumFolder(1)).resolves.toBe(true);
+
+    expect(cloudinary.v2.api.delete_resources_by_prefix).toHaveBeenCalledTimes(2);
+    expect(cloudinary.v2.api.delete_resources_by_prefix).toHaveBeenNthCalledWith(2, 'antpresby/albums/1/', {
+      next_cursor: 'page-2',
+    });
+  });
 });

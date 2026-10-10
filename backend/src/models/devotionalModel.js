@@ -70,7 +70,15 @@ const createDevotional = async (input, authorId) => {
 };
 
 const updateDevotional = async (id, input) => {
-  const updated = await prisma.devotional.updateMany({ where: { id: Number(id) }, data: toData(input) });
+  const data = toData(input);
+  // Moving an already-notified devotional to a new day lets it notify again on that day.
+  if (data.publishDate) {
+    await prisma.devotional.updateMany({
+      where: { id: Number(id), NOT: { publishDate: data.publishDate } },
+      data: { notifiedAt: null },
+    });
+  }
+  const updated = await prisma.devotional.updateMany({ where: { id: Number(id) }, data });
   return updated.count === 0 ? undefined : getById(id);
 };
 

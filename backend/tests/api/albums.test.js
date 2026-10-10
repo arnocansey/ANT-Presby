@@ -461,4 +461,23 @@ describe('Albums API (admin)', () => {
     expect(models.photoAlbumModel.deleteAlbum).toHaveBeenCalledWith(3);
     expect(models.auditLogModel.createAuditLog).toHaveBeenCalledWith(expect.objectContaining({ action: 'delete', entityId: 3 }));
   });
+
+  test('the album record is deleted before its Cloudinary files, so a failed delete never leaves an album without photos', async () => {
+    await request(app).delete('/api/admin/albums/3').set('Authorization', admin());
+
+    expect(models.photoAlbumModel.deleteAlbum.mock.invocationCallOrder[0]).toBeLessThan(
+      models.imageStorage.deleteAlbumFolder.mock.invocationCallOrder[0]
+    );
+  });
+
+  test('if deleting the album record fails, its photos stay on Cloudinary', async () => {
+    models.photoAlbumModel.deleteAlbum.mockRejectedValue(new Error('db down'));
+    const quiet = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const response = await request(app).delete('/api/admin/albums/3').set('Authorization', admin());
+
+    expect(response.status).toBe(500);
+    expect(models.imageStorage.deleteAlbumFolder).not.toHaveBeenCalled();
+    quiet.mockRestore();
+  });
 });

@@ -1,15 +1,17 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import apiClient from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import PageHeader from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Field, FormActions, FormSection, formGridClass } from '@/components/admin/form-layout';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
 
 type MinistryForm = {
   name: string;
@@ -32,34 +34,31 @@ export default function NewMinistryPage() {
   };
 
   return (
-    <div className="container-max py-12">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl tracking-tight">New Ministry</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="ministry-name">Name</Label>
-              <Input id="ministry-name" {...register('name', { required: true })} />
-            </div>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Ministries', href: '/admin/ministries' }, { label: 'New ministry' }]}
+        title="New ministry"
+      />
 
-            <div className="space-y-2">
-              <Label htmlFor="ministry-leader-name">Leader Name</Label>
-              <Input id="ministry-leader-name" {...register('leaderName')} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="ministry-description">Description</Label>
-              <Textarea id="ministry-description" rows={5} {...register('description')} />
-            </div>
-
-            <div className="flex items-center justify-end">
-              <Button type="submit">Create Ministry</Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+      <FormSection title="Ministry details">
+        <form onSubmit={handleSubmit(onSubmit)} className={formGridClass}>
+          <Field label="Name" htmlFor="ministry-name">
+            <Input id="ministry-name" {...register('name', { required: true })} />
+          </Field>
+          <Field label="Leader name" htmlFor="ministry-leader-name">
+            <Input id="ministry-leader-name" {...register('leaderName')} />
+          </Field>
+          <Field label="Description" htmlFor="ministry-description" full>
+            <Textarea id="ministry-description" rows={5} {...register('description')} />
+          </Field>
+          <FormActions>
+            <Button type="submit">Create ministry</Button>
+            <Button asChild variant="secondary">
+              <Link href="/admin/ministries">Cancel</Link>
+            </Button>
+          </FormActions>
+        </form>
+      </FormSection>
     </div>
   );
 }

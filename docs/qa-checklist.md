@@ -162,3 +162,21 @@ Check each page at 375px and 1280px wide, in Light and in Dark (header theme tog
 - [ ] Tab shows a visible focus ring on every link, button, field, photo and lightbox control
 - [ ] About shows tiles for Ministries, Contact, FAQ, Privacy and Terms; FAQ, Privacy and Terms link back to About
 - [ ] A draft album's public link still says "Album not found"
+
+## Admin Redesign (Phase 8c)
+
+Check each item at 375px and 1280px wide, in light and dark mode.
+
+- [ ] The sidebar has five groups: Overview (Dashboard, Activity log), Content (Sermons & series, Devotionals, News, Gallery, Announcements, Livestream), Church life (Events, Attendance, Ministries, Small groups, Prayer requests), People & giving (Members, Donations) and Settings
+- [ ] The current page is highlighted in the sidebar, including sub-pages (`/admin/series`, `/admin/events/new`, `/admin/gallery/<id>`)
+- [ ] On desktop, "Collapse sidebar" shrinks it to icons and the choice survives a reload
+- [ ] On a phone, Menu opens the admin drawer; focus goes to Close, Tab stays inside, Escape or the dimmed area closes it, the page behind does not scroll, and focus returns to Menu
+- [ ] Choosing a link in the drawer opens the page and closes the drawer; widening the window to desktop closes it too
+- [ ] The dashboard shows Members, Giving this month (GH₵), Upcoming events and Pending prayer requests, each linking to its page; quick actions and recent activity work
+- [ ] Every admin page has a title with a breadcrumb starting "Admin"
+- [ ] Every list shows skeletons while loading, a friendly message when empty (a different one when a search finds nothing), and "Couldn't load …" with Try again when the backend is down
+- [ ] On a phone, every table row shows its actions (Edit, Delete, Approve, Mark completed, Make admin, Check in…) and nothing scrolls sideways
+- [ ] Forms are two columns on desktop and one column on phones; required fields still refuse to submit when empty
+- [ ] Deleting a sermon, series, devotional, event, ministry, album, photo or news post, deactivating a group, and ending the livestream all ask for confirmation first, with Cancel focused
+- [ ] Sermons and Series switch with the tabs under the page title
+- [ ] Dark mode: no white panels, grey chips or unreadable text anywhere in admin

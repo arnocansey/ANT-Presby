@@ -195,3 +195,11 @@ Current media behavior:
 - Give shows the GH₵ currency in its own box beside the amount.
 - About links to Ministries, Contact, FAQ, Privacy and Terms.
 - Shared website pieces live in `frontend/src/components/site/` (BackLink, SearchField, MediaPlaceholder, SkeletonGrid, StatusMessage, DateBadge, LegalDocument). They are candidates to move into `components/ui` once the admin and app restyles have merged.
+
+## Admin Redesign
+
+- The web admin uses the Clean & classic design system. Its sidebar has five groups: Overview, Content, Church life, People & giving, and Settings. On desktop it can be collapsed to icons (remembered on that browser); on phones it opens as a drawer from the Menu button.
+- The dashboard shows four key figures (members, giving this month in GH₵, upcoming events and pending prayer requests), quick actions (new sermon, event or ministry, write a devotional, send an announcement, go live) and recent activity, followed by giving by month, donation mix, publishing, engagement and top events.
+- Every admin page has the same title bar with a breadcrumb, the same table (which becomes cards on phones), and the same two-column form layout (one column on phones). Lists show loading placeholders, friendly empty messages and a "Try again" message when they can't load.
+- Sermons and series share one sidebar entry and switch with tabs. Members (`/admin/users`) and Activity log (`/admin/audit`) keep their addresses.
+- Deleting a news post and ending the livestream now ask for confirmation, like every other delete.

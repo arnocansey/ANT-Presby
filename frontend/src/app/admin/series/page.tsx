@@ -2,12 +2,16 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
+import PageHeader from '@/components/ui/page-header';
+import SimpleTable from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import AdminSubNav from '@/components/admin/sub-nav';
+import { Field, FormActions, FormSection, formGridClass } from '@/components/admin/form-layout';
+import { LoadError, TableSkeleton } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB, SERMON_TABS } from '@/components/admin/admin-nav';
 import {
   useDeleteSermonSeries,
   useSaveSermonSeries,
@@ -24,7 +28,7 @@ const EMPTY: SeriesInput = { title: '', description: '', coverImageUrl: '', star
 const toDateInput = (value: string | null) => (value ? value.slice(0, 10) : '');
 
 export default function AdminSeriesPage() {
-  const { data: seriesList, isLoading } = useSermonSeriesList();
+  const { data: seriesList, isLoading, isError, refetch } = useSermonSeriesList();
   const save = useSaveSermonSeries();
   const remove = useDeleteSermonSeries();
   const upload = useUploadSeriesCover();
@@ -68,109 +72,134 @@ export default function AdminSeriesPage() {
   };
 
   return (
-    <div className="container-max space-y-6 py-12">
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Sermon Series</h1>
-        <p className="mt-2 text-sm text-ui-subtle">
-          Group sermons into series. Deleting a series keeps its sermons; they just lose the series label.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Series' }]}
+        title="Sermon series"
+        description="Group sermons into series. Deleting a series keeps its sermons; they just lose the series label."
+      />
+      <AdminSubNav label="Sermons and series" items={SERMON_TABS} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{editingId ? 'Edit series' : 'New series'}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="series-title">Title</Label>
-              <Input id="series-title" value={form.title} onChange={set('title')} required maxLength={255} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="series-description">Description</Label>
-              <Textarea id="series-description" rows={3} value={form.description} onChange={set('description')} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="series-start">Start date</Label>
-              <Input id="series-start" type="date" value={form.startDate} onChange={set('startDate')} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="series-end">End date</Label>
-              <Input id="series-end" type="date" value={form.endDate} min={form.startDate || undefined} onChange={set('endDate')} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="series-cover">Cover image</Label>
-              <div className="flex flex-wrap items-center gap-3">
-                {form.coverImageUrl && (
-                  <Image
-                    src={resolveAssetUrl(form.coverImageUrl)}
-                    alt="Series cover"
-                    width={120}
-                    height={68}
-                    unoptimized
-                    className="h-auto w-[120px] rounded-lg object-cover"
-                  />
-                )}
-                <Input
-                  id="series-cover"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  onChange={onCoverChange}
-                  disabled={upload.isPending}
-                  className="max-w-xs"
+      <FormSection title={editingId ? 'Edit series' : 'New series'}>
+        <form onSubmit={onSubmit} className={formGridClass}>
+          <Field label="Title" htmlFor="series-title" full>
+            <Input id="series-title" value={form.title} onChange={set('title')} required maxLength={255} />
+          </Field>
+          <Field label="Description" htmlFor="series-description" full>
+            <Textarea id="series-description" rows={3} value={form.description} onChange={set('description')} />
+          </Field>
+          <Field label="Start date" htmlFor="series-start">
+            <Input id="series-start" type="date" value={form.startDate} onChange={set('startDate')} />
+          </Field>
+          <Field label="End date" htmlFor="series-end">
+            <Input
+              id="series-end"
+              type="date"
+              value={form.endDate}
+              min={form.startDate || undefined}
+              onChange={set('endDate')}
+            />
+          </Field>
+          <Field label="Cover image" htmlFor="series-cover" full>
+            <div className="flex flex-wrap items-center gap-3">
+              {form.coverImageUrl && (
+                <Image
+                  src={resolveAssetUrl(form.coverImageUrl)}
+                  alt="Series cover"
+                  width={120}
+                  height={68}
+                  unoptimized
+                  className="h-auto w-[120px] rounded-lg border border-border object-cover"
                 />
-                {form.coverImageUrl && (
-                  <Button type="button" variant="outline" size="sm" onClick={() => setForm((c) => ({ ...c, coverImageUrl: '' }))}>
-                    Remove cover
-                  </Button>
-                )}
-              </div>
-            </div>
-            <div className="flex gap-3 md:col-span-2">
-              <Button type="submit" disabled={save.isPending || upload.isPending}>
-                {editingId ? 'Save changes' : 'Create series'}
-              </Button>
-              {editingId && (
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Cancel
+              )}
+              <Input
+                id="series-cover"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={onCoverChange}
+                disabled={upload.isPending}
+                className="max-w-xs"
+              />
+              {form.coverImageUrl && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setForm((c) => ({ ...c, coverImageUrl: '' }))}
+                >
+                  Remove cover
                 </Button>
               )}
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </Field>
+          <FormActions>
+            <Button type="submit" disabled={save.isPending || upload.isPending}>
+              {editingId ? 'Save changes' : 'Create series'}
+            </Button>
+            {editingId && (
+              <Button type="button" variant="secondary" onClick={resetForm}>
+                Cancel
+              </Button>
+            )}
+          </FormActions>
+        </form>
+      </FormSection>
 
       {isLoading ? (
-        <p className="text-sm text-ui-subtle">Loading series...</p>
-      ) : !seriesList || seriesList.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="p-4 text-sm text-ui-subtle">No series yet.</CardContent>
-        </Card>
+        <TableSkeleton rows={3} label="Loading series" />
+      ) : isError && !seriesList ? (
+        <LoadError what="series" onRetry={() => refetch()} />
       ) : (
-        <div className="space-y-3">
-          {seriesList.map((series) => (
-            <Card key={series.id}>
-              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <p className="truncate font-semibold">{series.title}</p>
-                  <p className="text-xs text-ui-subtle">
-                    {series.sermon_count} {series.sermon_count === 1 ? 'sermon' : 'sermons'}
-                    {series.start_date ? ` · ${formatDateOnly(series.start_date)}` : ''}
+        <SimpleTable
+          emptyMessage="No series yet."
+          columns={[
+            {
+              key: 'title',
+              header: 'Series',
+              render: (series: SermonSeriesSummary) => <p className="font-semibold text-foreground">{series.title}</p>,
+            },
+            {
+              key: 'sermon_count',
+              header: 'Sermons',
+              render: (series: SermonSeriesSummary) =>
+                `${series.sermon_count} ${series.sermon_count === 1 ? 'sermon' : 'sermons'}`,
+            },
+            {
+              key: 'start_date',
+              header: 'Dates',
+              render: (series: SermonSeriesSummary) =>
+                series.start_date || series.end_date ? (
+                  <span>
+                    {series.start_date ? formatDateOnly(series.start_date) : ''}
                     {series.end_date ? ` – ${formatDateOnly(series.end_date)}` : ''}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => startEdit(series)}>
+                  </span>
+                ) : (
+                  <span className="text-muted">No dates</span>
+                ),
+            },
+            {
+              key: 'actions',
+              header: 'Actions',
+              render: (series: SermonSeriesSummary) => (
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => startEdit(series)} aria-label={`Edit ${series.title}`}>
                     Edit
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setPendingDelete(series)} disabled={remove.isPending}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setPendingDelete(series)}
+                    disabled={remove.isPending}
+                    aria-label={`Delete ${series.title}`}
+                  >
                     Delete
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              ),
+            },
+          ]}
+          data={seriesList ?? []}
+        />
       )}
 
       {pendingDelete && (

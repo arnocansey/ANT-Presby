@@ -126,7 +126,7 @@ export default function AdminSermonEditScreen() {
             value={selectedSeriesId}
             onChange={(value) => setValue('seriesId', value)}
           />
-          <AppButton label="Save changes" onPress={handleSubmit(onSubmit)} />
+          <AppButton label="Save changes" onPress={handleSubmit(onSubmit)} loading={updateMutation.isPending} />
           {updateMutation.isError ? (
             <FormMessage tone="danger">{getApiErrorMessage(updateMutation.error, 'Failed to update sermon.')}</FormMessage>
           ) : null}

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Controller, type Control, type FieldValues, type Path } from 'react-hook-form';
-import { Pressable, StyleSheet, Switch, View } from 'react-native';
+import { AccessibilityInfo, Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { ChipGroup } from '@/components/kit/chips';
 import { AppText } from '@/components/ui/app-text';
@@ -125,6 +125,11 @@ export function CheckboxRow({ label, checked, onToggle }: { label: string; check
 export function FormMessage({ tone, children }: { tone: 'danger' | 'success'; children: string }) {
   const { colors } = useAppTheme();
   const color = tone === 'danger' ? colors.danger : colors.success;
+
+  // Live regions only work on Android; announce explicitly so iOS VoiceOver users hear it too.
+  React.useEffect(() => {
+    if (children) AccessibilityInfo.announceForAccessibility(children);
+  }, [children]);
   return (
     <View accessibilityLiveRegion="polite" style={[styles.message, { borderColor: color, backgroundColor: colors.surface }]}>
       <Ionicons name={tone === 'danger' ? 'alert-circle-outline' : 'checkmark-circle-outline'} size={18} color={color} />

@@ -44,13 +44,16 @@ const PAYMENT_METHODS: { value: DonationFormValues['paymentMethod']; label: stri
 
 export default function DonateScreen() {
   const user = useAuthStore((state) => state.user);
-  const params = useLocalSearchParams<{ reference?: string | string[] }>();
+  const params = useLocalSearchParams<{ reference?: string | string[]; amount?: string | string[] }>();
   const donationMutation = useInitializeDonationPayment();
   const verifyDonationMutation = useVerifyDonationPayment();
-  const [verifiedReference, setVerifiedReference] = React.useState<string | null>(null);
+  const verifyDonation = verifyDonationMutation.mutateAsync;
+  // Set before the request (not after it), so re-renders while it is pending never send it again.
+  const verifiedReferenceRef = React.useRef<string | null>(null);
   const {
     control,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<DonationFormInput, unknown, DonationFormValues>({
     resolver: zodResolver(donationSchema),
@@ -68,18 +71,19 @@ export default function DonateScreen() {
     WebBrowser.maybeCompleteAuthSession();
   }, []);
 
+  // A quick-amount link (e.g. GH₵50 on the Events tab) opens Give with that amount filled in.
+  const incomingAmount = Number(Array.isArray(params.amount) ? params.amount[0] : params.amount);
   React.useEffect(() => {
-    const verify = async () => {
-      if (!user || !incomingReference || verifiedReference === incomingReference) return;
-      try {
-        await verifyDonationMutation.mutateAsync(incomingReference);
-      } finally {
-        setVerifiedReference(incomingReference);
-      }
-    };
+    if (Number.isFinite(incomingAmount) && incomingAmount > 0) {
+      setValue('amount', incomingAmount, { shouldValidate: true });
+    }
+  }, [incomingAmount, setValue]);
 
-    void verify();
-  }, [incomingReference, user, verifiedReference, verifyDonationMutation]);
+  React.useEffect(() => {
+    if (!user || !incomingReference || verifiedReferenceRef.current === incomingReference) return;
+    verifiedReferenceRef.current = incomingReference;
+    verifyDonation(incomingReference).catch(() => undefined);
+  }, [incomingReference, user, verifyDonation]);
 
   const onSubmit = async (values: DonationFormValues) => {
     const callbackUrl = Linking.createURL('donate');
@@ -165,13 +169,7 @@ export default function DonateScreen() {
                 label={formatCedis(amount, 0)}
                 variant="secondary"
                 size="sm"
-                onPress={() => {
-                  const currentValues = control._formValues as DonationFormInput;
-                  control._reset({
-                    ...currentValues,
-                    amount,
-                  });
-                }}
+                onPress={() => setValue('amount', amount, { shouldValidate: true })}
               />
             </View>
           ))}

@@ -98,7 +98,7 @@ export default function AdminNewsScreen() {
           name="notifySubscribers"
           render={({ field: { onChange, value } }) => <SwitchRow label="Notify subscribers" value={value} onValueChange={onChange} />}
         />
-        <AppButton label="Create news post" onPress={handleSubmit(onSubmit)} />
+        <AppButton label="Create news post" onPress={handleSubmit(onSubmit)} loading={createMutation.isPending} />
         {createMutation.isError ? <FormMessage tone="danger">{createErrorMessage}</FormMessage> : null}
       </AppCard>
 

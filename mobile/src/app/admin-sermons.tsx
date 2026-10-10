@@ -112,7 +112,7 @@ export default function AdminSermonsScreen() {
         ) : (
           <FormTextField control={control} name="ministryId" label="Ministry ID" placeholder="Numeric ministry ID" keyboardType="number-pad" />
         )}
-        <AppButton label="Create sermon" onPress={handleSubmit(onSubmit)} />
+        <AppButton label="Create sermon" onPress={handleSubmit(onSubmit)} loading={createMutation.isPending} />
         {createError ? <FormMessage tone="danger">{createError}</FormMessage> : null}
       </AppCard>
 

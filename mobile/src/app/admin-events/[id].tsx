@@ -133,7 +133,7 @@ export default function AdminEventEditScreen() {
             />
             <FormTextField control={control} name="location" label="Location" placeholder="Event location" />
             <FormTextField control={control} name="maxRegistrations" label="Max registrations" placeholder="Optional capacity" keyboardType="number-pad" />
-            <AppButton label="Save changes" onPress={handleSubmit(onSubmit)} />
+            <AppButton label="Save changes" onPress={handleSubmit(onSubmit)} loading={updateMutation.isPending} />
             {updateMutation.isError ? (
               <FormMessage tone="danger">{getApiErrorMessage(updateMutation.error, 'Failed to update event.')}</FormMessage>
             ) : null}

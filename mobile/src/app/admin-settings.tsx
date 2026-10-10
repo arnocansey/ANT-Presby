@@ -2,7 +2,7 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 
 import { AdminShell } from '@/components/admin-shell';
-import { FormMessage, FormTextField, LoadingList, Screen, ScreenHeader } from '@/components/kit';
+import { ErrorState, FormMessage, FormTextField, LoadingList, Screen, ScreenHeader } from '@/components/kit';
 import { AppText } from '@/components/ui/app-text';
 import { AppButton } from '@/components/ui/button';
 import { AppCard } from '@/components/ui/card';
@@ -79,6 +79,9 @@ export default function AdminSettingsScreen() {
         </AppText>
         {settingsQuery.isLoading ? (
           <LoadingList count={4} height={44} />
+        ) : settingsQuery.isError && !settingsQuery.data ? (
+          // Never show an empty form after a failed load: saving it would wipe the real settings.
+          <ErrorState title="Could not load settings" onRetry={() => settingsQuery.refetch()} />
         ) : (
           <>
             <FormTextField control={control} name="siteTitle" label="Site title" placeholder="ANT PRESS" />
@@ -104,7 +107,7 @@ export default function AdminSettingsScreen() {
               placeholder="Thank you for your donation."
               multiline
             />
-            <AppButton label="Save settings" onPress={handleSubmit(onSubmit)} />
+            <AppButton label="Save settings" onPress={handleSubmit(onSubmit)} loading={updateMutation.isPending} />
             {statusMessage ? (
               <FormMessage tone={updateMutation.isSuccess ? 'success' : 'danger'}>{statusMessage}</FormMessage>
             ) : null}

@@ -104,7 +104,7 @@ export default function AdminNewsEditScreen() {
               <SwitchRow label="Notify subscribers" value={Boolean(value)} onValueChange={onChange} />
             )}
           />
-          <AppButton label="Save changes" onPress={handleSubmit(onSubmit)} />
+          <AppButton label="Save changes" onPress={handleSubmit(onSubmit)} loading={updateMutation.isPending} />
           {updateMutation.isError ? (
             <FormMessage tone="danger">{getApiErrorMessage(updateMutation.error, 'Failed to update news post.')}</FormMessage>
           ) : null}

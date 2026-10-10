@@ -57,7 +57,7 @@ export default function ContactScreen() {
         />
         <FormTextField control={control} name="subject" label="Subject" placeholder="Message subject" />
         <FormTextField control={control} name="message" label="Message" placeholder="Write your message" multiline />
-        <AppButton label="Send message" onPress={handleSubmit(onSubmit)} />
+        <AppButton label="Send message" onPress={handleSubmit(onSubmit)} loading={submitMutation.isPending} />
         {message ? <FormMessage tone={submitMutation.isSuccess ? 'success' : 'danger'}>{message}</FormMessage> : null}
       </AppCard>
     </Screen>

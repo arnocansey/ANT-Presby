@@ -95,7 +95,7 @@ export default function AdminEventsScreen() {
         />
         <FormTextField control={control} name="location" label="Location" placeholder="Event location" />
         <FormTextField control={control} name="maxRegistrations" label="Max registrations" placeholder="Optional capacity" keyboardType="number-pad" />
-        <AppButton label="Create event" onPress={handleSubmit(onSubmit)} />
+        <AppButton label="Create event" onPress={handleSubmit(onSubmit)} loading={createMutation.isPending} />
         {createMutation.isError ? <FormMessage tone="danger">{createErrorMessage}</FormMessage> : null}
       </AppCard>
 

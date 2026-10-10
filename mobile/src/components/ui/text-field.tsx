@@ -14,6 +14,8 @@ export function TextField({ label, error, hint, style, ...props }: TextInputProp
       </AppText>
       <TextInput
         accessibilityLabel={label}
+        // VoiceOver/TalkBack read the error (or hint) with the field, so the reason is never silent.
+        accessibilityHint={error || hint}
         placeholderTextColor={colors.muted}
         style={[
           styles.input,

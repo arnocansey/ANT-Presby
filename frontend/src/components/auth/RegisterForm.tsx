@@ -1,60 +1,63 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Eye, EyeOff, Lock, Mail, MailCheck, Phone, User } from 'lucide-react';
-import StatusMessage from '@/components/site/StatusMessage';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useGoogleLogin, useRegister } from '@/hooks/useApi';
-import { requestGoogleAccessToken } from '@/lib/google-oauth';
-import { useAuthStore } from '@/lib/store';
+import React from "react";
+import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Eye, EyeOff, Lock, Mail, MailCheck, Phone, User } from "lucide-react";
+import StatusMessage from "@/components/site/StatusMessage";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useGoogleLogin, useRegister } from "@/hooks/useApi";
+import { requestGoogleAccessToken } from "@/lib/google-oauth";
+import { useAuthStore } from "@/lib/store";
 
 const registerSchema = z
   .object({
-    firstName: z.string().min(2, 'First name must be at least 2 characters'),
-    lastName: z.string().min(2, 'Last name must be at least 2 characters'),
-    email: z.string().email('Invalid email address'),
-    phone: z.string().min(10, 'Phone number must be at least 10 characters'),
+    firstName: z.string().min(2, "First name must be at least 2 characters"),
+    lastName: z.string().min(2, "Last name must be at least 2 characters"),
+    email: z.string().email("Invalid email address"),
+    phone: z.string().min(10, "Phone number must be at least 10 characters"),
     password: z
       .string()
-      .min(8, 'Password must be at least 8 characters')
-      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-      .regex(/[0-9]/, 'Password must contain at least one number'),
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+      .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+      .regex(/[0-9]/, "Password must contain at least one number"),
     confirmPassword: z.string(),
     acceptedTerms: z.boolean(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match',
-    path: ['confirmPassword'],
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
   })
   .refine((data) => data.acceptedTerms === true, {
-    message: 'You must accept the terms and agreement',
-    path: ['acceptedTerms'],
+    message: "You must accept the terms and agreement",
+    path: ["acceptedTerms"],
   });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
-const iconClass = 'pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted';
+const iconClass =
+  "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted";
 
 export default function RegisterForm() {
   const registerMutation = useRegister();
   const googleLoginMutation = useGoogleLogin();
   const { setUser, setIsAuthenticated } = useAuthStore();
   const [showPassword, setShowPassword] = React.useState(false);
-  const [registeredEmail, setRegisteredEmail] = React.useState<string | null>(null);
+  const [registeredEmail, setRegisteredEmail] = React.useState<string | null>(
+    null,
+  );
   const registerErrorMessage =
     (registerMutation.error as any)?.response?.data?.message ||
     (registerMutation.error as any)?.response?.data?.error ||
     (registerMutation.error as any)?.response?.data?.details?.[0]?.message ||
     (registerMutation.error as Error | null)?.message ||
-    'Could not create account. Please check your details and try again.';
+    "Could not create account. Please check your details and try again.";
 
   const {
     register,
@@ -76,21 +79,22 @@ export default function RegisterForm() {
       });
       setRegisteredEmail(response?.data?.email || data.email);
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error("Registration error:", error);
     }
   };
 
   const handleGoogleRegister = async () => {
     try {
-      const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+      const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
       const accessToken = await requestGoogleAccessToken(googleClientId);
       const response = await googleLoginMutation.mutateAsync(accessToken);
       const authenticatedUser = response?.user ?? null;
       setUser(authenticatedUser);
       setIsAuthenticated(Boolean(authenticatedUser));
-      window.location.href = authenticatedUser?.role === 'admin' ? '/admin/dashboard' : '/dashboard';
+      window.location.href =
+        authenticatedUser?.role === "admin" ? "/admin/dashboard" : "/dashboard";
     } catch (error) {
-      console.error('Google registration error:', error);
+      console.error("Google registration error:", error);
     }
   };
 
@@ -101,8 +105,12 @@ export default function RegisterForm() {
           <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-card bg-primary text-primary-foreground">
             <User className="h-7 w-7" aria-hidden="true" />
           </span>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Join ANT PRESS</h1>
-          <p className="mt-2 text-sm text-muted">Create your account and stay connected</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Join ANT PRESS
+          </h1>
+          <p className="mt-2 text-sm text-muted">
+            Create your account and stay connected
+          </p>
         </div>
 
         <Card>
@@ -113,18 +121,27 @@ export default function RegisterForm() {
                   <MailCheck className="h-6 w-6" aria-hidden="true" />
                 </span>
                 <div className="space-y-2">
-                  <h2 className="text-xl font-bold tracking-tight text-foreground">Check your email</h2>
+                  <h2 className="text-xl font-bold tracking-tight text-foreground">
+                    Check your email
+                  </h2>
                   <p className="text-sm leading-relaxed text-muted">
-                    We sent a verification link to{' '}
-                    <span className="break-all font-semibold text-foreground">{registeredEmail}</span>.
-                    Open that message and click the link before signing in.
+                    We sent a verification link to{" "}
+                    <span className="break-all font-semibold text-foreground">
+                      {registeredEmail}
+                    </span>
+                    . Open that message and click the link before signing in.
                   </p>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Button asChild size="lg">
                     <Link href="/login">Go to Sign In</Link>
                   </Button>
-                  <Button type="button" size="lg" variant="secondary" onClick={() => setRegisteredEmail(null)}>
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant="secondary"
+                    onClick={() => setRegisteredEmail(null)}
+                  >
                     Register another account
                   </Button>
                 </div>
@@ -141,11 +158,24 @@ export default function RegisterForm() {
                           id="register-first-name"
                           placeholder="First name"
                           className="pl-10"
-                          aria-invalid={errors.firstName ? 'true' : undefined}
-                          {...register('firstName')}
+                          aria-invalid={errors.firstName ? "true" : undefined}
+                          aria-describedby={
+                            errors.firstName
+                              ? "register-firstName-error"
+                              : undefined
+                          }
+                          {...register("firstName")}
                         />
                       </div>
-                      {errors.firstName && <p className="text-sm text-danger">{errors.firstName.message}</p>}
+                      {errors.firstName && (
+                        <p
+                          id="register-firstName-error"
+                          role="alert"
+                          className="text-sm text-danger"
+                        >
+                          {errors.firstName.message}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -153,10 +183,23 @@ export default function RegisterForm() {
                       <Input
                         id="register-last-name"
                         placeholder="Last name"
-                        aria-invalid={errors.lastName ? 'true' : undefined}
-                        {...register('lastName')}
+                        aria-invalid={errors.lastName ? "true" : undefined}
+                        aria-describedby={
+                          errors.lastName
+                            ? "register-lastName-error"
+                            : undefined
+                        }
+                        {...register("lastName")}
                       />
-                      {errors.lastName && <p className="text-sm text-danger">{errors.lastName.message}</p>}
+                      {errors.lastName && (
+                        <p
+                          id="register-lastName-error"
+                          role="alert"
+                          className="text-sm text-danger"
+                        >
+                          {errors.lastName.message}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -169,11 +212,22 @@ export default function RegisterForm() {
                         type="email"
                         placeholder="Email address"
                         className="pl-10"
-                        aria-invalid={errors.email ? 'true' : undefined}
-                        {...register('email')}
+                        aria-invalid={errors.email ? "true" : undefined}
+                        aria-describedby={
+                          errors.email ? "register-email-error" : undefined
+                        }
+                        {...register("email")}
                       />
                     </div>
-                    {errors.email && <p className="text-sm text-danger">{errors.email.message}</p>}
+                    {errors.email && (
+                      <p
+                        id="register-email-error"
+                        role="alert"
+                        className="text-sm text-danger"
+                      >
+                        {errors.email.message}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -185,11 +239,22 @@ export default function RegisterForm() {
                         type="tel"
                         placeholder="Phone number"
                         className="pl-10"
-                        aria-invalid={errors.phone ? 'true' : undefined}
-                        {...register('phone')}
+                        aria-invalid={errors.phone ? "true" : undefined}
+                        aria-describedby={
+                          errors.phone ? "register-phone-error" : undefined
+                        }
+                        {...register("phone")}
                       />
                     </div>
-                    {errors.phone && <p className="text-sm text-danger">{errors.phone.message}</p>}
+                    {errors.phone && (
+                      <p
+                        id="register-phone-error"
+                        role="alert"
+                        className="text-sm text-danger"
+                      >
+                        {errors.phone.message}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -198,39 +263,76 @@ export default function RegisterForm() {
                       <Lock className={iconClass} aria-hidden="true" />
                       <Input
                         id="register-password"
-                        type={showPassword ? 'text' : 'password'}
+                        type={showPassword ? "text" : "password"}
                         placeholder="Create password"
                         className="pl-10 pr-12"
-                        aria-invalid={errors.password ? 'true' : undefined}
-                        aria-describedby="register-password-hint"
-                        {...register('password')}
+                        aria-invalid={errors.password ? "true" : undefined}
+                        aria-describedby={
+                          errors.password
+                            ? "register-password-hint register-password-error"
+                            : "register-password-hint"
+                        }
+                        {...register("password")}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword((current) => !current)}
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        aria-label={
+                          showPassword ? "Hide password" : "Show password"
+                        }
                         aria-pressed={showPassword}
                         className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center rounded-lg text-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" aria-hidden="true" />
+                        ) : (
+                          <Eye className="h-4 w-4" aria-hidden="true" />
+                        )}
                       </button>
                     </div>
-                    <p id="register-password-hint" className="text-xs text-muted">
-                      At least 8 characters, with an uppercase letter, a lowercase letter and a number.
+                    <p
+                      id="register-password-hint"
+                      className="text-xs text-muted"
+                    >
+                      At least 8 characters, with an uppercase letter, a
+                      lowercase letter and a number.
                     </p>
-                    {errors.password && <p className="text-sm text-danger">{errors.password.message}</p>}
+                    {errors.password && (
+                      <p
+                        id="register-password-error"
+                        role="alert"
+                        className="text-sm text-danger"
+                      >
+                        {errors.password.message}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="register-confirm-password">Confirm password</Label>
+                    <Label htmlFor="register-confirm-password">
+                      Confirm password
+                    </Label>
                     <Input
                       id="register-confirm-password"
-                      type={showPassword ? 'text' : 'password'}
+                      type={showPassword ? "text" : "password"}
                       placeholder="Confirm password"
-                      aria-invalid={errors.confirmPassword ? 'true' : undefined}
-                      {...register('confirmPassword')}
+                      aria-invalid={errors.confirmPassword ? "true" : undefined}
+                      aria-describedby={
+                        errors.confirmPassword
+                          ? "register-confirmPassword-error"
+                          : undefined
+                      }
+                      {...register("confirmPassword")}
                     />
-                    {errors.confirmPassword && <p className="text-sm text-danger">{errors.confirmPassword.message}</p>}
+                    {errors.confirmPassword && (
+                      <p
+                        id="register-confirmPassword-error"
+                        role="alert"
+                        className="text-sm text-danger"
+                      >
+                        {errors.confirmPassword.message}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -241,31 +343,58 @@ export default function RegisterForm() {
                       <input
                         id="register-terms"
                         type="checkbox"
-                        aria-invalid={errors.acceptedTerms ? 'true' : undefined}
-                        {...register('acceptedTerms')}
+                        aria-invalid={errors.acceptedTerms ? "true" : undefined}
+                        aria-describedby={
+                          errors.acceptedTerms
+                            ? "register-acceptedTerms-error"
+                            : undefined
+                        }
+                        {...register("acceptedTerms")}
                         className="mt-0.5 h-5 w-5 shrink-0 rounded border-input accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                       <span>
-                        I agree to the{' '}
-                        <Link href="/terms" className="font-semibold text-link hover:underline">
+                        I agree to the{" "}
+                        <Link
+                          href="/terms"
+                          className="font-semibold text-link hover:underline"
+                        >
                           Terms and Agreement
                         </Link>
                         .
                       </span>
                     </label>
-                    {errors.acceptedTerms && <p className="text-sm text-danger">{errors.acceptedTerms.message}</p>}
+                    {errors.acceptedTerms && (
+                      <p
+                        id="register-acceptedTerms-error"
+                        role="alert"
+                        className="text-sm text-danger"
+                      >
+                        {errors.acceptedTerms.message}
+                      </p>
+                    )}
                   </div>
 
-                  <Button type="submit" size="lg" className="w-full" loading={isSubmitting}>
-                    {isSubmitting ? 'Creating account...' : 'Create Account'}
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="w-full"
+                    loading={isSubmitting}
+                  >
+                    {isSubmitting ? "Creating account..." : "Create Account"}
                   </Button>
 
-                  {registerMutation.isError && <StatusMessage tone="danger">{registerErrorMessage}</StatusMessage>}
+                  {registerMutation.isError && (
+                    <StatusMessage tone="danger">
+                      {registerErrorMessage}
+                    </StatusMessage>
+                  )}
                 </form>
 
                 <div className="flex items-center gap-3">
                   <div className="h-px flex-1 bg-border" />
-                  <span className="text-xs uppercase tracking-[0.14em] text-muted">or use Google</span>
+                  <span className="text-xs uppercase tracking-[0.14em] text-muted">
+                    or use Google
+                  </span>
                   <div className="h-px flex-1 bg-border" />
                 </div>
 
@@ -277,12 +406,17 @@ export default function RegisterForm() {
                   onClick={handleGoogleRegister}
                   loading={googleLoginMutation.isPending}
                 >
-                  {googleLoginMutation.isPending ? 'Connecting to Google...' : 'Continue with Google'}
+                  {googleLoginMutation.isPending
+                    ? "Connecting to Google..."
+                    : "Continue with Google"}
                 </Button>
 
                 <p className="text-center text-sm text-muted">
-                  Already have an account?{' '}
-                  <Link href="/login" className="font-semibold text-link hover:underline">
+                  Already have an account?{" "}
+                  <Link
+                    href="/login"
+                    className="font-semibold text-link hover:underline"
+                  >
                     Sign in
                   </Link>
                 </p>

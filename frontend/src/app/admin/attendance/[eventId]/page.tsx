@@ -3,15 +3,31 @@
 import React from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { CalendarX } from 'lucide-react';
+import EmptyState from '@/components/ui/empty-state';
+import PageHeader from '@/components/ui/page-header';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FormSection } from '@/components/admin/form-layout';
+import { CardListSkeleton, LoadError } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
 import { useCheckIn, useEventAttendance, useMemberSearch, useUndoCheckIn } from '@/hooks/useApi';
 import { formatDateTime } from '@/lib/utils';
 
 const fullName = (person: { first_name: string; last_name: string }) =>
   `${person.first_name || ''} ${person.last_name || ''}`.trim() || 'Member';
+
+const crumbs = [ADMIN_HOME_CRUMB, { label: 'Attendance', href: '/admin/attendance' }];
+
+function Empty({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="rounded-lg border border-dashed border-input bg-surface/50 px-4 py-6 text-center text-sm text-muted">
+      {children}
+    </p>
+  );
+}
 
 export default function EventCheckInPage() {
   const params = useParams<{ eventId: string }>();
@@ -52,94 +68,91 @@ export default function EventCheckInPage() {
 
   if (notFound) {
     return (
-      <div className="container-max py-12">
-        <p className="text-ui-subtle">This event could not be found.</p>
-        <Link href="/admin/attendance" className="text-sm font-semibold text-sky-700">
-          ← Back to attendance
-        </Link>
+      <div className="space-y-6">
+        <PageHeader breadcrumb={[...crumbs, { label: 'Check-in' }]} title="Check-in" />
+        <EmptyState
+          icon={CalendarX}
+          title="This event could not be found."
+          action={
+            <Button asChild variant="secondary">
+              <Link href="/admin/attendance">Back to attendance</Link>
+            </Button>
+          }
+        />
       </div>
     );
   }
 
   if (error && !sheet) {
     return (
-      <div className="container-max space-y-3 py-12">
-        <p className="text-ui-subtle">Could not load the check-in sheet. Check your connection and try again.</p>
-        <Button variant="outline" onClick={() => refetch()}>
-          Try again
-        </Button>
+      <div className="space-y-6">
+        <PageHeader breadcrumb={[...crumbs, { label: 'Check-in' }]} title="Check-in" />
+        <LoadError what="the check-in sheet" onRetry={() => refetch()} />
       </div>
     );
   }
 
   if (isLoading || !sheet) {
-    return <div className="container-max py-12 text-sm text-ui-subtle">Loading check-in sheet...</div>;
+    return (
+      <div className="space-y-6">
+        <PageHeader breadcrumb={[...crumbs, { label: 'Check-in' }]} title="Check-in" />
+        <CardListSkeleton count={3} label="Loading check-in sheet" className="grid gap-6 lg:grid-cols-2" />
+      </div>
+    );
   }
 
   return (
-    <div className="container-max space-y-6 py-12">
-      <div className="space-y-2">
-        <Link href="/admin/attendance" className="text-sm font-semibold text-sky-700 dark:text-cyan-300">
-          ← Back to attendance
-        </Link>
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{sheet.event.name}</h1>
-        <p className="text-sm text-ui-subtle">
-          {formatDateTime(sheet.event.event_date)}
-          {sheet.event.location ? ` · ${sheet.event.location}` : ''}
-        </p>
-        {cancelled && <p className="text-sm font-semibold text-red-700">This event was cancelled; check-in is closed.</p>}
-        <div className="flex flex-wrap gap-3 pt-2 text-sm">
-          <span className="rounded-full bg-sky-100 px-3 py-1 font-semibold text-sky-900 dark:bg-sky-900/40 dark:text-sky-100">
-            {sheet.totals.total} present
-          </span>
-          <span className="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">
-            {sheet.totals.checked_in_members} members
-          </span>
-          <span className="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">{sheet.totals.guests} guests</span>
-          <span className="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">
-            {sheet.totals.registered} registered
-          </span>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[...crumbs, { label: sheet.event.name }]}
+        title={sheet.event.name}
+        description={`${formatDateTime(sheet.event.event_date)}${sheet.event.location ? ` · ${sheet.event.location}` : ''}`}
+      />
+
+      <div className="space-y-3">
+        {cancelled && (
+          <p role="status" className="text-sm font-semibold text-danger">
+            This event was cancelled; check-in is closed.
+          </p>
+        )}
+        <div className="flex flex-wrap gap-2" aria-label="Totals">
+          <Badge tone="gold">{sheet.totals.total} present</Badge>
+          <Badge tone="neutral">{sheet.totals.checked_in_members} members</Badge>
+          <Badge tone="neutral">{sheet.totals.guests} guests</Badge>
+          <Badge tone="neutral">{sheet.totals.registered} registered</Badge>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Registered ({sheet.registered.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {sheet.registered.length === 0 ? (
-              <p className="text-sm text-ui-subtle">Nobody registered for this event.</p>
-            ) : (
-              <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-                {sheet.registered.map((person) => (
-                  <li key={person.user_id} className="flex items-center justify-between gap-3 py-2">
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium">{fullName(person)}</span>
-                      <span className="block truncate text-xs text-ui-subtle">{person.email}</span>
-                    </span>
-                    {person.checked_in && person.record_id ? (
-                      <Button size="sm" variant="outline" disabled={busy} onClick={() => undo.mutate(person.record_id as number)}>
-                        Undo
-                      </Button>
-                    ) : (
-                      <Button size="sm" disabled={busy || cancelled} onClick={() => checkIn.mutate({ userId: person.user_id })}>
-                        Check in
-                      </Button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+        <FormSection title={`Registered (${sheet.registered.length})`}>
+          {sheet.registered.length === 0 ? (
+            <Empty>Nobody registered for this event.</Empty>
+          ) : (
+            <ul className="divide-y divide-border">
+              {sheet.registered.map((person) => (
+                <li key={person.user_id} className="flex items-center justify-between gap-3 py-2">
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium text-foreground">{fullName(person)}</span>
+                    <span className="block truncate text-xs text-muted">{person.email}</span>
+                  </span>
+                  {person.checked_in && person.record_id ? (
+                    <Button size="sm" variant="secondary" disabled={busy} onClick={() => undo.mutate(person.record_id as number)}>
+                      Undo
+                    </Button>
+                  ) : (
+                    <Button size="sm" disabled={busy || cancelled} onClick={() => checkIn.mutate({ userId: person.user_id })}>
+                      Check in
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </FormSection>
 
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Add someone</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
+          <FormSection title="Add someone">
+            <div className="space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="member-search">Find a member</Label>
                 <Input
@@ -150,22 +163,22 @@ export default function EventCheckInPage() {
                   disabled={cancelled}
                 />
                 {searchTerm.trim().length >= 2 && (
-                  <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-                    {searching && <li className="py-2 text-xs text-ui-subtle">Searching...</li>}
+                  <ul className="divide-y divide-border" aria-live="polite">
+                    {searching && <li className="py-2 text-xs text-muted">Searching...</li>}
                     {!searching && (searchResults ?? []).length === 0 && (
-                      <li className="py-2 text-xs text-ui-subtle">No members match.</li>
+                      <li className="py-2 text-xs text-muted">No members match.</li>
                     )}
                     {(searchResults ?? []).map((member) => {
                       const already = checkedInIds.has(member.id);
                       return (
                         <li key={member.id} className="flex items-center justify-between gap-3 py-2">
                           <span className="min-w-0">
-                            <span className="block truncate font-medium">{fullName(member)}</span>
-                            <span className="block truncate text-xs text-ui-subtle">{member.email}</span>
+                            <span className="block truncate font-medium text-foreground">{fullName(member)}</span>
+                            <span className="block truncate text-xs text-muted">{member.email}</span>
                           </span>
                           <Button
                             size="sm"
-                            variant={already ? 'outline' : 'default'}
+                            variant={already ? 'secondary' : 'primary'}
                             disabled={already || busy || cancelled}
                             onClick={() => checkIn.mutate({ userId: member.id })}
                           >
@@ -194,44 +207,39 @@ export default function EventCheckInPage() {
                   </Button>
                 </div>
               </form>
-            </CardContent>
-          </Card>
+            </div>
+          </FormSection>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">
-                Walk-ins ({sheet.walk_in_members.length + sheet.guests.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {sheet.walk_in_members.length + sheet.guests.length === 0 ? (
-                <p className="text-sm text-ui-subtle">No walk-ins yet.</p>
-              ) : (
-                <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-                  {sheet.walk_in_members.map((person) => (
-                    <li key={`m-${person.record_id}`} className="flex items-center justify-between gap-3 py-2">
-                      <span className="min-w-0 truncate">
-                        {fullName(person)} <span className="text-xs text-ui-subtle">member</span>
-                      </span>
-                      <Button size="sm" variant="outline" disabled={busy} onClick={() => undo.mutate(person.record_id)}>
-                        Undo
-                      </Button>
-                    </li>
-                  ))}
-                  {sheet.guests.map((guest) => (
-                    <li key={`g-${guest.record_id}`} className="flex items-center justify-between gap-3 py-2">
-                      <span className="min-w-0 truncate">
-                        {guest.guest_name} <span className="text-xs text-ui-subtle">guest</span>
-                      </span>
-                      <Button size="sm" variant="outline" disabled={busy} onClick={() => undo.mutate(guest.record_id)}>
-                        Undo
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+          <FormSection title={`Walk-ins (${sheet.walk_in_members.length + sheet.guests.length})`}>
+            {sheet.walk_in_members.length + sheet.guests.length === 0 ? (
+              <Empty>No walk-ins yet.</Empty>
+            ) : (
+              <ul className="divide-y divide-border">
+                {sheet.walk_in_members.map((person) => (
+                  <li key={`m-${person.record_id}`} className="flex items-center justify-between gap-3 py-2">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-foreground">{fullName(person)}</span>
+                      <Badge tone="neutral">Member</Badge>
+                    </span>
+                    <Button size="sm" variant="secondary" disabled={busy} onClick={() => undo.mutate(person.record_id)}>
+                      Undo
+                    </Button>
+                  </li>
+                ))}
+                {sheet.guests.map((guest) => (
+                  <li key={`g-${guest.record_id}`} className="flex items-center justify-between gap-3 py-2">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-foreground">{guest.guest_name}</span>
+                      <Badge tone="gold">Guest</Badge>
+                    </span>
+                    <Button size="sm" variant="secondary" disabled={busy} onClick={() => undo.mutate(guest.record_id)}>
+                      Undo
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </FormSection>
         </div>
       </div>
     </div>

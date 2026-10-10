@@ -1,12 +1,19 @@
 'use client';
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { X } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
+import PageHeader from '@/components/ui/page-header';
+import SimpleTable from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Field, FormActions, FormSection, formGridClass } from '@/components/admin/form-layout';
+import { LoadError, TableSkeleton } from '@/components/admin/states';
+import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
 import {
   useAdminGroups,
   useDeactivateGroup,
@@ -62,23 +69,23 @@ function LeadersEditor({ group, onDone }: { group: GroupSummary; onDone: () => v
     setLeaders((current) => (current.some((l) => l.user_id === leader.user_id) || current.length >= 10 ? current : [...current, leader]));
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Leaders of {group.name}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <FormSection title={`Leaders of ${group.name}`} description="Up to 10 leaders. Leaders approve join requests on the group's page.">
+      <div className="space-y-5">
         <div className="flex flex-wrap gap-2">
-          {leaders.length === 0 && <span className="text-sm text-ui-subtle">No leaders yet.</span>}
+          {leaders.length === 0 && <span className="text-sm text-muted">No leaders yet.</span>}
           {leaders.map((leader) => (
-            <span key={leader.user_id} className="inline-flex items-center gap-2 rounded-full bg-sky-100 px-3 py-1 text-sm dark:bg-sky-900/40">
+            <span
+              key={leader.user_id}
+              className="inline-flex items-center gap-1 rounded-full bg-gold-soft py-1 pl-3 pr-1 text-sm font-medium text-gold-ink"
+            >
               {leader.name || `Member #${leader.user_id}`}
               <button
                 type="button"
                 aria-label={`Remove ${leader.name}`}
-                className="font-bold"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-gold/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => setLeaders((current) => current.filter((l) => l.user_id !== leader.user_id))}
               >
-                ×
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </span>
           ))}
@@ -92,15 +99,15 @@ function LeadersEditor({ group, onDone }: { group: GroupSummary; onDone: () => v
             placeholder="Search members by name or email"
           />
           {term.trim().length >= 2 && (
-            <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+            <ul className="divide-y divide-border">
               {(results ?? []).map((member) => (
                 <li key={member.id} className="flex items-center justify-between gap-3 py-2">
-                  <span className="truncate text-sm">
-                    {`${member.first_name} ${member.last_name}`.trim()} <span className="text-ui-subtle">{member.email}</span>
+                  <span className="min-w-0 truncate text-sm text-foreground">
+                    {`${member.first_name} ${member.last_name}`.trim()} <span className="text-muted">{member.email}</span>
                   </span>
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="secondary"
                     onClick={() => add({ user_id: member.id, name: `${member.first_name} ${member.last_name}`.trim() })}
                   >
                     Add
@@ -110,21 +117,21 @@ function LeadersEditor({ group, onDone }: { group: GroupSummary; onDone: () => v
             </ul>
           )}
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3 border-t border-border pt-5">
           <Button disabled={save.isPending} onClick={() => save.mutate(leaders.map((l) => l.user_id), { onSuccess: onDone })}>
             Save leaders
           </Button>
-          <Button variant="outline" onClick={onDone}>
+          <Button variant="secondary" onClick={onDone}>
             Close
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </FormSection>
   );
 }
 
 export default function AdminGroupsPage() {
-  const { data: groups, isLoading } = useAdminGroups();
+  const { data: groups, isLoading, isError, refetch } = useAdminGroups();
   const { data: ministries } = useMinistries();
   const save = useSaveGroup();
   const deactivate = useDeactivateGroup();
@@ -156,152 +163,150 @@ export default function AdminGroupsPage() {
     setForm(EMPTY);
   };
 
-  const selectClass =
-    'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950';
+  const reactivate = (group: GroupSummary) =>
+    save.mutate({
+      id: group.id,
+      input: {
+        ...toInput({
+          name: group.name,
+          description: group.description || '',
+          meetingDay: group.meeting_day || '',
+          meetingTime: group.meeting_time || '',
+          location: group.location || '',
+          capacity: group.capacity !== null ? String(group.capacity) : '',
+          ministryId: group.ministry_id !== null ? String(group.ministry_id) : '',
+        }),
+        isActive: true,
+      },
+    });
 
   return (
-    <div className="container-max space-y-6 py-12">
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Small Groups</h1>
-        <p className="mt-2 text-sm text-ui-subtle">
-          Create groups and assign leaders. Leaders approve join requests on the group&apos;s page.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Small groups' }]}
+        title="Small groups"
+        description="Create groups and assign leaders. Leaders approve join requests on the group's page."
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{editingId ? 'Edit group' : 'New group'}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              save.mutate({ id: editingId, input: toInput(form) }, { onSuccess: resetForm });
-            }}
-            className="grid gap-4 md:grid-cols-2"
-          >
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="group-name">Name</Label>
-              <Input id="group-name" value={form.name} onChange={set('name')} required maxLength={255} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="group-description">Description</Label>
-              <Textarea id="group-description" rows={3} maxLength={2000} value={form.description} onChange={set('description')} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="group-day">Meeting day</Label>
-              <select id="group-day" value={form.meetingDay} onChange={set('meetingDay')} className={selectClass}>
-                <option value="">Not set</option>
-                {DAYS.map((day) => (
-                  <option key={day} value={day}>
-                    {day}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="group-time">Meeting time</Label>
-              <Input id="group-time" type="time" value={form.meetingTime} onChange={set('meetingTime')} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="group-location">Location</Label>
-              <Input id="group-location" value={form.location} onChange={set('location')} maxLength={255} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="group-capacity">Capacity (blank = no limit)</Label>
-              <Input id="group-capacity" type="number" min={1} max={1000} value={form.capacity} onChange={set('capacity')} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="group-ministry">Ministry</Label>
-              <select id="group-ministry" value={form.ministryId} onChange={set('ministryId')} className={selectClass}>
-                <option value="">None</option>
-                {((ministries ?? []) as Array<{ id: number; name: string }>).map((ministry) => (
-                  <option key={ministry.id} value={String(ministry.id)}>
-                    {ministry.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex gap-3 md:col-span-2">
-              <Button type="submit" disabled={save.isPending}>
-                {editingId ? 'Save changes' : 'Create group'}
+      <FormSection title={editingId ? 'Edit group' : 'New group'}>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            save.mutate({ id: editingId, input: toInput(form) }, { onSuccess: resetForm });
+          }}
+          className={formGridClass}
+        >
+          <Field label="Name" htmlFor="group-name" full>
+            <Input id="group-name" value={form.name} onChange={set('name')} required maxLength={255} />
+          </Field>
+          <Field label="Description" htmlFor="group-description" full>
+            <Textarea id="group-description" rows={3} maxLength={2000} value={form.description} onChange={set('description')} />
+          </Field>
+          <Field label="Meeting day" htmlFor="group-day">
+            <Select id="group-day" value={form.meetingDay} onChange={set('meetingDay')}>
+              <option value="">Not set</option>
+              {DAYS.map((day) => (
+                <option key={day} value={day}>
+                  {day}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Meeting time" htmlFor="group-time">
+            <Input id="group-time" type="time" value={form.meetingTime} onChange={set('meetingTime')} />
+          </Field>
+          <Field label="Location" htmlFor="group-location">
+            <Input id="group-location" value={form.location} onChange={set('location')} maxLength={255} />
+          </Field>
+          <Field label="Capacity" htmlFor="group-capacity" hint="Leave blank for no limit.">
+            <Input id="group-capacity" type="number" min={1} max={1000} value={form.capacity} onChange={set('capacity')} />
+          </Field>
+          <Field label="Ministry" htmlFor="group-ministry" full>
+            <Select id="group-ministry" value={form.ministryId} onChange={set('ministryId')}>
+              <option value="">None</option>
+              {((ministries ?? []) as Array<{ id: number; name: string }>).map((ministry) => (
+                <option key={ministry.id} value={String(ministry.id)}>
+                  {ministry.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <FormActions>
+            <Button type="submit" disabled={save.isPending}>
+              {editingId ? 'Save changes' : 'Create group'}
+            </Button>
+            {editingId && (
+              <Button type="button" variant="secondary" onClick={resetForm}>
+                Cancel
               </Button>
-              {editingId && (
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Cancel
-                </Button>
-              )}
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+            )}
+          </FormActions>
+        </form>
+      </FormSection>
 
       {leadersFor && <LeadersEditor key={leadersFor.id} group={leadersFor} onDone={() => setLeadersFor(null)} />}
 
       {isLoading ? (
-        <p className="text-sm text-ui-subtle">Loading groups...</p>
-      ) : !groups || groups.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="p-4 text-sm text-ui-subtle">No groups yet.</CardContent>
-        </Card>
+        <TableSkeleton label="Loading groups" />
+      ) : isError && !groups ? (
+        <LoadError what="groups" onRetry={() => refetch()} />
       ) : (
-        <div className="space-y-3">
-          {groups.map((group) => (
-            <Card key={group.id}>
-              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <p className="truncate font-semibold">
-                    {group.name} {!group.is_active && <span className="text-xs font-normal text-red-700">(inactive)</span>}
-                  </p>
-                  <p className="text-xs text-ui-subtle">
-                    {group.member_count} members{group.capacity !== null ? ` of ${group.capacity}` : ''} ·{' '}
+        <SimpleTable
+          emptyMessage="No groups yet."
+          columns={[
+            {
+              key: 'name',
+              header: 'Group',
+              render: (group: GroupSummary) => (
+                <div className="space-y-1">
+                  <p className="font-semibold text-foreground">{group.name}</p>
+                  <p className="text-xs text-muted">
                     {group.leaders.length > 0
                       ? `Led by ${group.leaders.map((l) => `${l.first_name} ${l.last_name}`.trim()).join(', ')}`
                       : 'No leader'}
                   </p>
                 </div>
+              ),
+            },
+            {
+              key: 'member_count',
+              header: 'Members',
+              render: (group: GroupSummary) =>
+                `${group.member_count} members${group.capacity !== null ? ` of ${group.capacity}` : ''}`,
+            },
+            {
+              key: 'is_active',
+              header: 'Status',
+              render: (group: GroupSummary) => (
+                <Badge tone={group.is_active ? 'success' : 'danger'}>{group.is_active ? 'Active' : 'Inactive'}</Badge>
+              ),
+            },
+            {
+              key: 'actions',
+              header: 'Actions',
+              render: (group: GroupSummary) => (
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => startEdit(group)}>
+                  <Button size="sm" variant="secondary" onClick={() => startEdit(group)} aria-label={`Edit ${group.name}`}>
                     Edit
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setLeadersFor(group)}>
+                  <Button size="sm" variant="secondary" onClick={() => setLeadersFor(group)} aria-label={`Leaders of ${group.name}`}>
                     Leaders
                   </Button>
                   {group.is_active ? (
-                    <Button size="sm" variant="outline" onClick={() => setPendingDeactivate(group)}>
+                    <Button size="sm" variant="secondary" onClick={() => setPendingDeactivate(group)} aria-label={`Deactivate ${group.name}`}>
                       Deactivate
                     </Button>
                   ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={save.isPending}
-                      onClick={() =>
-                        save.mutate({
-                          id: group.id,
-                          input: {
-                            ...toInput({
-                              name: group.name,
-                              description: group.description || '',
-                              meetingDay: group.meeting_day || '',
-                              meetingTime: group.meeting_time || '',
-                              location: group.location || '',
-                              capacity: group.capacity !== null ? String(group.capacity) : '',
-                              ministryId: group.ministry_id !== null ? String(group.ministry_id) : '',
-                            }),
-                            isActive: true,
-                          },
-                        })
-                      }
-                    >
+                    <Button size="sm" variant="secondary" disabled={save.isPending} onClick={() => reactivate(group)}>
                       Reactivate
                     </Button>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              ),
+            },
+          ]}
+          data={groups ?? []}
+        />
       )}
 
       {pendingDeactivate && (

@@ -3,8 +3,12 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { Mail, MessageSquare, User } from 'lucide-react';
+import StatusMessage from '@/components/site/StatusMessage';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import PageHeader from '@/components/ui/page-header';
 import { Textarea } from '@/components/ui/textarea';
 import { useSubmitContactMessage } from '@/hooks/useApi';
 
@@ -15,6 +19,24 @@ type ContactFormData = {
   message: string;
 };
 
+const contactPoints = [
+  {
+    icon: User,
+    title: 'General inquiry',
+    description: 'Use this form for questions about content, ministries, or next steps.',
+  },
+  {
+    icon: Mail,
+    title: 'Straight to the team',
+    description: 'Messages go directly to the church team, who reply by email.',
+  },
+  {
+    icon: MessageSquare,
+    title: 'Clear follow-up',
+    description: 'Give enough context in the subject and message fields so the team can respond well.',
+  },
+];
+
 export default function ContactPage() {
   const [status, setStatus] = React.useState<'idle' | 'success'>('idle');
   const submitContact = useSubmitContactMessage();
@@ -22,7 +44,7 @@ export default function ContactPage() {
     register,
     handleSubmit,
     reset,
-    formState: { isSubmitting },
+    formState: { isSubmitting, errors },
   } = useForm<ContactFormData>();
 
   const onSubmit = async (data: ContactFormData) => {
@@ -36,95 +58,93 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="container-max py-10">
-      <div className="mb-8 max-w-3xl">
-        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-amber-600 dark:text-amber-300">
-          Contact
-        </p>
-        <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950 dark:text-white">
-          Start the conversation
-        </h1>
-        <p className="mt-3 text-ui-subtle">
-          Use the real ANT PRESS contact flow to send a message, ask a question, or request information from the team.
-        </p>
-      </div>
+    <div className="container-max space-y-8 py-10 sm:py-12">
+      <PageHeader
+        eyebrow="Contact"
+        title="Start the conversation"
+        description="Send a message, ask a question, or request information from the team."
+        breadcrumb={[{ label: 'About', href: '/about' }, { label: 'Contact' }]}
+      />
 
       <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
         <div className="space-y-4">
-          {[
-            {
-              icon: User,
-              title: 'General inquiry',
-              description: 'Use this form for questions about content, ministries, or next steps.',
-            },
-            {
-              icon: Mail,
-              title: 'Response workflow',
-              description: 'Messages are sent through the live backend instead of sample inbox content.',
-            },
-            {
-              icon: MessageSquare,
-              title: 'Clear follow-up',
-              description: 'Give enough context in the subject and message fields so the team can respond well.',
-            },
-          ].map((item) => (
-            <div
-              key={item.title}
-              className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950"
-            >
-              <div className="inline-flex rounded-2xl bg-amber-500/10 p-3 text-amber-500">
-                <item.icon className="h-5 w-5" />
-              </div>
-              <h2 className="mt-4 text-xl font-bold text-slate-950 dark:text-white">{item.title}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-ui-muted">{item.description}</p>
-            </div>
+          {contactPoints.map((item) => (
+            <Card key={item.title}>
+              <CardContent className="flex gap-4 p-5">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <item.icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div>
+                  <h2 className="font-semibold text-foreground">{item.title}</h2>
+                  <p className="mt-1 text-sm leading-relaxed text-muted">{item.description}</p>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
 
-        <div className="rounded-[1.6rem] border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-950">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input
-                placeholder="Your name"
-                className="h-12 rounded-xl border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
-                {...register('name', { required: true })}
-              />
-              <Input
-                type="email"
-                placeholder="Email address"
-                className="h-12 rounded-xl border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
-                {...register('email', { required: true })}
-              />
-            </div>
+        <Card>
+          <CardContent className="p-6 sm:p-8">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="contact-name">Name</Label>
+                  <Input
+                    id="contact-name"
+                    placeholder="Your name"
+                    aria-invalid={errors.name ? 'true' : undefined}
+                    {...register('name', { required: true })}
+                  />
+                  {errors.name && <p className="text-sm text-danger">Please enter your name.</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="contact-email">Email</Label>
+                  <Input
+                    id="contact-email"
+                    type="email"
+                    placeholder="Email address"
+                    aria-invalid={errors.email ? 'true' : undefined}
+                    {...register('email', { required: true })}
+                  />
+                  {errors.email && <p className="text-sm text-danger">Please enter your email address.</p>}
+                </div>
+              </div>
 
-            <Input
-              placeholder="Subject"
-              className="h-12 rounded-xl border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
-              {...register('subject', { required: true })}
-            />
+              <div className="space-y-2">
+                <Label htmlFor="contact-subject">Subject</Label>
+                <Input
+                  id="contact-subject"
+                  placeholder="Subject"
+                  aria-invalid={errors.subject ? 'true' : undefined}
+                  {...register('subject', { required: true })}
+                />
+                {errors.subject && <p className="text-sm text-danger">Please add a subject.</p>}
+              </div>
 
-            <Textarea
-              rows={7}
-              placeholder="Write your message..."
-              className="rounded-xl border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
-              {...register('message', { required: true })}
-            />
+              <div className="space-y-2">
+                <Label htmlFor="contact-message">Message</Label>
+                <Textarea
+                  id="contact-message"
+                  rows={7}
+                  placeholder="Write your message..."
+                  aria-invalid={errors.message ? 'true' : undefined}
+                  {...register('message', { required: true })}
+                />
+                {errors.message && <p className="text-sm text-danger">Please write a message.</p>}
+              </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Button
-                type="submit"
-                disabled={isSubmitting || submitContact.isPending}
-                className="h-12 rounded-xl bg-amber-500 text-slate-950 hover:bg-amber-400"
-              >
-                {isSubmitting || submitContact.isPending ? 'Sending...' : 'Send Message'}
-              </Button>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <Button type="submit" size="lg" loading={isSubmitting || submitContact.isPending}>
+                  {isSubmitting || submitContact.isPending ? 'Sending...' : 'Send Message'}
+                </Button>
 
-              <p aria-live="polite" className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                {status === 'success' ? 'Message sent successfully.' : ''}
-              </p>
-            </div>
-          </form>
-        </div>
+                <div aria-live="polite">
+                  {status === 'success' ? <StatusMessage tone="success">Message sent successfully.</StatusMessage> : null}
+                </div>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
-'use client';
-
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Link from 'next/link';
+import { HelpCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import PageHeader from '@/components/ui/page-header';
 
 const faqs = [
   {
@@ -38,21 +39,39 @@ const faqs = [
 
 export default function FaqPage() {
   return (
-    <div className="container-max py-12 sm:py-16">
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Frequently Asked Questions</h1>
-        <p className="mt-2 text-ui-subtle">Quick answers to common questions about ANT PRESS.</p>
-      </div>
+    <div className="container-max py-10 sm:py-12">
+      <div className="mx-auto max-w-3xl space-y-8">
+        <PageHeader
+          title="Frequently asked questions"
+          description="Quick answers to common questions about ANT PRESS."
+          breadcrumb={[{ label: 'About', href: '/about' }, { label: 'FAQ' }]}
+        />
 
-      <div className="grid gap-4">
-        {faqs.map((item) => (
-          <Card key={item.question}>
-            <CardHeader>
-              <CardTitle className="text-lg tracking-tight">{item.question}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-ui-muted">{item.answer}</CardContent>
-          </Card>
-        ))}
+        <Card>
+          <dl className="divide-y divide-border">
+            {faqs.map((item) => (
+              <div key={item.question} className="space-y-2 p-6">
+                <dt className="text-lg font-semibold text-foreground">{item.question}</dt>
+                <dd className="leading-relaxed text-foreground/85">{item.answer}</dd>
+              </div>
+            ))}
+          </dl>
+        </Card>
+
+        <Card className="bg-surface">
+          <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <HelpCircle className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+              <div>
+                <p className="font-semibold text-foreground">Still have a question?</p>
+                <p className="text-sm text-muted">Send us a message and the team will get back to you.</p>
+              </div>
+            </div>
+            <Button asChild className="self-start sm:self-auto">
+              <Link href="/contact">Contact us</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

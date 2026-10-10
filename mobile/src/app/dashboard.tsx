@@ -1,18 +1,22 @@
 import { router } from 'expo-router';
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import {
-  BrandButton,
-  BrandCard,
-  BrandHero,
-  BrandMetric,
-  BrandPill,
-  BrandScreen,
-  BrandSectionHeader,
-} from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+  ListGroup,
+  ListRow,
+  Screen,
+  ScreenHeader,
+  SectionHeader,
+  SignInPrompt,
+  StatGrid,
+  StatTile,
+} from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppBadge } from '@/components/ui/badge';
+import { AppButton } from '@/components/ui/button';
+import { AppCard } from '@/components/ui/card';
+import { Space } from '@/constants/tokens';
 import {
   useMyDonations,
   useMyEventRegistrations,
@@ -32,15 +36,15 @@ export default function MemberDashboardScreen() {
 
   if (!user) {
     return (
-      <BrandScreen>
-        <BrandHero
-          eyebrow="Member Dashboard"
+      <Screen>
+        <ScreenHeader back title="My dashboard" />
+        <SignInPrompt
           title="Your connected space"
-          description="Sign in to unlock giving history, prayer activity, notifications, and your event registrations."
-        >
-          <BrandButton label="Go To Sign In" onPress={() => router.replace('/login')} />
-        </BrandHero>
-      </BrandScreen>
+          message="Sign in to unlock giving history, prayer activity, notifications, and your event registrations."
+          label="Go to sign in"
+          onSignIn={() => router.replace('/login')}
+        />
+      </Screen>
     );
   }
 
@@ -51,83 +55,75 @@ export default function MemberDashboardScreen() {
     .filter(Boolean)
     .join(' ');
 
-  return (
-    <BrandScreen>
-      <BrandHero
-        eyebrow="Dashboard"
-        title={displayName || 'Member Dashboard'}
-        description="Track your profile, giving, prayer requests, notifications, and registrations in one place."
-      >
-        <View style={styles.heroActions}>
-          <BrandPill>Profile active</BrandPill>
-          <BrandButton label="Edit Profile" onPress={() => router.push('/profile')} />
-          <BrandButton label="Give Now" onPress={() => router.push('/donate')} variant="outline" />
-        </View>
-      </BrandHero>
+  const go = (href: string) => () => router.push(href as never);
 
-      <View style={styles.metrics}>
-        <BrandMetric label="Unread" value={notificationsQuery.data?.unread_count ?? 0} />
-        <BrandMetric label="Donations" value={donationsQuery.data?.length ?? 0} />
-        <BrandMetric label="Prayers" value={prayersQuery.data?.length ?? 0} />
-        <BrandMetric label="Events" value={registrationsQuery.data?.length ?? 0} />
+  return (
+    <Screen>
+      <ScreenHeader
+        back
+        eyebrow="Dashboard"
+        title={displayName || 'Member dashboard'}
+        subtitle="Your profile, giving, prayer requests, notifications and registrations in one place."
+      />
+
+      <View style={styles.actions}>
+        <View style={styles.action}>
+          <AppButton label="Edit profile" variant="secondary" onPress={() => router.push('/profile')} />
+        </View>
+        <View style={styles.action}>
+          <AppButton label="Give now" onPress={() => router.push('/donate')} />
+        </View>
       </View>
 
-      <BrandCard>
-        <BrandSectionHeader
-          title="Quick actions"
-          description="Your most-used member tools, grouped like a mobile command center."
-        />
-        <View style={styles.actions}>
-          <BrandButton label="Open Notifications" onPress={() => router.push('/notifications')} variant="secondary" />
-          <BrandButton label="Prayer Requests" onPress={() => router.push('/prayers')} variant="outline" />
-          <BrandButton label="Donation History" onPress={() => router.push('/donations')} variant="outline" />
-          <BrandButton label="News & Updates" onPress={() => router.push('/news' as never)} variant="outline" />
-          <BrandButton label="Community Feed" onPress={() => router.push('/community' as never)} variant="outline" />
-          <BrandButton label="Browse Sermons" onPress={() => router.push('/sermons' as never)} variant="outline" />
-          <BrandButton label="Small Groups" onPress={() => router.push('/small-groups' as never)} variant="outline" />
-          <BrandButton label="Explore Ministries" onPress={() => router.push('/ministries' as never)} variant="outline" />
-          <BrandButton label="Prayer Wall" onPress={() => router.push('/prayer-wall' as never)} variant="outline" />
-          <BrandButton label="Daily Devotional" onPress={() => router.push('/daily-devotional' as never)} variant="outline" />
-          <BrandButton label="Search Content" onPress={() => router.push('/search' as never)} variant="outline" />
-        </View>
-      </BrandCard>
+      <StatGrid>
+        <StatTile label="Unread" value={notificationsQuery.data?.unread_count ?? 0} icon="notifications-outline" />
+        <StatTile label="Donations" value={donationsQuery.data?.length ?? 0} icon="receipt-outline" />
+        <StatTile label="Prayers" value={prayersQuery.data?.length ?? 0} icon="heart-outline" />
+        <StatTile label="Events" value={registrationsQuery.data?.length ?? 0} icon="calendar-outline" />
+      </StatGrid>
 
-      <BrandCard>
-        <BrandSectionHeader title="Profile snapshot" description="Current account details from ANT PRESS." />
-        <ThemedText type="defaultSemiBold">{displayName || 'Member account'}</ThemedText>
-        <ThemedText type="small">{profileQuery.data?.email || user.email}</ThemedText>
-        <ThemedText type="small">{profileQuery.data?.phone || 'No phone number saved yet.'}</ThemedText>
-        <BrandPill>{user.role === 'admin' ? 'Admin-enabled account' : 'Faithful member'}</BrandPill>
-      </BrandCard>
+      <SectionHeader title="Quick actions" />
+      <ListGroup>
+        <ListRow icon="notifications-outline" label="Notifications" onPress={go('/notifications')} />
+        <ListRow icon="heart-outline" label="Prayer requests" onPress={go('/prayers')} />
+        <ListRow icon="receipt-outline" label="Donation history" onPress={go('/donations')} />
+        <ListRow icon="newspaper-outline" label="News and updates" onPress={go('/news')} />
+        <ListRow icon="chatbubbles-outline" label="Community feed" onPress={go('/community')} />
+        <ListRow icon="play-circle-outline" label="Browse sermons" onPress={go('/sermons')} />
+        <ListRow icon="people-outline" label="Small groups" onPress={go('/small-groups')} />
+        <ListRow icon="sparkles-outline" label="Explore ministries" onPress={go('/ministries')} />
+        <ListRow icon="hand-left-outline" label="Prayer wall" onPress={go('/prayer-wall')} />
+        <ListRow icon="book-outline" label="Daily devotional" onPress={go('/daily-devotional')} />
+        <ListRow icon="search-outline" label="Search content" onPress={go('/search')} />
+      </ListGroup>
 
-      <BrandCard>
-        <BrandSectionHeader
-          title="Public resources"
-          description="Everything else you can reach on the website, now grouped for mobile."
-        />
-        <View style={styles.actions}>
-          <BrandButton label="About ANT PRESS" onPress={() => router.push('/about' as never)} variant="outline" />
-          <BrandButton label="FAQ" onPress={() => router.push('/faq' as never)} variant="outline" />
-          <BrandButton label="Contact Team" onPress={() => router.push('/contact' as never)} variant="outline" />
-          <BrandButton label="Privacy" onPress={() => router.push('/privacy' as never)} variant="outline" />
-          <BrandButton label="Terms" onPress={() => router.push('/terms' as never)} variant="outline" />
-        </View>
-      </BrandCard>
-    </BrandScreen>
+      <SectionHeader title="Profile snapshot" />
+      <AppCard>
+        <AppText variant="bodyStrong">{displayName || 'Member account'}</AppText>
+        <AppText variant="small" tone="muted">
+          {profileQuery.data?.email || user.email}
+        </AppText>
+        <AppText variant="small" tone="muted">
+          {profileQuery.data?.phone || 'No phone number saved yet.'}
+        </AppText>
+        <AppBadge tone={user.role === 'admin' ? 'gold' : 'neutral'}>
+          {user.role === 'admin' ? 'Admin-enabled account' : 'Faithful member'}
+        </AppBadge>
+      </AppCard>
+
+      <SectionHeader title="Help and information" />
+      <ListGroup>
+        <ListRow icon="information-circle-outline" label="About ANT PRESS" onPress={go('/about')} />
+        <ListRow icon="help-circle-outline" label="FAQ" onPress={go('/faq')} />
+        <ListRow icon="mail-outline" label="Contact the team" onPress={go('/contact')} />
+        <ListRow icon="shield-checkmark-outline" label="Privacy" onPress={go('/privacy')} />
+        <ListRow icon="document-text-outline" label="Terms" onPress={go('/terms')} />
+      </ListGroup>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  heroActions: {
-    gap: Spacing.two,
-    marginTop: Spacing.two,
-  },
-  metrics: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  actions: {
-    gap: Spacing.two,
-  },
+  actions: { flexDirection: 'row', gap: Space.sm },
+  action: { flex: 1 },
 });

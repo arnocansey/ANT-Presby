@@ -94,21 +94,32 @@ export default function Header() {
       if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
+      const outside = !panelRef.current.contains(document.activeElement);
+      if (event.shiftKey && (document.activeElement === first || outside)) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
+      } else if (
+        !event.shiftKey &&
+        (document.activeElement === last || outside)
+      ) {
         event.preventDefault();
         first.focus();
       }
     };
+    // The menu only exists below md (768px): close it if the window widens, so the scroll lock lifts.
+    const desktop = window.matchMedia("(min-width: 768px)");
+    const onDesktop = (event: MediaQueryListEvent) => {
+      if (event.matches) setMenuOpen(false);
+    };
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
+    desktop.addEventListener("change", onDesktop);
     closeButtonRef.current?.focus();
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKey);
+      desktop.removeEventListener("change", onDesktop);
       trigger?.focus();
     };
   }, [menuOpen]);

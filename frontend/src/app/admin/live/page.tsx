@@ -132,7 +132,16 @@ export default function AdminLivePage() {
           onCancel={() => setConfirmEnd(false)}
           onConfirm={() => {
             setConfirmEnd(false);
-            end.mutate();
+            end.mutate(undefined, {
+              // Clear the ended stream's details, so the next "Go live" can't reuse stale links,
+              // and let the form fill itself again from the next live session.
+              onSuccess: () => {
+                setTitle('');
+                setYoutubeUrl('');
+                setFacebookUrl('');
+                filledFromLive.current = false;
+              },
+            });
           }}
         />
       )}

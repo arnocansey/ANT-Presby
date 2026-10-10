@@ -1,18 +1,17 @@
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import React from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert } from 'react-native';
 
 import { AdminShell } from '@/components/admin-shell';
-import { BrandButton, BrandCard } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { ScreenHeader } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppBadge } from '@/components/ui/badge';
+import { AppButton } from '@/components/ui/button';
+import { AppCard } from '@/components/ui/card';
+import { TextField } from '@/components/ui/text-field';
 import { getApiErrorMessage, getLiveErrorMessage, useEndLive, useLiveStream, useStartLive } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/store/auth';
 
 export default function AdminLiveScreen() {
-  const theme = useTheme();
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'admin';
   const liveQuery = useLiveStream();
@@ -72,87 +71,57 @@ export default function AdminLiveScreen() {
     ]);
   };
 
-  const inputStyle = [styles.input, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }];
-
   return (
     <AdminShell activeTab="/admin">
-      <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()} style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: theme.border }]}>
-          <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
-        </Pressable>
-        <View style={styles.headerCopy}>
-          <ThemedText type="smallBold" style={{ color: '#818CF8', textTransform: 'uppercase', letterSpacing: 1 }}>
-            Admin
-          </ThemedText>
-          <ThemedText type="subtitle">Livestream</ThemedText>
-        </View>
-      </View>
+      <ScreenHeader back eyebrow="Admin" title="Livestream" />
 
-      <BrandCard>
-        <ThemedText type="smallBold">Status</ThemedText>
+      <AppCard>
+        <AppText variant="small" tone="muted">
+          Status
+        </AppText>
         {isLive ? (
           <>
-            <ThemedText type="defaultSemiBold" style={styles.liveText}>
-              {`Live now: ${live?.title ?? ''}`}
-            </ThemedText>
+            <AppBadge tone="live">Live now</AppBadge>
+            <AppText variant="bodyStrong">{live?.title ?? ''}</AppText>
             {live?.started_at ? (
-              <ThemedText type="small" themeColor="textSecondary">
+              <AppText variant="small" tone="muted">
                 {`Since ${new Date(live.started_at).toLocaleString()}`}
-              </ThemedText>
+              </AppText>
             ) : null}
           </>
         ) : (
-          <ThemedText type="small" themeColor="textSecondary">
-            {liveQuery.isLoading ? 'Loading...' : 'Not live.'}
-          </ThemedText>
+          <AppText variant="bodyStrong">{liveQuery.isLoading ? 'Loading...' : 'Not live.'}</AppText>
         )}
-      </BrandCard>
+      </AppCard>
 
-      <BrandCard>
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Title (e.g. Sunday Worship Service)"
-          placeholderTextColor={theme.textSecondary}
-          maxLength={255}
-          style={inputStyle}
-        />
-        <TextInput
+      <AppCard>
+        <TextField label="Title" value={title} onChangeText={setTitle} placeholder="e.g. Sunday Worship Service" maxLength={255} />
+        <TextField
+          label="YouTube link"
           value={youtubeUrl}
           onChangeText={setYoutubeUrl}
-          placeholder="YouTube link"
-          placeholderTextColor={theme.textSecondary}
+          placeholder="https://youtube.com/live/…"
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="url"
           maxLength={500}
-          style={inputStyle}
         />
-        <TextInput
+        <TextField
+          label="Facebook link"
           value={facebookUrl}
           onChangeText={setFacebookUrl}
-          placeholder="Facebook link"
-          placeholderTextColor={theme.textSecondary}
+          placeholder="https://facebook.com/…"
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="url"
           maxLength={500}
-          style={inputStyle}
         />
-        <ThemedText type="small" themeColor="textSecondary">
+        <AppText variant="small" tone="muted">
           Everyone is notified once when you go live. Updating the links while live does not notify again.
-        </ThemedText>
-        <BrandButton label={isLive ? 'Update links' : 'Go live'} variant="secondary" onPress={onStart} />
-        {isLive ? <BrandButton label="End livestream" variant="outline" onPress={onEnd} /> : null}
-      </BrandCard>
+        </AppText>
+        <AppButton label={isLive ? 'Update links' : 'Go live'} onPress={onStart} />
+        {isLive ? <AppButton label="End livestream" variant="danger" onPress={onEnd} /> : null}
+      </AppCard>
     </AdminShell>
   );
 }
-
-const styles = StyleSheet.create({
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  headerCopy: { flex: 1, gap: 2 },
-  iconButton: { width: 38, height: 38, borderRadius: Radius.pill, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  input: { borderWidth: 1, borderRadius: Radius.medium, paddingHorizontal: Spacing.three, paddingVertical: Spacing.three, fontSize: 16 },
-  liveText: { color: '#EF4444' },
-});

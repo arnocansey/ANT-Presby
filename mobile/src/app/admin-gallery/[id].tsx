@@ -1,14 +1,17 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { AdminShell } from '@/components/admin-shell';
-import { BrandButton, BrandCard } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { ChipGroup, IconButton, LoadingList, ScreenHeader, SwitchRow } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppButton } from '@/components/ui/button';
+import { AppCard } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { TextField } from '@/components/ui/text-field';
+import { Corner, Space } from '@/constants/tokens';
 import {
   getApiErrorMessage,
   useAdminAlbum,
@@ -21,14 +24,12 @@ import {
   useSetAlbumCover,
   type AlbumPhoto,
 } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
 import { MAX_ALBUM_PHOTO_BYTES, chunk, mapWithConcurrency, uploadPhotoToCloudinary, type PickedPhoto } from '@/lib/album-upload';
 import { useAuthStore } from '@/store/auth';
 
 type FormState = { title: string; description: string; externalUrl: string; eventId: number | null; isPublished: boolean };
 
 export default function AdminAlbumScreen() {
-  const theme = useTheme();
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'admin';
   const params = useLocalSearchParams<{ id: string }>();
@@ -184,109 +185,91 @@ export default function AdminAlbumScreen() {
     ]);
 
   const events: { id: number; name: string }[] = Array.isArray(eventsQuery.data) ? eventsQuery.data : [];
-  const input = (field: 'title' | 'description' | 'externalUrl', placeholder: string, multiline = false) => (
-    <TextInput
-      value={form ? form[field] : ''}
-      onChangeText={(value) => setForm((current) => (current ? { ...current, [field]: value } : current))}
+  const field = (key: 'title' | 'description' | 'externalUrl', label: string, placeholder: string, multiline = false) => (
+    <TextField
+      label={label}
+      value={form ? form[key] : ''}
+      onChangeText={(value) => setForm((current) => (current ? { ...current, [key]: value } : current))}
       placeholder={placeholder}
-      placeholderTextColor={theme.textSecondary}
       multiline={multiline}
-      autoCapitalize={field === 'externalUrl' ? 'none' : 'sentences'}
-      style={[styles.input, multiline && styles.multiline, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+      autoCapitalize={key === 'externalUrl' ? 'none' : 'sentences'}
     />
   );
 
   return (
     <AdminShell activeTab="/admin">
-      <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()} style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: theme.border }]}>
-          <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
-        </Pressable>
-        <View style={styles.headerCopy}>
-          <ThemedText type="smallBold" style={{ color: '#F59E0B', textTransform: 'uppercase', letterSpacing: 1 }}>
-            Album
-          </ThemedText>
-          <ThemedText type="subtitle" numberOfLines={1}>
-            {album?.title || 'Loading...'}
-          </ThemedText>
-        </View>
-      </View>
+      <ScreenHeader back eyebrow="Album" title={album?.title || 'Loading...'} />
 
       {!album || !form ? (
-        <BrandCard>
-          <ThemedText type="small">{albumQuery.isLoading ? 'Loading album...' : 'Album not found.'}</ThemedText>
-        </BrandCard>
+        albumQuery.isLoading ? (
+          <LoadingList count={2} height={160} />
+        ) : (
+          <EmptyState icon="images-outline" title="Album not found" />
+        )
       ) : (
         <>
-          <BrandCard>
-            <ThemedText type="defaultSemiBold">Details</ThemedText>
-            {input('title', 'Title')}
-            {input('description', 'Description (optional)', true)}
-            {input('externalUrl', 'Outside folder link, https (optional)')}
-            <ThemedText type="small" themeColor="textSecondary">
+          <AppCard>
+            <AppText variant="section">Details</AppText>
+            {field('title', 'Title', 'Title')}
+            {field('description', 'Description (optional)', 'Description', true)}
+            {field('externalUrl', 'Outside folder link (optional)', 'https://…')}
+            <AppText variant="small" style={styles.bold}>
               Event
-            </ThemedText>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-              {[{ id: 0, name: 'No event' }, ...events].map((item) => {
-                const selected = (form.eventId ?? 0) === item.id;
-                return (
-                  <Pressable
-                    key={item.id}
-                    onPress={() => setForm((current) => (current ? { ...current, eventId: item.id || null } : current))}
-                    style={[styles.chip, { borderColor: selected ? theme.tint : theme.border, backgroundColor: selected ? theme.accentSoft : 'transparent' }]}
-                  >
-                    <ThemedText type="small">{item.name}</ThemedText>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            <View style={styles.switchRow}>
-              <ThemedText>Published</ThemedText>
-              <Switch
-                value={form.isPublished}
-                onValueChange={(value) => setForm((current) => (current ? { ...current, isPublished: value } : current))}
-              />
-            </View>
-            <BrandButton label={save.isPending ? 'Saving...' : 'Save'} variant="secondary" onPress={onSave} />
-          </BrandCard>
+            </AppText>
+            <ChipGroup
+              scroll
+              options={[{ value: 0, label: 'No event' }, ...events.map((item) => ({ value: item.id, label: item.name }))]}
+              value={form.eventId ?? 0}
+              onChange={(value) => setForm((current) => (current ? { ...current, eventId: value || null } : current))}
+            />
+            <SwitchRow
+              label="Published"
+              value={form.isPublished}
+              onValueChange={(value) => setForm((current) => (current ? { ...current, isPublished: value } : current))}
+            />
+            <AppButton label={save.isPending ? 'Saving...' : 'Save'} onPress={onSave} />
+          </AppCard>
 
-          <BrandCard>
-            <ThemedText type="defaultSemiBold">Photos ({album.photo_count})</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
+          <AppCard>
+            <AppText variant="section">{`Photos (${album.photo_count})`}</AppText>
+            <AppText variant="small" tone="muted">
               {progress ? `Uploading ${progress.done} of ${progress.total}...` : 'Up to 10 MB each. Choose several at once.'}
-            </ThemedText>
-            <BrandButton label={progress ? 'Uploading...' : 'Add Photos'} onPress={() => !progress && pickPhotos()} />
+            </AppText>
+            <AppButton label={progress ? 'Uploading...' : 'Add photos'} onPress={() => !progress && pickPhotos()} />
             {retryPhotos.length + retryIds.length > 0 && !progress ? (
-              <BrandButton
+              <AppButton
                 label={`Retry ${retryPhotos.length + retryIds.length} failed`}
-                variant="outline"
+                variant="secondary"
                 onPress={() => uploadPhotos(retryPhotos, retryIds)}
               />
             ) : null}
             <View style={styles.grid}>
-              {album.photos.map((photo) => {
+              {album.photos.map((photo, index) => {
                 const isCover = album.cover_photo_id ? album.cover_photo_id === photo.id : album.photos[0]?.id === photo.id;
                 return (
                   <View key={photo.id} style={styles.cell}>
                     <Image source={{ uri: photo.thumb_url }} style={styles.thumb} contentFit="cover" />
                     <View style={styles.cellActions}>
-                      <Pressable
-                        hitSlop={8}
+                      <IconButton
+                        icon={isCover ? 'star' : 'star-outline'}
+                        variant="ghost"
+                        accessibilityLabel={isCover ? `Photo ${index + 1} is the cover` : `Make photo ${index + 1} the cover`}
                         onPress={() => !isCover && setCover.mutate(photo.id, { onError: showError('Could not set the cover') })}
-                      >
-                        <Ionicons name={isCover ? 'star' : 'star-outline'} size={18} color={theme.tint} />
-                      </Pressable>
-                      <Pressable hitSlop={8} onPress={() => confirmDeletePhoto(photo)}>
-                        <Ionicons name="trash-outline" size={18} color={theme.textSecondary} />
-                      </Pressable>
+                      />
+                      <IconButton
+                        icon="trash-outline"
+                        variant="ghost"
+                        accessibilityLabel={`Delete photo ${index + 1}`}
+                        onPress={() => confirmDeletePhoto(photo)}
+                      />
                     </View>
                   </View>
                 );
               })}
             </View>
-          </BrandCard>
+          </AppCard>
 
-          <BrandButton label="Delete Album" variant="outline" onPress={confirmDeleteAlbum} />
+          <AppButton label="Delete album" variant="danger" onPress={confirmDeleteAlbum} />
         </>
       )}
     </AdminShell>
@@ -294,16 +277,9 @@ export default function AdminAlbumScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  headerCopy: { flex: 1, gap: 2 },
-  iconButton: { width: 38, height: 38, borderRadius: Radius.pill, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  input: { borderWidth: 1, borderRadius: Radius.medium, paddingHorizontal: Spacing.three, paddingVertical: Spacing.three, fontSize: 16 },
-  multiline: { minHeight: 80, textAlignVertical: 'top' },
-  chips: { gap: Spacing.two },
-  chip: { borderWidth: 1, borderRadius: Radius.pill, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
-  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  cell: { width: '31%', gap: 4 },
-  thumb: { width: '100%', aspectRatio: 1, borderRadius: Radius.small },
+  bold: { fontWeight: '600' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm },
+  cell: { width: '31%', gap: 2 },
+  thumb: { width: '100%', aspectRatio: 1, borderRadius: Corner.control },
   cellActions: { flexDirection: 'row', justifyContent: 'space-around' },
 });

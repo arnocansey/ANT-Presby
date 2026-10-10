@@ -1,12 +1,14 @@
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import React from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { AdminShell } from '@/components/admin-shell';
-import { BrandButton, BrandCard, BrandPill } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { ScreenHeader, statusTone } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppBadge } from '@/components/ui/badge';
+import { AppButton } from '@/components/ui/button';
+import { AppCard } from '@/components/ui/card';
+import { TextField } from '@/components/ui/text-field';
+import { Space } from '@/constants/tokens';
 import {
   getApiErrorMessage,
   useAdminDevotionals,
@@ -16,7 +18,6 @@ import {
   type Devotional,
   type DevotionalInput,
 } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/store/auth';
 
 type FormState = { title: string; scriptureReference: string; scriptureText: string; body: string; prayer: string; publishDate: string };
@@ -24,7 +25,6 @@ const EMPTY: FormState = { title: '', scriptureReference: '', scriptureText: '',
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export default function AdminDevotionalsScreen() {
-  const theme = useTheme();
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'admin';
   const listQuery = useAdminDevotionals(isAdmin);
@@ -92,77 +92,59 @@ export default function AdminDevotionalsScreen() {
       },
     ]);
 
-  const input = (field: keyof FormState, placeholder: string, multiline = false) => (
-    <TextInput
-      value={form[field]}
-      onChangeText={setField(field)}
-      placeholder={placeholder}
-      placeholderTextColor={theme.textSecondary}
-      multiline={multiline}
-      style={[styles.input, multiline && styles.multiline, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-    />
+  const field = (key: keyof FormState, label: string, placeholder: string, multiline = false) => (
+    <TextField label={label} value={form[key]} onChangeText={setField(key)} placeholder={placeholder} multiline={multiline} />
   );
 
   const items = Array.isArray(listQuery.data) ? listQuery.data : [];
 
   return (
     <AdminShell activeTab="/admin-news">
-      <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()} style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: theme.border }]}>
-          <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
-        </Pressable>
-        <View style={styles.headerCopy}>
-          <ThemedText type="smallBold" style={{ color: '#F59E0B', textTransform: 'uppercase', letterSpacing: 1 }}>
-            Admin
-          </ThemedText>
-          <ThemedText type="subtitle">Devotionals</ThemedText>
-        </View>
-      </View>
+      <ScreenHeader back eyebrow="Admin" title="Devotionals" />
 
-      <BrandCard>
-        <ThemedText type="defaultSemiBold">{editingId ? 'Edit devotional' : 'New devotional'}</ThemedText>
-        {input('publishDate', 'Date YYYY-MM-DD')}
-        {input('title', 'Title')}
-        {input('scriptureReference', 'Scripture reference, e.g. Psalm 23:1-3')}
-        {input('scriptureText', 'Scripture text', true)}
-        {input('body', 'Reflection', true)}
-        {input('prayer', 'Closing prayer (optional)', true)}
-        <BrandButton label={editingId ? 'Save changes' : 'Save draft'} variant="secondary" onPress={() => !busy && onSave()} />
-        {editingId ? <BrandButton label="Cancel" variant="outline" onPress={resetForm} /> : null}
-      </BrandCard>
+      <AppCard>
+        <AppText variant="section">{editingId ? 'Edit devotional' : 'New devotional'}</AppText>
+        {field('publishDate', 'Date', 'YYYY-MM-DD')}
+        {field('title', 'Title', 'Title')}
+        {field('scriptureReference', 'Scripture reference', 'e.g. Psalm 23:1-3')}
+        {field('scriptureText', 'Scripture text', 'Scripture text', true)}
+        {field('body', 'Reflection', 'Reflection', true)}
+        {field('prayer', 'Closing prayer (optional)', 'Closing prayer', true)}
+        <AppButton label={editingId ? 'Save changes' : 'Save draft'} onPress={() => !busy && onSave()} />
+        {editingId ? <AppButton label="Cancel" variant="secondary" onPress={resetForm} /> : null}
+      </AppCard>
 
       {items.map((item) => (
-        <BrandCard key={item.id}>
+        <AppCard key={item.id}>
           <View style={styles.row}>
-            <ThemedText type="defaultSemiBold" style={styles.rowTitle} numberOfLines={1}>
+            <AppText variant="bodyStrong" style={styles.flex} numberOfLines={1}>
               {item.title}
-            </ThemedText>
-            <BrandPill>{item.status}</BrandPill>
+            </AppText>
+            <AppBadge tone={statusTone(item.status)}>{item.status}</AppBadge>
           </View>
-          <ThemedText type="small" themeColor="textSecondary">
+          <AppText variant="small" tone="muted">
             {item.publish_date}
             {item.notified_at ? ' · everyone notified' : ''}
-          </ThemedText>
+          </AppText>
           <View style={styles.actions}>
-            <BrandButton label="Edit" variant="outline" onPress={() => startEdit(item)} />
+            <AppButton label="Edit" size="sm" variant="secondary" onPress={() => startEdit(item)} />
             {item.status === 'draft' || !item.notified_at ? (
-              <BrandButton label={item.status === 'draft' ? 'Publish' : 'Publish & notify'} onPress={() => !busy && onPublish(item)} />
+              <AppButton
+                label={item.status === 'draft' ? 'Publish' : 'Publish & notify'}
+                size="sm"
+                onPress={() => !busy && onPublish(item)}
+              />
             ) : null}
-            <BrandButton label="Delete" variant="outline" onPress={() => !busy && onDelete(item)} />
+            <AppButton label="Delete" size="sm" variant="danger" onPress={() => !busy && onDelete(item)} />
           </View>
-        </BrandCard>
+        </AppCard>
       ))}
     </AdminShell>
   );
 }
 
 const styles = StyleSheet.create({
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  headerCopy: { flex: 1, gap: 2 },
-  iconButton: { width: 38, height: 38, borderRadius: Radius.pill, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  input: { borderWidth: 1, borderRadius: Radius.medium, paddingHorizontal: Spacing.three, paddingVertical: Spacing.three, fontSize: 16 },
-  multiline: { minHeight: 90, textAlignVertical: 'top' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.two },
-  rowTitle: { flex: 1 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Space.sm },
+  flex: { flex: 1 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm },
 });

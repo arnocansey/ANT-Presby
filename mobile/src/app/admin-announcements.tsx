@@ -1,12 +1,14 @@
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import React from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { AdminShell } from '@/components/admin-shell';
-import { BrandButton, BrandCard, BrandPill } from '@/components/brand-ui';
-import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { ChipGroup, ScreenHeader, SectionHeader } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
+import { AppBadge } from '@/components/ui/badge';
+import { AppButton } from '@/components/ui/button';
+import { AppCard } from '@/components/ui/card';
+import { TextField } from '@/components/ui/text-field';
+import { Space } from '@/constants/tokens';
 import {
   getApiErrorMessage,
   useCheckInEvents,
@@ -15,13 +17,17 @@ import {
   useSentAnnouncements,
   type AnnouncementInput,
 } from '@/hooks/use-api';
-import { useTheme } from '@/hooks/use-theme';
 import { useAuthStore } from '@/store/auth';
 
 type Audience = 'everyone' | 'group' | 'event';
 
+const AUDIENCES: { value: Audience; label: string }[] = [
+  { value: 'everyone', label: 'Everyone' },
+  { value: 'group', label: 'A group' },
+  { value: 'event', label: 'An event' },
+];
+
 export default function AdminAnnouncementsScreen() {
-  const theme = useTheme();
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'admin';
   const groupsQuery = useGroups();
@@ -68,91 +74,63 @@ export default function AdminAnnouncementsScreen() {
     });
   };
 
-  const chip = (label: string, active: boolean, onPress: () => void, key: string) => (
-    <Pressable key={key} onPress={onPress}>
-      <View style={[styles.chip, { backgroundColor: active ? theme.tint : theme.background, borderColor: active ? theme.tint : theme.border }]}>
-        <ThemedText type="smallBold" style={{ color: active ? theme.white : theme.text }}>
-          {label}
-        </ThemedText>
-      </View>
-    </Pressable>
-  );
-
-  const inputStyle = [styles.input, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }];
   const sent = Array.isArray(sentQuery.data) ? sentQuery.data : [];
 
   return (
     <AdminShell activeTab="/admin-news">
-      <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()} style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: theme.border }]}>
-          <Ionicons name="chevron-back" size={16} color={theme.textSecondary} />
-        </Pressable>
-        <View style={styles.headerCopy}>
-          <ThemedText type="smallBold" style={{ color: '#818CF8', textTransform: 'uppercase', letterSpacing: 1 }}>
-            Admin
-          </ThemedText>
-          <ThemedText type="subtitle">Send Announcement</ThemedText>
-        </View>
-      </View>
+      <ScreenHeader back eyebrow="Admin" title="Send announcement" />
 
-      <BrandCard>
-        <ThemedText type="smallBold">Send to</ThemedText>
-        <View style={styles.chips}>
-          {(['everyone', 'group', 'event'] as Audience[]).map((value) =>
-            chip(value === 'everyone' ? 'Everyone' : value === 'group' ? 'A group' : 'An event', audience === value, () => {
-              setAudience(value);
-              setTargetId(undefined);
-            }, value)
-          )}
-        </View>
-        {targets.length > 0 ? (
-          <View style={styles.chips}>{targets.map((t) => chip(t.label, targetId === t.id, () => setTargetId(t.id), String(t.id)))}</View>
-        ) : audience !== 'everyone' ? (
-          <ThemedText type="small" themeColor="textSecondary">
-            {audience === 'group' ? 'No groups yet.' : 'No events in the last or next two weeks.'}
-          </ThemedText>
-        ) : null}
-        <TextInput value={title} onChangeText={setTitle} placeholder="Title" placeholderTextColor={theme.textSecondary} maxLength={255} style={inputStyle} />
-        <TextInput
-          value={message}
-          onChangeText={setMessage}
-          placeholder="Message"
-          placeholderTextColor={theme.textSecondary}
-          maxLength={2000}
-          multiline
-          style={[...inputStyle, styles.multiline]}
+      <AppCard>
+        <AppText variant="small" style={styles.bold}>
+          Send to
+        </AppText>
+        <ChipGroup
+          options={AUDIENCES}
+          value={audience}
+          onChange={(value) => {
+            setAudience(value);
+            setTargetId(undefined);
+          }}
         />
-        <BrandButton label="Send announcement" variant="secondary" onPress={() => !sendMutation.isPending && onSend()} />
-      </BrandCard>
+        {targets.length > 0 ? (
+          <ChipGroup
+            options={targets.map((t) => ({ value: t.id as number | undefined, label: t.label }))}
+            value={targetId}
+            onChange={(value) => setTargetId(value)}
+          />
+        ) : audience !== 'everyone' ? (
+          <AppText variant="small" tone="muted">
+            {audience === 'group' ? 'No groups yet.' : 'No events in the last or next two weeks.'}
+          </AppText>
+        ) : null}
+        <TextField label="Title" value={title} onChangeText={setTitle} placeholder="Title" maxLength={255} />
+        <TextField label="Message" value={message} onChangeText={setMessage} placeholder="Message" maxLength={2000} multiline />
+        <AppButton label="Send announcement" onPress={() => !sendMutation.isPending && onSend()} />
+      </AppCard>
 
+      {sent.length > 0 ? <SectionHeader title="Sent" /> : null}
       {sent.map((item) => (
-        <BrandCard key={item.id}>
+        <AppCard key={item.id}>
           <View style={styles.row}>
-            <ThemedText type="defaultSemiBold" style={styles.rowTitle} numberOfLines={1}>
+            <AppText variant="bodyStrong" style={styles.flex} numberOfLines={1}>
               {item.title}
-            </ThemedText>
-            <BrandPill>{`${item.recipient_count} people`}</BrandPill>
+            </AppText>
+            <AppBadge>{`${item.recipient_count} people`}</AppBadge>
           </View>
-          <ThemedText type="small" numberOfLines={2}>
+          <AppText variant="small" numberOfLines={2}>
             {item.message}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
+          </AppText>
+          <AppText variant="caption" tone="muted">
             {new Date(item.created_at).toLocaleString()} · {item.push_count} phones
-          </ThemedText>
-        </BrandCard>
+          </AppText>
+        </AppCard>
       ))}
     </AdminShell>
   );
 }
 
 const styles = StyleSheet.create({
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  headerCopy: { flex: 1, gap: 2 },
-  iconButton: { width: 38, height: 38, borderRadius: Radius.pill, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  chip: { borderWidth: 1, borderRadius: Radius.pill, paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
-  input: { borderWidth: 1, borderRadius: Radius.medium, paddingHorizontal: Spacing.three, paddingVertical: Spacing.three, fontSize: 16 },
-  multiline: { minHeight: 110, textAlignVertical: 'top' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.two },
-  rowTitle: { flex: 1 },
+  bold: { fontWeight: '600' },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Space.sm },
+  flex: { flex: 1 },
 });

@@ -2,7 +2,12 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Mic, PlayCircle } from 'lucide-react';
+import { Mic, PlayCircle } from 'lucide-react';
+import BackLink from '@/components/site/BackLink';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import EmptyState from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useSermon } from '@/hooks/useApi';
 
 export default function SermonDetailPage() {
@@ -11,94 +16,83 @@ export default function SermonDetailPage() {
   const { data, isLoading, error } = useSermon(id);
 
   return (
-    <div className="container-max py-10">
-      <Link
-        href="/sermons"
-        className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-sky-700 hover:text-sky-800 dark:text-cyan-300 dark:hover:text-cyan-200"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to sermons
-      </Link>
+    <div className="container-max space-y-6 py-10 sm:py-12">
+      <BackLink href="/sermons" label="Back to sermons" />
 
-      {isLoading && <DetailState text="Loading sermon..." />}
-      {!isLoading && error && <DetailState text="Failed to load sermon." />}
-      {!isLoading && !error && !data && <DetailState text="Sermon not found." />}
+      {isLoading && (
+        <div className="space-y-4" role="status">
+          <span className="sr-only">Loading…</span>
+          <Skeleton className="h-8 w-2/3" />
+          <Skeleton className="aspect-video w-full rounded-panel" />
+        </div>
+      )}
+      {!isLoading && error && (
+        <EmptyState icon={PlayCircle} title="This sermon couldn't load right now" message="Please try again in a moment." />
+      )}
+      {!isLoading && !error && !data && (
+        <EmptyState
+          icon={PlayCircle}
+          title="Sermon not found"
+          message="It may have been moved or removed."
+          action={
+            <Button asChild variant="secondary">
+              <Link href="/sermons">Browse sermons</Link>
+            </Button>
+          }
+        />
+      )}
 
       {data && (
-        <article className="overflow-hidden rounded-[1.8rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
-          <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 px-6 py-12 text-white sm:px-10">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-fuchsia-100">
-              Sermon Message
-            </p>
-            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">{data.title}</h1>
+        <article className="space-y-8">
+          <header className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gold-ink">Sermon</p>
+            <h1 className="break-words text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{data.title}</h1>
+            {data.speaker && (
+              <p className="inline-flex items-center gap-2 text-sm text-muted">
+                <Mic className="h-4 w-4" aria-hidden="true" />
+                {data.speaker}
+              </p>
+            )}
+          </header>
+
+          {/* Video surface: black in both themes (allowed exception). */}
+          <div className="overflow-hidden rounded-panel border border-border bg-black">
+            <div className="aspect-video">
+              {data.video_url ? (
+                <iframe title={data.title} src={data.video_url} className="h-full w-full" allowFullScreen />
+              ) : (
+                <div className="flex h-full items-center justify-center p-6 text-center text-white/80">
+                  <div>
+                    <PlayCircle className="mx-auto mb-3 h-12 w-12 opacity-60" aria-hidden="true" />
+                    <p>No video available for this sermon yet.</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-6 p-6 sm:p-10">
-            <div className="overflow-hidden rounded-[1.4rem] border border-slate-200 bg-black shadow-sm dark:border-slate-700">
-              <div className="aspect-video">
-                {data.video_url ? (
-                  <iframe
-                    title={data.title}
-                    src={data.video_url}
-                    className="h-full w-full"
-                    allowFullScreen
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center bg-slate-950 text-slate-300">
-                    <div className="text-center">
-                      <PlayCircle className="mx-auto mb-3 h-12 w-12 opacity-50" />
-                      <p>No video available for this sermon yet.</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+          <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+            <p className="leading-relaxed text-foreground/85">
+              {data.description || 'This sermon is available in the ANT PRESS library and can be revisited here whenever you need it.'}
+            </p>
 
-            <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="space-y-4">
-                {data.speaker && (
-                  <p className="inline-flex items-center gap-2 text-sm font-medium text-ui-muted">
-                    <Mic className="h-4 w-4 text-sky-700 dark:text-cyan-300" />
-                    {data.speaker}
-                  </p>
-                )}
-                <p className="leading-relaxed text-ui-muted">
-                  {data.description || 'This sermon is available in the ANT PRESS library and can be revisited here whenever you need it.'}
-                </p>
-              </div>
-
-              <div className="rounded-[1.4rem] border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900">
-                <h2 className="text-xl font-bold text-slate-950 dark:text-white">Keep Exploring</h2>
-                <p className="mt-3 text-sm leading-relaxed text-ui-muted">
-                  Browse the wider sermon library or continue into connected ministry content.
-                </p>
-                <div className="mt-5 flex flex-col gap-3">
-                  <Link
-                    href="/sermons"
-                    className="inline-flex items-center justify-center rounded-full bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-400"
-                  >
-                    More Sermons
-                  </Link>
-                  <Link
-                    href="/ministries"
-                    className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:border-sky-300 hover:text-sky-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-cyan-500/40 dark:hover:text-cyan-300"
-                  >
-                    Explore Ministries
-                  </Link>
+            <Card>
+              <CardContent className="space-y-4 p-6">
+                <h2 className="text-lg font-semibold text-foreground">Keep exploring</h2>
+                <p className="text-sm text-muted">Browse the wider sermon library or continue into connected ministry content.</p>
+                <div className="flex flex-col gap-3">
+                  <Button asChild>
+                    <Link href="/sermons">More sermons</Link>
+                  </Button>
+                  <Button asChild variant="secondary">
+                    <Link href="/ministries">Explore ministries</Link>
+                  </Button>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         </article>
       )}
-    </div>
-  );
-}
-
-function DetailState({ text }: { text: string }) {
-  return (
-    <div className="rounded-[1.4rem] border border-dashed border-slate-300 bg-white p-10 text-center text-ui-subtle dark:border-slate-700 dark:bg-slate-950">
-      <p>{text}</p>
     </div>
   );
 }

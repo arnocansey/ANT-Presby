@@ -147,3 +147,18 @@ Use this checklist for final smoke testing on web and Android.
 - [ ] (Dev/store build) Save a photo to the phone's photo library; denying the permission shows a clear message
 - [ ] (Dev/store build) Upload several photos from the phone as an admin
 - [ ] Delete a photo and then the album; both disappear from the Cloudinary `antpresby/albums/` folder
+
+## Website restyle (8b)
+
+Check each page at 375px and 1280px wide, in Light and in Dark (header theme toggle).
+
+- [ ] No public or member page scrolls sideways at 375px; rows of buttons wrap
+- [ ] No light boxes, gradients or unreadable text remain on any public or member page in Dark
+- [ ] Watch (`/sermons`): "Live stream" button, latest-sermon panel, series row, search plus speaker filter, and "Clear search" all work
+- [ ] With the backend running, every list shows skeletons while loading and a friendly message when empty: sermons, series, events, news, gallery, album, devotionals, groups, prayer wall, my requests, ministries, community, registrations, search and notifications
+- [ ] With the backend stopped, each of those pages (plus the dashboard metrics and profile) says it "couldn't load right now" instead of showing a blank page, a "0" or an empty form
+- [ ] Give: the GH₵ box never overlaps the "Other amount" placeholder or the digits; fund and quick-amount buttons show their selected state
+- [ ] Contact, sign in, register, profile, prayer request and group message have a label above every field; submitting empty shows red messages under the fields
+- [ ] Tab shows a visible focus ring on every link, button, field, photo and lightbox control
+- [ ] About shows tiles for Ministries, Contact, FAQ, Privacy and Terms; FAQ, Privacy and Terms link back to About
+- [ ] A draft album's public link still says "Album not found"

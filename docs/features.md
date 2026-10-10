@@ -186,3 +186,12 @@ Current media behavior:
 - Albums can link to an event (the event page shows "View photos") and to an outside folder such as Google Drive.
 - Admins manage albums at `/admin/gallery` or in the mobile admin console. They upload many photos at once (straight to Cloudinary, up to 10 MB each), choose a cover, and publish.
 - Everyone is notified once, the first time a published album has photos.
+
+## Website Design (8b)
+
+- Every public and member page uses the Clean & classic design system (`docs/design-system.md`) and works in light and dark mode and at phone width.
+- `/sermons` is the Watch hub: a link to the livestream, the latest sermon, sermon series and a searchable list of all sermons.
+- Every list shows loading placeholders, a friendly message when empty, and a clear message if it could not load.
+- Give shows the GH₵ currency in its own box beside the amount.
+- About links to Ministries, Contact, FAQ, Privacy and Terms.
+- Shared website pieces live in `frontend/src/components/site/` (BackLink, SearchField, MediaPlaceholder, SkeletonGrid, StatusMessage, DateBadge, LegalDocument). They are candidates to move into `components/ui` once the admin and app restyles have merged.

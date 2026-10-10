@@ -1,5 +1,8 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Mail, MapPin, Phone } from 'lucide-react';
 import Crest from './Crest';
 import {
@@ -12,7 +15,11 @@ import {
 import { FOOTER_GROUPS } from '@/lib/navigation';
 
 export default function Footer() {
+  const pathname = usePathname();
   const currentYear = new Date().getFullYear();
+
+  // Admin pages are a full-height workspace with their own sidebar; the public footer doesn't belong there.
+  if (pathname === '/admin' || pathname?.startsWith('/admin/')) return null;
 
   return (
     <footer className="mt-16 border-t border-border bg-surface">

@@ -778,10 +778,12 @@ export const useCheckInEvents = (enabled = true, q = '') => {
   });
 };
 
+// Polls while open so each usher sees the others' check-ins and headcount taps.
 export const useEventAttendance = (eventId?: number) =>
   useQuery({
     queryKey: ['attendance', 'event', eventId],
     enabled: Boolean(eventId),
+    refetchInterval: 15000,
     queryFn: async (): Promise<EventAttendance> => {
       const response = await apiClient.get(`/attendance/events/${eventId}`);
       return response.data?.data;
@@ -839,6 +841,8 @@ export const useAdjustHeadcount = (eventId?: number) =>
       );
       queryClient.invalidateQueries({ queryKey: ['admin', 'attendance'] });
     },
+    // Replies can arrive out of order; refetching settles the display on the server's count.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['attendance', 'event', eventId] }),
   });
 
 export const useMyCheckInCard = (enabled = true) =>

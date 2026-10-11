@@ -4,6 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Button } from '@/components/ui/button';
 import { useProfile } from '@/hooks/useApi';
 
 export const canTakeAttendance = (profile?: { role?: string; can_take_attendance?: boolean } | null) =>
@@ -12,17 +13,30 @@ export const canTakeAttendance = (profile?: { role?: string; can_take_attendance
 // Admins and ushers only. Reads the profile fresh, so a member whose usher switch is off is sent away.
 export default function StaffGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { data: profile, isLoading } = useProfile();
+  // Always refetch: a cached profile from before an admin turned the usher switch on must not block.
+  const { data: profile, isFetching, isError, refetch } = useProfile({ fresh: true });
   const allowed = canTakeAttendance(profile);
+  const denied = !isFetching && !isError && !allowed;
 
   React.useEffect(() => {
-    if (!isLoading && !allowed) {
+    if (denied) {
       toast.error('You do not have attendance access');
       router.replace('/dashboard');
     }
-  }, [allowed, isLoading, router]);
+  }, [denied, router]);
 
-  if (isLoading || !allowed) {
+  if (!allowed && isError && !isFetching) {
+    return (
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-center" role="alert">
+        <p className="text-sm text-muted">We could not check your access. Check your connection and try again.</p>
+        <Button variant="secondary" onClick={() => refetch()}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
+  if (!allowed) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center" role="status">
         <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />

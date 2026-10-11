@@ -37,6 +37,12 @@ export default function CheckInScreen() {
   const isAdmin = user?.role === 'admin';
   const profileQuery = useMyProfile(Boolean(user) && !isAdmin);
   const allowed = isAdmin || Boolean(profileQuery.data?.can_take_attendance);
+  const { refetch: refetchProfile } = profileQuery;
+
+  // A cached profile from before an admin turned the usher switch on must not block: re-check on open.
+  React.useEffect(() => {
+    if (user && !isAdmin) refetchProfile();
+  }, [user, isAdmin, refetchProfile]);
 
   const [selectedEventId, setSelectedEventId] = React.useState<number | undefined>();
   const [eventSearchInput, setEventSearchInput] = React.useState('');
@@ -74,7 +80,7 @@ export default function CheckInScreen() {
 
   if (!user) return null;
 
-  if (!isAdmin && profileQuery.isLoading) {
+  if (!isAdmin && !allowed && profileQuery.isFetching) {
     return (
       <Screen>
         <ScreenHeader back title="Take attendance" />
@@ -87,7 +93,11 @@ export default function CheckInScreen() {
     return (
       <Screen>
         <ScreenHeader back title="Take attendance" />
-        <ErrorState title="You do not have attendance access" message="Ask an admin to turn on usher access for your account." />
+        {profileQuery.isError ? (
+          <ErrorState title="Could not check your access" onRetry={() => refetchProfile()} />
+        ) : (
+          <ErrorState title="You do not have attendance access" message="Ask an admin to turn on usher access for your account." />
+        )}
       </Screen>
     );
   }

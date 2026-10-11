@@ -181,9 +181,11 @@ export const useLogout = () => {
   });
 };
 
-export const useProfile = () => {
+// fresh: always refetch on mount (e.g. to see a just-granted usher switch despite the cache).
+export const useProfile = ({ fresh = false }: { fresh?: boolean } = {}) => {
   return useQuery({
     queryKey: ['profile'],
+    ...(fresh ? { refetchOnMount: 'always' as const } : {}),
     queryFn: async () => {
       const response = await apiClient.get('/users/profile');
       return response.data.data;
@@ -1306,10 +1308,13 @@ export const useCheckInEvents = (q = '') => {
   });
 };
 
+// Polls while open so each usher sees the others' check-ins and headcount taps.
+export const ATTENDANCE_SHEET_REFRESH_MS = 15000;
 export const useEventAttendance = (eventId?: number) =>
   useQuery({
     queryKey: ['attendance', 'event', eventId],
     enabled: Boolean(eventId),
+    refetchInterval: ATTENDANCE_SHEET_REFRESH_MS,
     queryFn: async (): Promise<EventAttendance> => {
       const response = await apiClient.get(`/attendance/events/${eventId}`);
       return response.data?.data;
@@ -1368,6 +1373,8 @@ export const useAdjustHeadcount = (eventId?: number) => {
       );
       qc.invalidateQueries({ queryKey: ['admin', 'attendance'] });
     },
+    // Replies can arrive out of order; refetching settles the display on the server's count.
+    onSettled: () => qc.invalidateQueries({ queryKey: ['attendance', 'event', eventId] }),
     onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not update the count')),
   });
 };
@@ -1469,12 +1476,18 @@ export const useDeleteEvent = () => {
   });
 };
 
-export const useAdminUsers = () => {
+// Server-side search, so every member can be found, not only the newest page.
+export const ADMIN_USERS_PAGE_SIZE = 100;
+export const useAdminUsers = (search = '') => {
+  const term = search.trim();
   return useQuery({
-    queryKey: ['admin', 'users'],
-    queryFn: async () => {
-      const response = await apiClient.get('/admin/users');
-      return response.data.data;
+    queryKey: ['admin', 'users', term],
+    queryFn: async (): Promise<{ users: any[]; total: number }> => {
+      const response = await apiClient.get('/admin/users', {
+        params: { limit: ADMIN_USERS_PAGE_SIZE, ...(term ? { search: term } : {}) },
+      });
+      const users = response.data?.data ?? [];
+      return { users, total: response.data?.meta?.total ?? users.length };
     },
   });
 };

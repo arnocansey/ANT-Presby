@@ -110,3 +110,29 @@ describe('check-in card model', () => {
     expect(rows).toEqual([{ id: 2, first_name: 'Ama', last_name: 'Mensah', email: 'a@t.com' }]);
   });
 });
+
+describe('listCheckInCards backfill', () => {
+  test('fills missing codes in parallel batches, not one member at a time', async () => {
+    const prisma = buildPrismaMock();
+    const users = Array.from({ length: 25 }, (_, i) => ({ id: i + 1, firstName: 'M', lastName: String(i), checkInCode: null }));
+    prisma.user.findMany.mockResolvedValue(users);
+    prisma.user.findUnique.mockResolvedValue({ checkInCode: null });
+    let inFlight = 0;
+    let peak = 0;
+    prisma.user.updateMany.mockImplementation(async () => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setImmediate(resolve));
+      inFlight -= 1;
+      return { count: 1 };
+    });
+
+    const cards = await loadModel(prisma).listCheckInCards();
+
+    expect(cards).toHaveLength(25);
+    expect(cards.every((card) => /^[0-9A-Z]{10}$/.test(card.code))).toBe(true);
+    expect(cards.map((card) => card.id)).toEqual(users.map((user) => user.id));
+    expect(peak).toBeGreaterThan(1);
+    expect(peak).toBeLessThanOrEqual(10);
+  });
+});

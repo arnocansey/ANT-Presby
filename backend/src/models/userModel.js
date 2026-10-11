@@ -354,6 +354,7 @@ const getUserProfile = async (userId) => {
 };
 
 const MAX_CODE_ATTEMPTS = 5;
+const CODE_BACKFILL_BATCH = 10;
 const isUniqueViolation = (error) => error?.code === 'P2002';
 const isMissingRecord = (error) => error?.code === 'P2025';
 
@@ -435,10 +436,15 @@ const listCheckInCards = async (ids) => {
     select: { id: true, firstName: true, lastName: true, checkInCode: true },
   });
 
+  // The first "print all" may need hundreds of new codes: create them in parallel batches.
   const cards = [];
-  for (const user of users) {
-    const code = user.checkInCode || (await getOrCreateCheckInCode(user.id));
-    cards.push({ id: user.id, first_name: user.firstName, last_name: user.lastName, code, qr_text: toQrText(code) });
+  for (let start = 0; start < users.length; start += CODE_BACKFILL_BATCH) {
+    const batch = users.slice(start, start + CODE_BACKFILL_BATCH);
+    const codes = await Promise.all(batch.map((user) => user.checkInCode || getOrCreateCheckInCode(user.id)));
+    batch.forEach((user, index) => {
+      const code = codes[index];
+      cards.push({ id: user.id, first_name: user.firstName, last_name: user.lastName, code, qr_text: toQrText(code) });
+    });
   }
   return cards;
 };

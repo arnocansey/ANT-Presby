@@ -61,9 +61,11 @@ export default function CheckInSheet({ eventId }: { eventId?: number }) {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
+  // mutateAsync per call: with mutate, a second scan before the first finishes would drop
+  // the first scan's result (including a "Card not recognised" error).
   const checkInWith = (input: CheckInInput) =>
-    checkIn.mutate(input, {
-      onSuccess: (result) => {
+    checkIn.mutateAsync(input).then(
+      (result) => {
         if ('guestName' in input) {
           setGuestName('');
           setStatus(`${input.guestName} added`);
@@ -72,12 +74,12 @@ export default function CheckInSheet({ eventId }: { eventId?: number }) {
         const name = fullName(result?.member);
         setStatus(result?.already ? `${name} was already checked in` : `${name} checked in`);
       },
-      onError: (err: any) => {
+      (err: any) => {
         const message = err?.response?.data?.message || 'Could not check in';
         setStatus(message);
         toast.error(message);
-      },
-    });
+      }
+    );
   const scan = (text: string) => checkInWith({ code: text });
 
   const checkedInIds = new Set([
@@ -171,7 +173,8 @@ export default function CheckInSheet({ eventId }: { eventId?: number }) {
         <HeadcountCard sheet={sheet} disabled={cancelled} />
         <FormSection title="Scan member cards" description="Use a card scanner or the camera.">
           <div className="space-y-4">
-            <ScanBox onScan={scan} disabled={cancelled || checkIn.isPending} />
+            {/* Stays enabled while a check-in is in flight, so a scanner's next card is not lost. */}
+            <ScanBox onScan={scan} disabled={cancelled} />
             {cameraOpen ? (
               <CameraScanner onScan={scan} onClose={() => setCameraOpen(false)} />
             ) : (

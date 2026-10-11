@@ -32,19 +32,22 @@ const nameOf = (user: AdminUser) =>
   [user.first_name ?? user.firstName, user.last_name ?? user.lastName].filter(Boolean).join(' ') || 'Unnamed user';
 
 export default function AdminUsersPage() {
-  const { data, isLoading, isError, refetch } = useAdminUsers();
+  const [query, setQuery] = React.useState('');
+  const [search, setSearch] = React.useState('');
+  // Wait for a pause in typing, then search every account on the server.
+  React.useEffect(() => {
+    const timer = setTimeout(() => setSearch(query), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const { data, isLoading, isError, refetch } = useAdminUsers(search);
   const updateRole = useUpdateUserRole();
   const setUsher = useSetUsher();
   const resetCard = useResetCheckInCard();
-  const [query, setQuery] = React.useState('');
   const [resetting, setResetting] = React.useState<AdminUser | null>(null);
-  const users = (data ?? []) as AdminUser[];
-
-  const filteredUsers = users.filter((user) => {
-    const fullName = nameOf(user).toLowerCase();
-    const q = query.trim().toLowerCase();
-    return !q || fullName.includes(q) || user.email.toLowerCase().includes(q) || user.role.includes(q);
-  });
+  const users = (data?.users ?? []) as AdminUser[];
+  const total = data?.total ?? users.length;
+  const filteredUsers = users;
 
   return (
     <div className="space-y-6">
@@ -60,7 +63,7 @@ export default function AdminUsersPage() {
       />
 
       <section aria-label="Totals" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="All accounts" icon={Users} loading={isLoading} value={users.length} />
+        <StatCard label={search.trim() ? 'Matching accounts' : 'All accounts'} icon={Users} loading={isLoading} value={total} />
         <StatCard label="Admins" icon={UserRoundCog} loading={isLoading} value={users.filter((user) => user.role === 'admin').length} />
         <StatCard label="Members" icon={UsersRound} loading={isLoading} value={users.filter((user) => user.role === 'member').length} />
         <StatCard
@@ -71,13 +74,18 @@ export default function AdminUsersPage() {
         />
       </section>
 
-      <div className="w-full sm:max-w-sm">
+      <div className="w-full space-y-2 sm:max-w-sm">
         <Input
           aria-label="Search members"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search by name, email or role"
+          placeholder="Search by name or email"
         />
+        {total > users.length && (
+          <p className="text-xs text-muted" role="status">
+            Showing the newest {users.length} of {total}. Search by name or email to find anyone else.
+          </p>
+        )}
       </div>
 
       {isLoading ? (
@@ -150,6 +158,11 @@ export default function AdminUsersPage() {
                   </Button>
                   <Button size="sm" variant="secondary" onClick={() => setResetting(user)} disabled={resetCard.isPending}>
                     Reset card
+                  </Button>
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href={`/admin/users/cards?ids=${user.id}`} aria-label={`Print check-in card for ${nameOf(user)}`}>
+                      Print card
+                    </Link>
                   </Button>
                 </div>
               ),

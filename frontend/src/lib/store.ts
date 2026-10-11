@@ -12,6 +12,7 @@ interface User {
   profileImageUrl?: string;
   profile_image_url?: string;
   role: 'member' | 'admin';
+  can_take_attendance?: boolean;
 }
 
 interface AuthStore {

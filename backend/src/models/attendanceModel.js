@@ -14,6 +14,8 @@ const toPerson = (user) => ({
   email: user.email,
 });
 
+const toHeadcount = (row) => ({ adults: row?.adults ?? 0, children: row?.children ?? 0 });
+
 // Pure: turns an event with its registrations and attendance into the check-in sheet.
 const buildAttendanceSummary = (event) => {
   const memberRecords = new Map();
@@ -43,6 +45,9 @@ const buildAttendanceSummary = (event) => {
     .filter((record) => !registeredIds.has(record.userId))
     .map((record) => ({ ...toPerson(record.user), record_id: record.id, checked_in_at: record.checkedInAt }));
 
+  const headcount = toHeadcount(event.headcount);
+  const named = memberRecords.size + guests.length;
+
   return {
     event: {
       id: event.id,
@@ -54,11 +59,15 @@ const buildAttendanceSummary = (event) => {
     registered,
     walk_in_members: walkInMembers,
     guests,
+    headcount,
     totals: {
       registered: registered.length,
       checked_in_members: memberRecords.size,
       guests: guests.length,
-      total: memberRecords.size + guests.length,
+      named,
+      adults: headcount.adults,
+      children: headcount.children,
+      total: named + headcount.adults + headcount.children,
     },
   };
 };
@@ -72,6 +81,7 @@ const getEventAttendance = async (eventId) => {
       eventDate: true,
       location: true,
       status: true,
+      headcount: { select: { adults: true, children: true } },
       registrations: {
         orderBy: { registeredAt: 'asc' },
         select: { userId: true, user: { select: personSelect } },
@@ -136,15 +146,29 @@ const deleteRecord = async (recordId) => {
 
 const toSummaryRow = (event) => {
   const members = event.attendance.filter((record) => record.userId !== null).length;
+  const named = event.attendance.length;
+  const { adults, children } = toHeadcount(event.headcount);
   return {
     event_id: event.id,
     name: event.name,
     event_date: event.eventDate,
     registered: event._count.registrations,
     members,
-    guests: event.attendance.length - members,
-    total: event.attendance.length,
+    guests: named - members,
+    named,
+    adults,
+    children,
+    total: named + adults + children,
   };
+};
+
+const summarySelect = {
+  id: true,
+  name: true,
+  eventDate: true,
+  _count: { select: { registrations: true } },
+  attendance: { select: { userId: true } },
+  headcount: { select: { adults: true, children: true } },
 };
 
 // Headcounts for the most recent events that have already started (newest first).
@@ -153,13 +177,7 @@ const getAttendanceSummary = async (limit = 10) => {
     where: { eventDate: { lte: new Date() } },
     orderBy: { eventDate: 'desc' },
     take: Number(limit),
-    select: {
-      id: true,
-      name: true,
-      eventDate: true,
-      _count: { select: { registrations: true } },
-      attendance: { select: { userId: true } },
-    },
+    select: summarySelect,
   });
 
   return events.map(toSummaryRow);
@@ -177,7 +195,83 @@ const listCheckInEvents = async ({ from, to }) => {
   return toSnakeCaseObject(events);
 };
 
+// One statement, so taps from several ushers at once all count; GREATEST keeps counts at 0 or more.
+const adjustHeadcount = async ({ eventId, adults = 0, children = 0, updatedBy = null }) => {
+  const [row] = await prisma.$queryRaw`
+    INSERT INTO event_headcounts (event_id, adults, children, updated_by, updated_at)
+    VALUES (${eventId}, GREATEST(${adults}::int, 0), GREATEST(${children}::int, 0), ${updatedBy}, NOW())
+    ON CONFLICT (event_id) DO UPDATE SET
+      adults = GREATEST(event_headcounts.adults + ${adults}::int, 0),
+      children = GREATEST(event_headcounts.children + ${children}::int, 0),
+      updated_by = EXCLUDED.updated_by,
+      updated_at = NOW()
+    RETURNING adults, children`;
+  return { adults: Number(row.adults), children: Number(row.children) };
+};
+
+// Late check-in: any past event by name, up to the normal future window.
+const searchCheckInEvents = async ({ q, to }) => {
+  const events = await prisma.event.findMany({
+    where: { name: { contains: q, mode: 'insensitive' }, eventDate: { lte: to } },
+    orderBy: { eventDate: 'desc' },
+    take: 50,
+    select: { id: true, name: true, eventDate: true, location: true, status: true },
+  });
+  return toSnakeCaseObject(events);
+};
+
+const nameOf = (person) => (person ? `${person.firstName || ''} ${person.lastName || ''}`.trim() : '');
+
+const getEventExport = async (eventId) => {
+  const event = await prisma.event.findUnique({
+    where: { id: Number(eventId) },
+    select: {
+      id: true,
+      name: true,
+      eventDate: true,
+      headcount: { select: { adults: true, children: true } },
+      attendance: {
+        orderBy: { checkedInAt: 'asc' },
+        select: {
+          userId: true,
+          guestName: true,
+          checkedInAt: true,
+          user: { select: personSelect },
+          checker: { select: { firstName: true, lastName: true } },
+        },
+      },
+    },
+  });
+  if (!event) return undefined;
+
+  return {
+    event: { id: event.id, name: event.name, event_date: event.eventDate },
+    headcount: toHeadcount(event.headcount),
+    rows: event.attendance.map((record) => ({
+      type: record.userId ? 'Member' : 'Guest',
+      name: record.userId ? nameOf(record.user) : record.guestName,
+      email: record.user?.email || '',
+      checked_in_at: record.checkedInAt,
+      checked_in_by: nameOf(record.checker),
+    })),
+  };
+};
+
+const getRangeExport = async ({ from, to }) => {
+  const events = await prisma.event.findMany({
+    where: { eventDate: { gte: from, lt: to } },
+    orderBy: { eventDate: 'asc' },
+    take: 2000,
+    select: summarySelect,
+  });
+  return events.map(toSummaryRow);
+};
+
 module.exports = {
+  adjustHeadcount,
+  searchCheckInEvents,
+  getEventExport,
+  getRangeExport,
   listCheckInEvents,
   buildAttendanceSummary,
   toSummaryRow,

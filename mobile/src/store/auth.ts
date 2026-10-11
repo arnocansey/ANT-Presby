@@ -7,6 +7,7 @@ type MobileUser = {
   role: 'admin' | 'member';
   first_name?: string;
   last_name?: string;
+  can_take_attendance?: boolean;
 };
 
 type AuthState = {

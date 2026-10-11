@@ -47,7 +47,7 @@ const ACTION_GROUPS: { title: string; items: { icon: IconName; label: string; hr
     title: 'Church life',
     items: [
       { icon: 'add-circle-outline', label: 'New event', href: '/admin-events' },
-      { icon: 'checkmark-done-outline', label: 'Attendance', href: '/admin-attendance' },
+      { icon: 'checkmark-done-outline', label: 'Attendance', href: '/check-in' },
     ],
   },
   {

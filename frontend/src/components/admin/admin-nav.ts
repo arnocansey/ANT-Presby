@@ -52,7 +52,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     title: 'Church life',
     items: [
       { href: '/admin/events', label: 'Events', icon: CalendarDays },
-      { href: '/admin/attendance', label: 'Attendance', icon: ClipboardCheck },
+      { href: '/admin/attendance', label: 'Attendance', icon: ClipboardCheck, also: ['/check-in'] },
       { href: '/admin/ministries', label: 'Ministries', icon: Church },
       { href: '/admin/groups', label: 'Small groups', icon: UsersRound },
       { href: '/admin/prayers', label: 'Prayer requests', icon: HeartHandshake },

@@ -70,14 +70,26 @@ Use this checklist for final smoke testing on web and Android.
 
 ## Attendance
 
-- [ ] Admin opens an event on `/admin/attendance`; registered members are listed with Check in buttons
+- [ ] Admin opens an event from `/admin/attendance` or `/check-in`; registered members are listed with Check in buttons
 - [ ] Checking in a registered member updates "present" and switches the button to Undo
 - [ ] Searching a member by name or email and checking them in lists them under Walk-ins as "member"
 - [ ] Adding a walk-in guest works; a blank name cannot be added
 - [ ] Checking the same member in twice (two tabs or a double tap) keeps one record
-- [ ] A cancelled event shows "check-in is closed"
-- [ ] Recent headcounts show members and guests for past events
-- [ ] Members (non-admins) cannot reach any attendance page or endpoint
+- [ ] A cancelled event shows "check-in is closed" and the counters and scan box are disabled
+- [ ] Recent headcounts show named and counted people for past events
+- [ ] Members without usher access cannot reach `/check-in`, the app's Take attendance, or any attendance endpoint
+- [ ] Admin → Members: turning "Usher" on lets that member see Take attendance (web menu, dashboard, app Account) and check people in; turning it off sends them out on their next action
+- [ ] An usher gets "403" on the CSV exports and does not see Download CSV
+- [ ] Headcount: + and − change Adults and Children; − stops at 0; two devices tapping at once both count
+- [ ] A USB/Bluetooth scanner typing a card code and Enter in "Scan a card" checks the member in and shows their name
+- [ ] Web "Use camera" and the app's "Scan cards" check members in from their QR cards; the same card held up stays one check-in
+- [ ] After Admin → Members → Reset card, the old card shows "Card not recognised"; the new one works
+- [ ] Admin → Members → Print cards prints only the cards (no header or sidebar), and the printed cards scan
+- [ ] "My check-in card" shows on the web dashboard and the app Account screen
+- [ ] Searching an older event by name on `/check-in` (and in the app) allows late check-in
+- [ ] Admin → Attendance → Export downloads a CSV for a date range; a range over a year shows "Choose a range of one year or less"
+- [ ] Download CSV on a sheet gives everyone checked in plus the two headcount rows, and opens correctly in Excel
+- [ ] The new APK asks for camera permission with "Allows ushers to scan member check-in cards."
 
 ## Small Groups
 

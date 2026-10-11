@@ -1,60 +1,91 @@
 'use client';
 
 import React from 'react';
-import { UserRoundCog, Users, UsersRound } from 'lucide-react';
+import Link from 'next/link';
+import { ClipboardCheck, UserRoundCog, Users, UsersRound } from 'lucide-react';
 import PageHeader from '@/components/ui/page-header';
 import SimpleTable from '@/components/ui/table';
+import ConfirmDialog from '@/components/ui/confirm-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import StatCard from '@/components/admin/stat-card';
 import { LoadError, TableSkeleton } from '@/components/admin/states';
 import { ADMIN_HOME_CRUMB } from '@/components/admin/admin-nav';
-import { useAdminUsers, useUpdateUserRole } from '@/hooks/useApi';
+import { useAdminUsers, useResetCheckInCard, useSetUsher, useUpdateUserRole } from '@/hooks/useApi';
 
 type AdminUser = {
   id: number;
   firstName?: string;
   lastName?: string;
+  first_name?: string;
+  last_name?: string;
   email: string;
   role: 'admin' | 'member';
   is_active?: boolean;
+  can_take_attendance?: boolean;
   created_at?: string;
 };
 
-export default function AdminUsersPage() {
-  const { data, isLoading, isError, refetch } = useAdminUsers();
-  const updateRole = useUpdateUserRole();
-  const [query, setQuery] = React.useState('');
-  const users = (data ?? []) as AdminUser[];
+// The API sends snake_case names; camelCase is kept for older responses.
+const nameOf = (user: AdminUser) =>
+  [user.first_name ?? user.firstName, user.last_name ?? user.lastName].filter(Boolean).join(' ') || 'Unnamed user';
 
-  const filteredUsers = users.filter((user) => {
-    const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').toLowerCase();
-    const q = query.trim().toLowerCase();
-    return !q || fullName.includes(q) || user.email.toLowerCase().includes(q) || user.role.includes(q);
-  });
+export default function AdminUsersPage() {
+  const [query, setQuery] = React.useState('');
+  const [search, setSearch] = React.useState('');
+  // Wait for a pause in typing, then search every account on the server.
+  React.useEffect(() => {
+    const timer = setTimeout(() => setSearch(query), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const { data, isLoading, isError, refetch } = useAdminUsers(search);
+  const updateRole = useUpdateUserRole();
+  const setUsher = useSetUsher();
+  const resetCard = useResetCheckInCard();
+  const [resetting, setResetting] = React.useState<AdminUser | null>(null);
+  const users = (data?.users ?? []) as AdminUser[];
+  const total = data?.total ?? users.length;
+  const filteredUsers = users;
 
   return (
     <div className="space-y-6">
       <PageHeader
         breadcrumb={[ADMIN_HOME_CRUMB, { label: 'Members' }]}
         title="Members"
-        description="Search people and change who has admin access."
+        description="Search people, manage admin and usher access, and print check-in cards."
+        actions={
+          <Button asChild variant="secondary">
+            <Link href="/admin/users/cards">Print cards</Link>
+          </Button>
+        }
       />
 
-      <section aria-label="Totals" className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="All accounts" icon={Users} loading={isLoading} value={users.length} />
+      <section aria-label="Totals" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label={search.trim() ? 'Matching accounts' : 'All accounts'} icon={Users} loading={isLoading} value={total} />
         <StatCard label="Admins" icon={UserRoundCog} loading={isLoading} value={users.filter((user) => user.role === 'admin').length} />
         <StatCard label="Members" icon={UsersRound} loading={isLoading} value={users.filter((user) => user.role === 'member').length} />
+        <StatCard
+          label="Ushers"
+          icon={ClipboardCheck}
+          loading={isLoading}
+          value={users.filter((user) => user.role === 'member' && user.can_take_attendance).length}
+        />
       </section>
 
-      <div className="w-full sm:max-w-sm">
+      <div className="w-full space-y-2 sm:max-w-sm">
         <Input
           aria-label="Search members"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search by name, email or role"
+          placeholder="Search by name or email"
         />
+        {total > users.length && (
+          <p className="text-xs text-muted" role="status">
+            Showing the newest {users.length} of {total}. Search by name or email to find anyone else.
+          </p>
+        )}
       </div>
 
       {isLoading ? (
@@ -70,9 +101,7 @@ export default function AdminUsersPage() {
               header: 'Name',
               render: (user: AdminUser) => (
                 <div>
-                  <p className="font-semibold text-foreground">
-                    {[user.firstName, user.lastName].filter(Boolean).join(' ') || 'Unnamed user'}
-                  </p>
+                  <p className="font-semibold text-foreground">{nameOf(user)}</p>
                   <p className="text-xs text-muted">{user.email}</p>
                 </div>
               ),
@@ -94,21 +123,65 @@ export default function AdminUsersPage() {
               ),
             },
             {
+              key: 'usher',
+              header: 'Usher',
+              render: (user: AdminUser) =>
+                user.role === 'admin' ? (
+                  <span className="text-sm text-muted" aria-label="Admins already take attendance">
+                    —
+                  </span>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant={user.can_take_attendance ? 'primary' : 'secondary'}
+                    aria-pressed={Boolean(user.can_take_attendance)}
+                    aria-label={`Usher access for ${nameOf(user)}`}
+                    disabled={setUsher.isPending}
+                    onClick={() => setUsher.mutate({ id: user.id, enabled: !user.can_take_attendance })}
+                  >
+                    {user.can_take_attendance ? 'Usher: on' : 'Usher: off'}
+                  </Button>
+                ),
+            },
+            {
               key: 'actions',
               header: 'Actions',
               render: (user: AdminUser) => (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => updateRole.mutate({ id: user.id, role: user.role === 'admin' ? 'member' : 'admin' })}
-                  disabled={updateRole.isPending}
-                >
-                  Make {user.role === 'admin' ? 'member' : 'admin'}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => updateRole.mutate({ id: user.id, role: user.role === 'admin' ? 'member' : 'admin' })}
+                    disabled={updateRole.isPending}
+                  >
+                    Make {user.role === 'admin' ? 'member' : 'admin'}
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => setResetting(user)} disabled={resetCard.isPending}>
+                    Reset card
+                  </Button>
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href={`/admin/users/cards?ids=${user.id}`} aria-label={`Print check-in card for ${nameOf(user)}`}>
+                      Print card
+                    </Link>
+                  </Button>
+                </div>
               ),
             },
           ]}
           data={filteredUsers}
+        />
+      )}
+
+      {resetting && (
+        <ConfirmDialog
+          title="Reset check-in card?"
+          description={`Reset ${nameOf(resetting)}'s check-in card? Their old card will stop working.`}
+          confirmLabel="Reset card"
+          onConfirm={() => {
+            resetCard.mutate(resetting.id);
+            setResetting(null);
+          }}
+          onCancel={() => setResetting(null)}
         />
       )}
     </div>

@@ -3,6 +3,8 @@ const buildPrismaMock = () => ({
     findFirst: jest.fn(),
     create: jest.fn(),
   },
+  event: { findMany: jest.fn(), findUnique: jest.fn() },
+  $queryRaw: jest.fn(),
 });
 
 const loadModel = (prismaMock) => {
@@ -59,6 +61,9 @@ describe('buildAttendanceSummary', () => {
       registered: 2,
       checked_in_members: 2,
       guests: 1,
+      named: 3,
+      adults: 0,
+      children: 0,
       total: 3,
     });
   });
@@ -86,7 +91,7 @@ describe('toSummaryRow', () => {
       attendance: [{ userId: 2 }, { userId: null }, { userId: 4 }],
     });
 
-    expect(row).toEqual({ event_id: 7, name: 'Sunday Service', event_date: at, registered: 5, members: 2, guests: 1, total: 3 });
+    expect(row).toEqual({ event_id: 7, name: 'Sunday Service', event_date: at, registered: 5, members: 2, guests: 1, named: 3, adults: 0, children: 0, total: 3 });
   });
 });
 
@@ -158,5 +163,109 @@ describe('listCheckInEvents', () => {
       select: { id: true, name: true, eventDate: true, location: true, status: true },
     });
     expect(events).toEqual([{ id: 7, name: 'Sunday Service', event_date: at, location: 'Hall', status: 'active' }]);
+  });
+});
+
+describe('headcounts in the sheet', () => {
+  const { buildAttendanceSummary } = loadModel(buildPrismaMock());
+
+  test('totals add named check-ins and counted people', () => {
+    const summary = buildAttendanceSummary({ ...event, headcount: { adults: 150, children: 24 } });
+    expect(summary.headcount).toEqual({ adults: 150, children: 24 });
+    expect(summary.totals).toEqual({ registered: 2, checked_in_members: 2, guests: 1, named: 3, adults: 150, children: 24, total: 177 });
+  });
+
+  test('no headcount row counts as zero', () => {
+    const summary = buildAttendanceSummary({ ...event, headcount: null });
+    expect(summary.headcount).toEqual({ adults: 0, children: 0 });
+    expect(summary.totals.total).toBe(3);
+  });
+});
+
+describe('adjustHeadcount', () => {
+  test('uses one additive upsert that never goes below zero', async () => {
+    const prisma = buildPrismaMock();
+    prisma.$queryRaw.mockResolvedValue([{ adults: 5, children: 0 }]);
+    const { adjustHeadcount } = loadModel(prisma);
+
+    await expect(adjustHeadcount({ eventId: 7, adults: 1, updatedBy: 3 })).resolves.toEqual({ adults: 5, children: 0 });
+
+    const [strings, ...values] = prisma.$queryRaw.mock.calls[0];
+    const sql = strings.join('$');
+    expect(sql).toContain('INSERT INTO event_headcounts');
+    expect(sql).toContain('ON CONFLICT (event_id) DO UPDATE');
+    expect(sql).toContain('GREATEST(event_headcounts.adults +');
+    expect(sql).toContain('GREATEST(event_headcounts.children +');
+    expect(values).toEqual([7, 1, 0, 3, 1, 0]);
+  });
+});
+
+describe('searchCheckInEvents', () => {
+  test('matches names case-insensitively up to the future bound, newest first', async () => {
+    const prisma = buildPrismaMock();
+    prisma.event.findMany.mockResolvedValue([]);
+    const { searchCheckInEvents } = loadModel(prisma);
+    const to = new Date('2026-10-25T00:00:00Z');
+
+    await searchCheckInEvents({ q: 'harvest', to });
+
+    const args = prisma.event.findMany.mock.calls[0][0];
+    expect(args.where).toEqual({ name: { contains: 'harvest', mode: 'insensitive' }, eventDate: { lte: to } });
+    expect(args.orderBy).toEqual({ eventDate: 'desc' });
+    expect(args.take).toBe(50);
+  });
+});
+
+describe('toSummaryRow with headcounts', () => {
+  const { toSummaryRow } = loadModel(buildPrismaMock());
+
+  test('includes counted people in the total', () => {
+    const row = toSummaryRow({
+      id: 7, name: 'Sunday Service', eventDate: at, _count: { registrations: 4 },
+      attendance: [{ userId: 2 }, { userId: null }], headcount: { adults: 10, children: 3 },
+    });
+    expect(row).toEqual({ event_id: 7, name: 'Sunday Service', event_date: at, registered: 4, members: 1, guests: 1, named: 2, adults: 10, children: 3, total: 15 });
+  });
+});
+
+describe('getEventExport', () => {
+  test('lists members and guests with who checked them in', async () => {
+    const prisma = buildPrismaMock();
+    prisma.event.findUnique.mockResolvedValue({
+      id: 7, name: 'Sunday Service', eventDate: at, headcount: { adults: 2, children: 1 },
+      attendance: [
+        { userId: 2, guestName: null, checkedInAt: at, user: ama, checker: { firstName: 'Usher', lastName: 'One' } },
+        { userId: null, guestName: 'Visitor Esi', checkedInAt: at, user: null, checker: null },
+      ],
+    });
+    const { getEventExport } = loadModel(prisma);
+
+    await expect(getEventExport(7)).resolves.toEqual({
+      event: { id: 7, name: 'Sunday Service', event_date: at },
+      headcount: { adults: 2, children: 1 },
+      rows: [
+        { type: 'Member', name: 'Ama Mensah', email: 'ama@test.com', checked_in_at: at, checked_in_by: 'Usher One' },
+        { type: 'Guest', name: 'Visitor Esi', email: '', checked_in_at: at, checked_in_by: '' },
+      ],
+    });
+  });
+
+  test('a missing event returns undefined', async () => {
+    const prisma = buildPrismaMock();
+    prisma.event.findUnique.mockResolvedValue(null);
+    await expect(loadModel(prisma).getEventExport(9)).resolves.toBeUndefined();
+  });
+});
+
+describe('getRangeExport', () => {
+  test('queries the range oldest first', async () => {
+    const prisma = buildPrismaMock();
+    prisma.event.findMany.mockResolvedValue([]);
+    const from = new Date('2026-07-01T00:00:00Z');
+    const to = new Date('2026-10-01T00:00:00Z');
+    await loadModel(prisma).getRangeExport({ from, to });
+    const args = prisma.event.findMany.mock.calls[0][0];
+    expect(args.where).toEqual({ eventDate: { gte: from, lt: to } });
+    expect(args.orderBy).toEqual({ eventDate: 'asc' });
   });
 });

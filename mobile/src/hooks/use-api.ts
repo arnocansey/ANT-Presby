@@ -722,12 +722,23 @@ export const useAdminEvents = (enabled = true) =>
 
 export type AttendancePerson = { user_id: number; first_name: string; last_name: string; email: string };
 
+export type Headcount = { adults: number; children: number };
+
 export type EventAttendance = {
   event: { id: number; name: string; event_date: string; location: string; status: string };
   registered: (AttendancePerson & { checked_in: boolean; record_id: number | null; checked_in_at: string | null })[];
   walk_in_members: (AttendancePerson & { record_id: number; checked_in_at: string })[];
   guests: { record_id: number; guest_name: string; checked_in_at: string }[];
-  totals: { registered: number; checked_in_members: number; guests: number; total: number };
+  headcount: Headcount;
+  totals: {
+    registered: number;
+    checked_in_members: number;
+    guests: number;
+    named: number;
+    adults: number;
+    children: number;
+    total: number;
+  };
 };
 
 export type AttendanceSummaryRow = {
@@ -737,6 +748,9 @@ export type AttendanceSummaryRow = {
   registered: number;
   members: number;
   guests: number;
+  named: number;
+  adults: number;
+  children: number;
   total: number;
 };
 
@@ -744,23 +758,34 @@ export type MemberSearchResult = { id: number; first_name: string; last_name: st
 
 export type CheckInEvent = { id: number; name: string; event_date: string; location: string; status: string };
 
-// Events two weeks either side of today (not cancelled), soonest first.
-export const useCheckInEvents = (enabled = true) =>
-  useQuery({
-    queryKey: ['admin', 'attendance', 'events'],
+export type CheckInInput = { userId: number } | { guestName: string } | { code: string };
+
+export type CheckInResult = { id: number; member?: { first_name: string; last_name: string }; already: boolean };
+
+export type CheckInCard = { code: string; qr_text: string };
+
+// Without a search: events two weeks either side of today (not cancelled), soonest first.
+// With 2+ letters: any past event by name, for late check-in.
+export const useCheckInEvents = (enabled = true, q = '') => {
+  const search = q.trim().length >= 2 ? q.trim() : '';
+  return useQuery({
+    queryKey: ['attendance', 'events', search],
     enabled,
     queryFn: async (): Promise<CheckInEvent[]> => {
-      const response = await apiClient.get('/admin/attendance/events');
+      const response = await apiClient.get('/attendance/events', { params: search ? { q: search } : {} });
       return response.data?.data || [];
     },
   });
+};
 
+// Polls while open so each usher sees the others' check-ins and headcount taps.
 export const useEventAttendance = (eventId?: number) =>
   useQuery({
-    queryKey: ['admin', 'attendance', 'event', eventId],
+    queryKey: ['attendance', 'event', eventId],
     enabled: Boolean(eventId),
+    refetchInterval: 15000,
     queryFn: async (): Promise<EventAttendance> => {
-      const response = await apiClient.get(`/admin/attendance/events/${eventId}`);
+      const response = await apiClient.get(`/attendance/events/${eventId}`);
       return response.data?.data;
     },
   });
@@ -775,13 +800,16 @@ export const useAttendanceSummary = (enabled = true) =>
     },
   });
 
-const invalidateAttendance = () => queryClient.invalidateQueries({ queryKey: ['admin', 'attendance'] });
+const invalidateAttendance = () => {
+  queryClient.invalidateQueries({ queryKey: ['attendance'] });
+  queryClient.invalidateQueries({ queryKey: ['admin', 'attendance'] });
+};
 
 export const useCheckIn = (eventId?: number) =>
   useMutation({
-    mutationFn: async (input: { userId: number } | { guestName: string }) => {
-      const response = await apiClient.post(`/admin/attendance/events/${eventId}/check-in`, input);
-      return response.data?.data;
+    mutationFn: async (input: CheckInInput): Promise<CheckInResult> => {
+      const response = await apiClient.post(`/attendance/events/${eventId}/check-in`, input);
+      return { ...response.data?.data, already: response.data?.message === 'Already checked in' };
     },
     onSettled: invalidateAttendance,
   });
@@ -789,9 +817,42 @@ export const useCheckIn = (eventId?: number) =>
 export const useUndoCheckIn = () =>
   useMutation({
     mutationFn: async (recordId: number) => {
-      await apiClient.delete(`/admin/attendance/records/${recordId}`);
+      await apiClient.delete(`/attendance/records/${recordId}`);
     },
     onSettled: invalidateAttendance,
+  });
+
+// Shows the server's new counts straight away so rapid taps feel instant.
+export const useAdjustHeadcount = (eventId?: number) =>
+  useMutation({
+    mutationFn: async (delta: { adults?: 1 | -1; children?: 1 | -1 }): Promise<Headcount> => {
+      const response = await apiClient.post(`/attendance/events/${eventId}/headcount`, delta);
+      return response.data?.data;
+    },
+    onSuccess: (counts) => {
+      queryClient.setQueryData<EventAttendance>(['attendance', 'event', eventId], (sheet) =>
+        sheet
+          ? {
+              ...sheet,
+              headcount: counts,
+              totals: { ...sheet.totals, ...counts, total: sheet.totals.named + counts.adults + counts.children },
+            }
+          : sheet
+      );
+      queryClient.invalidateQueries({ queryKey: ['admin', 'attendance'] });
+    },
+    // Replies can arrive out of order; refetching settles the display on the server's count.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['attendance', 'event', eventId] }),
+  });
+
+export const useMyCheckInCard = (enabled = true) =>
+  useQuery({
+    queryKey: ['me', 'check-in-card'],
+    enabled,
+    queryFn: async (): Promise<CheckInCard> => {
+      const response = await apiClient.get('/users/me/check-in-card');
+      return response.data?.data;
+    },
   });
 
 export type AnnouncementInput =
@@ -874,13 +935,14 @@ export const useEndLive = () =>
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['live'] }),
   });
 
+// Member lookup on the check-in sheet (admins and ushers): active members, name and email only.
 export const useMemberSearch = (term: string, enabled = true) => {
-  const search = term.trim();
+  const q = term.trim();
   return useQuery({
-    queryKey: ['admin', 'users', 'search', search],
-    enabled: enabled && search.length >= 2,
+    queryKey: ['attendance', 'members', q],
+    enabled: enabled && q.length >= 2,
     queryFn: async (): Promise<MemberSearchResult[]> => {
-      const response = await apiClient.get('/admin/users', { params: { search, limit: 10 } });
+      const response = await apiClient.get('/attendance/members', { params: { q } });
       return response.data?.data || [];
     },
   });

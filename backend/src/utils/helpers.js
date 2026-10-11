@@ -73,6 +73,8 @@ const SENSITIVE_USER_FIELDS = [
   'emailVerificationToken',
   'email_verification_expires_at',
   'emailVerificationExpiresAt',
+  'check_in_code',
+  'checkInCode',
 ];
 
 const sanitizeUser = (user) => {

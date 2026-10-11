@@ -1,5 +1,6 @@
 const prisma = require('../config/prisma');
 const { toSnakeCaseObject, decimalToString } = require('../utils/prismaHelpers');
+const { generateCheckInCode, toQrText } = require('../utils/checkInCode');
 
 /**
  * User Model - Database operations for users
@@ -125,6 +126,7 @@ const getAllUsers = async (offset, limit, search = '') => {
       profileImageUrl: true,
       role: true,
       isActive: true,
+      canTakeAttendance: true,
       createdAt: true,
     },
   });
@@ -321,6 +323,7 @@ const getUserProfile = async (userId) => {
       phone: true,
       profileImageUrl: true,
       role: true,
+      canTakeAttendance: true,
     },
   });
 
@@ -350,6 +353,113 @@ const getUserProfile = async (userId) => {
   };
 };
 
+const MAX_CODE_ATTEMPTS = 5;
+const CODE_BACKFILL_BATCH = 10;
+const isUniqueViolation = (error) => error?.code === 'P2002';
+const isMissingRecord = (error) => error?.code === 'P2025';
+
+// Who may take attendance: read fresh on every staff request so switching it off works at once.
+const getAttendanceAccess = async (userId) => {
+  const user = await prisma.user.findUnique({
+    where: { id: Number(userId) },
+    select: { role: true, isActive: true, canTakeAttendance: true },
+  });
+  return user ? { role: user.role, is_active: user.isActive, can_take_attendance: user.canTakeAttendance } : undefined;
+};
+
+const findMemberByCheckInCode = async (code) => {
+  const user = await prisma.user.findUnique({
+    where: { checkInCode: code },
+    select: { id: true, firstName: true, lastName: true, isActive: true },
+  });
+  return user ? { id: user.id, first_name: user.firstName, last_name: user.lastName, is_active: user.isActive } : undefined;
+};
+
+// Creates the member's card code the first time it is needed. Only fills an empty code, so two
+// concurrent requests agree on one code; a collision with another member's code retries.
+const getOrCreateCheckInCode = async (userId) => {
+  const id = Number(userId);
+  const existing = await prisma.user.findUnique({ where: { id }, select: { checkInCode: true } });
+  if (!existing) return undefined;
+  if (existing.checkInCode) return existing.checkInCode;
+
+  for (let attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt += 1) {
+    const code = generateCheckInCode();
+    try {
+      const { count } = await prisma.user.updateMany({ where: { id, checkInCode: null }, data: { checkInCode: code } });
+      if (count === 1) return code;
+      const winner = await prisma.user.findUnique({ where: { id }, select: { checkInCode: true } });
+      return winner?.checkInCode ?? undefined;
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+    }
+  }
+  throw new Error('Could not create a unique check-in code');
+};
+
+const resetCheckInCode = async (userId) => {
+  for (let attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt += 1) {
+    const code = generateCheckInCode();
+    try {
+      await prisma.user.update({ where: { id: Number(userId) }, data: { checkInCode: code } });
+      return code;
+    } catch (error) {
+      if (isMissingRecord(error)) return undefined;
+      if (!isUniqueViolation(error)) throw error;
+    }
+  }
+  throw new Error('Could not create a unique check-in code');
+};
+
+const setCanTakeAttendance = async (userId, enabled) => {
+  try {
+    const user = await prisma.user.update({
+      where: { id: Number(userId) },
+      data: { canTakeAttendance: Boolean(enabled) },
+      select: { id: true, firstName: true, lastName: true, email: true, role: true, canTakeAttendance: true },
+    });
+    return toSnakeCaseObject(user);
+  } catch (error) {
+    if (isMissingRecord(error)) return undefined;
+    throw error;
+  }
+};
+
+const listCheckInCards = async (ids) => {
+  const where = { isActive: true };
+  if (Array.isArray(ids) && ids.length > 0) where.id = { in: ids };
+
+  const users = await prisma.user.findMany({
+    where,
+    orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    take: 1000,
+    select: { id: true, firstName: true, lastName: true, checkInCode: true },
+  });
+
+  // The first "print all" may need hundreds of new codes: create them in parallel batches.
+  const cards = [];
+  for (let start = 0; start < users.length; start += CODE_BACKFILL_BATCH) {
+    const batch = users.slice(start, start + CODE_BACKFILL_BATCH);
+    const codes = await Promise.all(batch.map((user) => user.checkInCode || getOrCreateCheckInCode(user.id)));
+    batch.forEach((user, index) => {
+      const code = codes[index];
+      cards.push({ id: user.id, first_name: user.firstName, last_name: user.lastName, code, qr_text: toQrText(code) });
+    });
+  }
+  return cards;
+};
+
+// Name or email lookup for ushers: active members only, contact details kept to name and email.
+const searchActiveMembers = async (search, limit = 20) => {
+  const users = await prisma.user.findMany({
+    where: { ...buildUserSearchWhere(search), isActive: true },
+    orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+    take: Number(limit),
+    select: { id: true, firstName: true, lastName: true, email: true },
+  });
+  return users.map((user) => ({ id: user.id, first_name: user.firstName, last_name: user.lastName, email: user.email }));
+};
+
 const markEmailVerified = async (userId) =>
   updateUser(userId, {
     emailVerified: true,
@@ -375,4 +485,11 @@ module.exports = {
   updateUserRole,
   getUserProfile,
   markEmailVerified,
+  getAttendanceAccess,
+  findMemberByCheckInCode,
+  getOrCreateCheckInCode,
+  resetCheckInCode,
+  setCanTakeAttendance,
+  listCheckInCards,
+  searchActiveMembers,
 };

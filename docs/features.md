@@ -137,11 +137,17 @@ Current media behavior:
 
 ## Attendance
 
-- Admins open an event at web `/admin/attendance` or the mobile Attendance screen and check in registered members, any member found by name or email, or walk-in guests by name.
-- A member can be checked in once per event (enforced in the database); checking in again returns the existing record. Check-ins can be undone.
-- Cancelled events are closed for check-in.
-- The headcount trend shows members, guests and total for recent past events.
-- Every check-in and undo is recorded in the audit log.
+- **Who takes attendance:** admins, and ushers. An usher is a member whose "Usher" switch is on in Admin → Members. The switch is checked on every request, so turning it off takes effect at once. Ushers can only take attendance; reports, exports and card management stay admin-only.
+- **Where:** web `/check-in` ("Take attendance" in the account menu and on the dashboard; Admin → Attendance also links there) and the app's Account → Take attendance.
+- **Checking people in:** open an event and check in registered members, any active member found by name or email, or walk-in guests by name. A member can be checked in once per event (enforced in the database); checking in again returns the existing record. Check-ins can be undone.
+- **Headcount:** Adults and Children counters (+ / −) count people not checked in by name. Several ushers can tap at once and every tap counts; counts never go below 0. Total present = named check-ins + adults + children.
+- **Member cards:** every member has a QR check-in card ("My check-in card" on the web dashboard and in the app). Ushers scan it with the app camera, the web camera, or a USB/Bluetooth scanner typing into "Scan a card". Admins can print cards (Admin → Members → Print cards) and reset a lost card, which stops the old one working.
+- **Late check-in:** search any past event by name on `/check-in` or in the app.
+- **Exports (admins):** Download CSV on an event sheet (everyone checked in, then the headcount rows) and Admin → Attendance → Export for a date range of up to a year (one row of totals per event). Cells that look like formulas are escaped.
+- Cancelled events are closed for check-in and counting.
+- The headcount trend shows named and counted people for recent past events.
+- Every check-in, undo, headcount change, usher switch change and card reset is recorded in the audit log.
+- The app's camera scanning needs a build that includes `expo-camera`; it cannot be added by an over-the-air update.
 
 ## Small Groups
 

@@ -181,9 +181,11 @@ export const useLogout = () => {
   });
 };
 
-export const useProfile = () => {
+// fresh: always refetch on mount (e.g. to see a just-granted usher switch despite the cache).
+export const useProfile = ({ fresh = false }: { fresh?: boolean } = {}) => {
   return useQuery({
     queryKey: ['profile'],
+    ...(fresh ? { refetchOnMount: 'always' as const } : {}),
     queryFn: async () => {
       const response = await apiClient.get('/users/profile');
       return response.data.data;
@@ -1248,12 +1250,23 @@ export const useAdminEvents = () => {
 
 export type AttendancePerson = { user_id: number; first_name: string; last_name: string; email: string };
 
+export type Headcount = { adults: number; children: number };
+
 export type EventAttendance = {
   event: { id: number; name: string; event_date: string; location: string; status: string };
   registered: Array<AttendancePerson & { checked_in: boolean; record_id: number | null; checked_in_at: string | null }>;
   walk_in_members: Array<AttendancePerson & { record_id: number; checked_in_at: string }>;
   guests: Array<{ record_id: number; guest_name: string; checked_in_at: string }>;
-  totals: { registered: number; checked_in_members: number; guests: number; total: number };
+  headcount: Headcount;
+  totals: {
+    registered: number;
+    checked_in_members: number;
+    guests: number;
+    named: number;
+    adults: number;
+    children: number;
+    total: number;
+  };
 };
 
 export type AttendanceSummaryRow = {
@@ -1263,6 +1276,9 @@ export type AttendanceSummaryRow = {
   registered: number;
   members: number;
   guests: number;
+  named: number;
+  adults: number;
+  children: number;
   total: number;
 };
 
@@ -1270,22 +1286,37 @@ export type MemberSearchResult = { id: number; first_name: string; last_name: st
 
 export type CheckInEvent = { id: number; name: string; event_date: string; location: string; status: string };
 
-// Events two weeks either side of today (not cancelled), soonest first.
-export const useCheckInEvents = () =>
-  useQuery({
-    queryKey: ['admin', 'attendance', 'events'],
+export type CheckInInput = { userId: number } | { guestName: string } | { code: string };
+
+export type CheckInResult = { id: number; member?: { first_name: string; last_name: string }; already: boolean };
+
+const invalidateAttendance = (qc: ReturnType<typeof useQueryClient>) => {
+  qc.invalidateQueries({ queryKey: ['attendance'] });
+  qc.invalidateQueries({ queryKey: ['admin', 'attendance'] });
+};
+
+// Without a search: events two weeks either side of today (not cancelled), soonest first.
+// With 2+ letters: any past event by name, for late check-in.
+export const useCheckInEvents = (q = '') => {
+  const search = q.trim().length >= 2 ? q.trim() : '';
+  return useQuery({
+    queryKey: ['attendance', 'events', search],
     queryFn: async (): Promise<CheckInEvent[]> => {
-      const response = await apiClient.get('/admin/attendance/events');
+      const response = await apiClient.get('/attendance/events', { params: search ? { q: search } : {} });
       return response.data?.data ?? [];
     },
   });
+};
 
+// Polls while open so each usher sees the others' check-ins and headcount taps.
+export const ATTENDANCE_SHEET_REFRESH_MS = 15000;
 export const useEventAttendance = (eventId?: number) =>
   useQuery({
-    queryKey: ['admin', 'attendance', 'event', eventId],
+    queryKey: ['attendance', 'event', eventId],
     enabled: Boolean(eventId),
+    refetchInterval: ATTENDANCE_SHEET_REFRESH_MS,
     queryFn: async (): Promise<EventAttendance> => {
-      const response = await apiClient.get(`/admin/attendance/events/${eventId}`);
+      const response = await apiClient.get(`/attendance/events/${eventId}`);
       return response.data?.data;
     },
   });
@@ -1299,15 +1330,15 @@ export const useAttendanceSummary = () =>
     },
   });
 
+// Callers show their own errors (the scan status line needs the message, not a toast).
 export const useCheckIn = (eventId?: number) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { userId: number } | { guestName: string }) => {
-      const response = await apiClient.post(`/admin/attendance/events/${eventId}/check-in`, input);
-      return response.data?.data;
+    mutationFn: async (input: CheckInInput): Promise<CheckInResult> => {
+      const response = await apiClient.post(`/attendance/events/${eventId}/check-in`, input);
+      return { ...response.data?.data, already: response.data?.message === 'Already checked in' };
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'attendance'] }),
-    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not check in')),
+    onSettled: () => invalidateAttendance(qc),
   });
 };
 
@@ -1315,11 +1346,107 @@ export const useUndoCheckIn = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (recordId: number) => {
-      await apiClient.delete(`/admin/attendance/records/${recordId}`);
+      await apiClient.delete(`/attendance/records/${recordId}`);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'attendance'] }),
+    onSettled: () => invalidateAttendance(qc),
     onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not undo the check-in')),
   });
+};
+
+// Shows the server's new counts straight away so rapid taps feel instant.
+export const useAdjustHeadcount = (eventId?: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (delta: { adults?: 1 | -1; children?: 1 | -1 }): Promise<Headcount> => {
+      const response = await apiClient.post(`/attendance/events/${eventId}/headcount`, delta);
+      return response.data?.data;
+    },
+    onSuccess: (counts) => {
+      qc.setQueryData<EventAttendance>(['attendance', 'event', eventId], (sheet) =>
+        sheet
+          ? {
+              ...sheet,
+              headcount: counts,
+              totals: { ...sheet.totals, ...counts, total: sheet.totals.named + counts.adults + counts.children },
+            }
+          : sheet
+      );
+      qc.invalidateQueries({ queryKey: ['admin', 'attendance'] });
+    },
+    // Replies can arrive out of order; refetching settles the display on the server's count.
+    onSettled: () => qc.invalidateQueries({ queryKey: ['attendance', 'event', eventId] }),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not update the count')),
+  });
+};
+
+// Member lookup on the check-in sheet (admins and ushers): active members, name and email only.
+export const useAttendanceMemberSearch = (term: string) => {
+  const q = term.trim();
+  return useQuery({
+    queryKey: ['attendance', 'members', q],
+    enabled: q.length >= 2,
+    queryFn: async (): Promise<MemberSearchResult[]> => {
+      const response = await apiClient.get('/attendance/members', { params: { q } });
+      return response.data?.data ?? [];
+    },
+  });
+};
+
+export type CheckInCard = { code: string; qr_text: string };
+export type PrintableCard = CheckInCard & { id: number; first_name: string; last_name: string };
+
+export const useMyCheckInCard = () =>
+  useQuery({
+    queryKey: ['me', 'check-in-card'],
+    queryFn: async (): Promise<CheckInCard> => {
+      const response = await apiClient.get('/users/me/check-in-card');
+      return response.data?.data;
+    },
+  });
+
+export const useCheckInCards = (ids?: number[]) =>
+  useQuery({
+    queryKey: ['admin', 'check-in-cards', ids?.join(',') ?? 'all'],
+    queryFn: async (): Promise<PrintableCard[]> => {
+      const response = await apiClient.get('/admin/users/check-in-cards', { params: ids?.length ? { ids: ids.join(',') } : {} });
+      return response.data?.data ?? [];
+    },
+  });
+
+export const useSetUsher = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, enabled }: { id: number; enabled: boolean }) => {
+      const response = await apiClient.put(`/admin/users/${id}/usher`, { enabled });
+      return response.data?.data;
+    },
+    onSuccess: (_data, { enabled }) => {
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+      toast.success(enabled ? 'Usher access given' : 'Usher access removed');
+    },
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not change usher access')),
+  });
+};
+
+export const useResetCheckInCard = () =>
+  useMutation({
+    mutationFn: async (id: number): Promise<CheckInCard> => {
+      const response = await apiClient.post(`/admin/users/${id}/check-in-card/reset`);
+      return response.data?.data;
+    },
+    onSuccess: () => toast.success('Card reset. The old card no longer works.'),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, 'Could not reset the card')),
+  });
+
+// Downloads an admin CSV through the signed-in API client.
+export const downloadCsv = async (path: string, params: Record<string, string>, filename: string) => {
+  const response = await apiClient.get(path, { params, responseType: 'blob' });
+  const url = URL.createObjectURL(response.data as Blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 };
 
 export const useMemberSearch = (term: string) => {
@@ -1349,12 +1476,18 @@ export const useDeleteEvent = () => {
   });
 };
 
-export const useAdminUsers = () => {
+// Server-side search, so every member can be found, not only the newest page.
+export const ADMIN_USERS_PAGE_SIZE = 100;
+export const useAdminUsers = (search = '') => {
+  const term = search.trim();
   return useQuery({
-    queryKey: ['admin', 'users'],
-    queryFn: async () => {
-      const response = await apiClient.get('/admin/users');
-      return response.data.data;
+    queryKey: ['admin', 'users', term],
+    queryFn: async (): Promise<{ users: any[]; total: number }> => {
+      const response = await apiClient.get('/admin/users', {
+        params: { limit: ADMIN_USERS_PAGE_SIZE, ...(term ? { search: term } : {}) },
+      });
+      const users = response.data?.data ?? [];
+      return { users, total: response.data?.meta?.total ?? users.length };
     },
   });
 };

@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { useGoogleLogin, useLogin } from "@/hooks/useApi";
 import { useAuthStore } from "@/lib/store";
 import { requestGoogleAccessToken } from "@/lib/google-oauth";
+import GoogleButton from "@/components/auth/GoogleButton";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -199,18 +200,7 @@ export default function LoginForm() {
               <div className="h-px flex-1 bg-border" />
             </div>
 
-            <Button
-              type="button"
-              variant="secondary"
-              size="lg"
-              className="w-full"
-              onClick={handleGoogleLogin}
-              loading={googleLoginMutation.isPending}
-            >
-              {googleLoginMutation.isPending
-                ? "Connecting to Google..."
-                : "Continue with Google"}
-            </Button>
+            <GoogleButton onClick={handleGoogleLogin} pending={googleLoginMutation.isPending} />
 
             <p className="text-center text-sm text-muted">
               Don&apos;t have an account?{" "}

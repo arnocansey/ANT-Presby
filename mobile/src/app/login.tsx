@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { z } from 'zod';
 
-import { GoogleSignIn, isGoogleSignInConfigured } from '@/components/google-sign-in';
+import { GoogleSignInOption } from '@/components/google-sign-in';
 import { CheckboxRow, FormMessage, FormTextField, Screen } from '@/components/kit';
 import { AppText } from '@/components/ui/app-text';
 import { AppButton } from '@/components/ui/button';
@@ -86,19 +86,15 @@ export default function LoginScreen() {
       <AppButton label="Sign in" loading={isSubmitting} onPress={handleSubmit(onSubmit)} />
       {loginMutation.isError ? <FormMessage tone="danger">{loginErrorMessage}</FormMessage> : null}
 
-      {isGoogleSignInConfigured() ? (
-        <>
-          <View style={styles.dividerRow}>
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-            <AppText variant="small" tone="muted">
-              or continue with
-            </AppText>
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          </View>
+      <View style={styles.dividerRow}>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <AppText variant="small" tone="muted">
+          or continue with
+        </AppText>
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+      </View>
 
-          <GoogleSignIn />
-        </>
-      ) : null}
+      <GoogleSignInOption />
 
       <View style={styles.footer}>
         <AppText variant="small" tone="muted" style={styles.center}>

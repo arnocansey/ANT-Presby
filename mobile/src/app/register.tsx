@@ -6,7 +6,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 import { z } from 'zod';
 
-import { GoogleSignIn, isGoogleSignInConfigured } from '@/components/google-sign-in';
+import { GoogleSignInOption } from '@/components/google-sign-in';
 import { CheckboxRow, FormMessage, FormTextField, Screen, ScreenHeader } from '@/components/kit';
 import { AppText } from '@/components/ui/app-text';
 import { AppButton } from '@/components/ui/button';
@@ -137,7 +137,7 @@ export default function RegisterScreen() {
           <AppButton label="Create account" loading={isSubmitting} onPress={handleSubmit(onSubmit)} />
           {registerMutation.isError ? <FormMessage tone="danger">{registerErrorMessage}</FormMessage> : null}
 
-          {isGoogleSignInConfigured() ? <GoogleSignIn pendingLabel="Connecting to Google..." /> : null}
+          <GoogleSignInOption pendingLabel="Connecting to Google..." />
 
           <View style={styles.footer}>
             <AppText variant="small" tone="muted">

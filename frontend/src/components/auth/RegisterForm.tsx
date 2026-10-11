@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useGoogleLogin, useRegister } from "@/hooks/useApi";
 import { requestGoogleAccessToken } from "@/lib/google-oauth";
+import GoogleButton from "@/components/auth/GoogleButton";
 import { useAuthStore } from "@/lib/store";
 
 const registerSchema = z
@@ -398,18 +399,7 @@ export default function RegisterForm() {
                   <div className="h-px flex-1 bg-border" />
                 </div>
 
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="lg"
-                  className="w-full"
-                  onClick={handleGoogleRegister}
-                  loading={googleLoginMutation.isPending}
-                >
-                  {googleLoginMutation.isPending
-                    ? "Connecting to Google..."
-                    : "Continue with Google"}
-                </Button>
+                <GoogleButton onClick={handleGoogleRegister} pending={googleLoginMutation.isPending} />
 
                 <p className="text-center text-sm text-muted">
                   Already have an account?{" "}

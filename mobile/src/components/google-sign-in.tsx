@@ -5,6 +5,7 @@ import React from 'react';
 import { Platform } from 'react-native';
 
 import { FormMessage } from '@/components/kit';
+import { AppText } from '@/components/ui/app-text';
 import { AppButton } from '@/components/ui/button';
 import { getApiErrorMessage, useGoogleLogin } from '@/hooks/use-api';
 import { useAppTheme } from '@/hooks/use-app-theme';
@@ -58,6 +59,30 @@ export function GoogleSignIn({ pendingLabel = 'Connecting...' }: { pendingLabel?
       ) : null}
     </>
   );
+}
+
+// Shown until Google sign-in is configured: the button is visible but disabled, with a "coming soon" note.
+export function GoogleSignInPlaceholder() {
+  const { colors } = useAppTheme();
+  return (
+    <>
+      <AppButton
+        label="Continue with Google"
+        variant="secondary"
+        icon={<Ionicons name="logo-google" size={18} color={colors.muted} />}
+        disabled
+        accessibilityLabel="Continue with Google, coming soon"
+      />
+      <AppText variant="small" tone="muted" style={{ textAlign: 'center' }}>
+        Google sign-in is coming soon.
+      </AppText>
+    </>
+  );
+}
+
+// The real button once a client id is configured, otherwise the placeholder.
+export function GoogleSignInOption({ pendingLabel }: { pendingLabel?: string }) {
+  return isGoogleSignInConfigured() ? <GoogleSignIn pendingLabel={pendingLabel} /> : <GoogleSignInPlaceholder />;
 }
 
 export default GoogleSignIn;

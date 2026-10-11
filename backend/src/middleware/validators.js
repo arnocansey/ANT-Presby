@@ -137,11 +137,23 @@ const validateCheckIn = [
     .withMessage('Guest name cannot be blank')
     .isLength({ max: 255 })
     .withMessage('Guest name must be 255 characters or fewer'),
+  body('code').optional({ values: 'null' }).isString().withMessage('Card code must be text').bail().isLength({ max: 64 }),
   body().custom((value) => {
-    const hasMember = value?.userId !== undefined && value?.userId !== null;
-    const hasGuest = value?.guestName !== undefined && value?.guestName !== null;
-    if (hasMember === hasGuest) {
-      throw new Error('Send either userId or guestName');
+    const sent = ['userId', 'guestName', 'code'].filter((key) => value?.[key] !== undefined && value?.[key] !== null);
+    if (sent.length !== 1) {
+      throw new Error('Send exactly one of userId, guestName or code');
+    }
+    return true;
+  }),
+];
+
+const HEADCOUNT_STEP = [-1, 1];
+const validateHeadcount = [
+  body('adults').optional().custom((v) => HEADCOUNT_STEP.includes(v)).withMessage('adults must be -1 or 1'),
+  body('children').optional().custom((v) => HEADCOUNT_STEP.includes(v)).withMessage('children must be -1 or 1'),
+  body().custom((value) => {
+    if (value?.adults === undefined && value?.children === undefined) {
+      throw new Error('Send adults or children');
     }
     return true;
   }),
@@ -422,6 +434,7 @@ module.exports = {
   validateSermonSeriesLink,
   validateSermonSeries,
   validateCheckIn,
+  validateHeadcount,
   validateGroup,
   validateGroupLeaders,
   validateAlbum,

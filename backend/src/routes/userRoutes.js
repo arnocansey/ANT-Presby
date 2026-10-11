@@ -16,6 +16,9 @@ const router = express.Router();
 // Get current user profile
 router.get('/profile', verifyToken, userController.getProfile);
 
+// The signed-in member's check-in card
+router.get('/me/check-in-card', verifyToken, userController.getMyCheckInCard);
+
 // Update current user profile
 router.put(
   '/profile',

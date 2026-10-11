@@ -8,5 +8,7 @@ const router = express.Router();
 router.use(verifyToken, requireRole('admin'));
 
 router.get('/summary', attendanceController.getSummary);
+router.get('/events/:eventId/export.csv', attendanceController.exportEvent);
+router.get('/export.csv', attendanceController.exportRange);
 
 module.exports = router;

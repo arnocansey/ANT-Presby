@@ -1,4 +1,5 @@
-const { sanitizeUser, apiResponse, getPagination, buildPaginationMeta } = require('../utils/helpers');
+const { sanitizeUser, apiResponse, getPagination, buildPaginationMeta, parseId } = require('../utils/helpers');
+const { toQrText } = require('../utils/checkInCode');
 const userModel = require('../models/userModel');
 const auditLogModel = require('../models/auditLogModel');
 const imageStorage = require('../services/imageStorage');
@@ -164,7 +165,81 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
+const cardResponse = (code) => ({ code, qr_text: toQrText(code) });
+
+// The signed-in member's check-in card (created the first time it is asked for)
+const getMyCheckInCard = async (req, res, next) => {
+  try {
+    const code = await userModel.getOrCreateCheckInCode(req.user.userId);
+    if (!code) return res.status(404).json(apiResponse(false, null, 'User not found'));
+    res.json(apiResponse(true, cardResponse(code), 'Check-in card retrieved'));
+  } catch (error) {
+    next(error);
+  }
+};
+
+const auditUser = (req, userId, action, summary) =>
+  auditLogModel.createAuditLog({ actorUserId: req.user.userId, entityType: 'user', entityId: userId, action, summary, metadata: {} });
+
+// Admin: turn "Can take attendance" on or off for a member. Admins already have full access.
+const setUsher = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (typeof req.body?.enabled !== 'boolean') {
+      return res.status(400).json(apiResponse(false, null, 'enabled must be true or false'));
+    }
+    const target = id ? await userModel.findUserById(id) : undefined;
+    if (!target) return res.status(404).json(apiResponse(false, null, 'User not found'));
+    if (target.role === 'admin') {
+      return res.status(400).json(apiResponse(false, null, 'Admins already have attendance access'));
+    }
+
+    const updated = await userModel.setCanTakeAttendance(id, req.body.enabled);
+    if (!updated) return res.status(404).json(apiResponse(false, null, 'User not found'));
+    await auditUser(
+      req,
+      id,
+      req.body.enabled ? 'usher_enabled' : 'usher_disabled',
+      `${req.body.enabled ? 'Gave' : 'Removed'} attendance access for user #${id}`
+    );
+    res.json(apiResponse(true, updated, 'Attendance access updated'));
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Admin: issue a new card code; the old card stops working
+const resetCheckInCard = async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    const code = id ? await userModel.resetCheckInCode(id) : undefined;
+    if (!code) return res.status(404).json(apiResponse(false, null, 'User not found'));
+    await auditUser(req, id, 'check_in_card_reset', `Reset the check-in card for user #${id}`);
+    res.json(apiResponse(true, cardResponse(code), 'Check-in card reset'));
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Admin: cards to print, for chosen members (?ids=1,2) or every active member
+const listCheckInCards = async (req, res, next) => {
+  try {
+    const ids =
+      typeof req.query.ids === 'string' && req.query.ids.trim()
+        ? req.query.ids.split(',').map(parseId).filter(Boolean).slice(0, 1000)
+        : undefined;
+    const cards = await userModel.listCheckInCards(ids && ids.length ? ids : undefined);
+    res.json(apiResponse(true, cards, 'Check-in cards retrieved'));
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
+  getMyCheckInCard,
+  setUsher,
+  resetCheckInCard,
+  listCheckInCards,
   getProfile,
   updateProfile,
   uploadProfilePhoto,

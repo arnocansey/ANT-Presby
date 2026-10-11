@@ -3,6 +3,7 @@ const attendanceModel = require('../models/attendanceModel');
 const userModel = require('../models/userModel');
 const auditLogModel = require('../models/auditLogModel');
 const { parseScannedCode } = require('../utils/checkInCode');
+const { toCsv, slugify } = require('../utils/csv');
 
 /**
  * Attendance Controller (staff: admins and ushers; reports and exports admin only)
@@ -186,7 +187,73 @@ const getSummary = async (req, res, next) => {
   }
 };
 
+const sendCsv = (res, filename, csv) => {
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  return res.send(csv);
+};
+
+const isoDay = (date) => new Date(date).toISOString().slice(0, 10);
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+const RANGE_DEFAULT_DAYS = 90;
+const RANGE_MAX_DAYS = 366;
+
+// A YYYY-MM-DD that is a real calendar day, as midnight UTC.
+const parseDay = (value) => {
+  if (typeof value !== 'string' || !DATE_ONLY.test(value)) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) || isoDay(date) !== value ? null : date;
+};
+
+// Admin: everyone checked in to one event, then the headcount rows
+const exportEvent = async (req, res, next) => {
+  try {
+    const eventId = parseId(req.params.eventId);
+    const data = eventId ? await attendanceModel.getEventExport(eventId) : undefined;
+    if (!data) return notFound(res, 'Event not found');
+
+    const rows = data.rows.map((row) => [row.type, row.name, row.email, row.checked_in_at, row.checked_in_by]);
+    rows.push(['Headcount (adults)', data.headcount.adults, '', '', '']);
+    rows.push(['Headcount (children)', data.headcount.children, '', '', '']);
+    const csv = toCsv(['Type', 'Name', 'Email', 'Checked in at', 'Checked in by'], rows);
+    return sendCsv(res, `attendance-${slugify(data.event.name)}-${isoDay(data.event.event_date)}.csv`, csv);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// Admin: one row of totals per event in a date range (inclusive days, at most a year)
+const exportRange = async (req, res, next) => {
+  try {
+    const today = parseDay(isoDay(new Date()));
+    const toDay = req.query.to === undefined ? today : parseDay(req.query.to);
+    const fromDay =
+      req.query.from === undefined
+        ? toDay && new Date(toDay.getTime() - (RANGE_DEFAULT_DAYS - 1) * DAY_MS)
+        : parseDay(req.query.from);
+
+    if (!fromDay || !toDay || fromDay > toDay) {
+      return res.status(400).json(apiResponse(false, null, 'Choose a valid date range'));
+    }
+    const spanDays = Math.round((toDay - fromDay) / DAY_MS) + 1;
+    if (spanDays > RANGE_MAX_DAYS) {
+      return res.status(400).json(apiResponse(false, null, 'Choose a range of one year or less'));
+    }
+
+    const rows = await attendanceModel.getRangeExport({ from: fromDay, to: new Date(toDay.getTime() + DAY_MS) });
+    const csv = toCsv(
+      ['Event', 'Date', 'Registered', 'Members', 'Guests', 'Adults counted', 'Children counted', 'Total'],
+      rows.map((row) => [row.name, row.event_date, row.registered, row.members, row.guests, row.adults, row.children, row.total])
+    );
+    return sendCsv(res, `attendance-${isoDay(fromDay)}-to-${isoDay(toDay)}.csv`, csv);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
+  exportEvent,
+  exportRange,
   listCheckInEvents,
   getEventAttendance,
   checkIn,

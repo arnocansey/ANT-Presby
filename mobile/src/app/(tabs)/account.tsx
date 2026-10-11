@@ -158,6 +158,10 @@ export default function AccountScreen() {
           onPress={() => router.push('/prayers')}
         />
         <ListRow icon="grid-outline" label="My dashboard" onPress={() => router.push('/dashboard')} />
+        <ListRow icon="qr-code-outline" label="My check-in card" onPress={() => router.push('/check-in-card' as never)} />
+        {user.role === 'admin' || profileQuery.data?.can_take_attendance ? (
+          <ListRow icon="checkmark-done-outline" label="Take attendance" onPress={() => router.push('/check-in' as never)} />
+        ) : null}
       </ListGroup>
 
       <SectionHeader title="Settings and help" />

@@ -1,8 +1,11 @@
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
-import { AdminShell } from '@/components/admin-shell';
-import { ErrorState, FormMessage, ListGroup, ListRow, LoadingList, ScreenHeader } from '@/components/kit';
+import { CardScanner } from '@/components/attendance/card-scanner';
+import { HeadcountCard } from '@/components/attendance/headcount-card';
+import { ErrorState, FormMessage, ListGroup, ListRow, LoadingList, Screen, ScreenHeader } from '@/components/kit';
 import { AppText } from '@/components/ui/app-text';
 import { AppBadge } from '@/components/ui/badge';
 import { AppButton } from '@/components/ui/button';
@@ -16,36 +19,78 @@ import {
   useCheckIn,
   useEventAttendance,
   useMemberSearch,
+  useMyProfile,
   useUndoCheckIn,
 } from '@/hooks/use-api';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { useAuthStore } from '@/store/auth';
 
-const fullName = (person: { first_name: string; last_name: string }) =>
-  `${person.first_name || ''} ${person.last_name || ''}`.trim() || 'Member';
+const fullName = (person?: { first_name: string; last_name: string }) =>
+  `${person?.first_name || ''} ${person?.last_name || ''}`.trim() || 'Member';
 
-export default function AdminAttendanceScreen() {
+const isForbidden = (error: unknown) => (error as any)?.response?.status === 403;
+
+// Check-in for admins and ushers (members whose "Can take attendance" switch is on).
+export default function CheckInScreen() {
   const { colors } = useAppTheme();
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'admin';
+  const profileQuery = useMyProfile(Boolean(user) && !isAdmin);
+  const allowed = isAdmin || Boolean(profileQuery.data?.can_take_attendance);
+
   const [selectedEventId, setSelectedEventId] = React.useState<number | undefined>();
+  const [eventSearchInput, setEventSearchInput] = React.useState('');
+  const [eventSearch, setEventSearch] = React.useState('');
   const [searchInput, setSearchInput] = React.useState('');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [guestName, setGuestName] = React.useState('');
+  const [scannerOpen, setScannerOpen] = React.useState(false);
 
-  const eventsQuery = useCheckInEvents(isAdmin);
+  const eventsQuery = useCheckInEvents(allowed, eventSearch);
   const summaryQuery = useAttendanceSummary(isAdmin && !selectedEventId);
-  const sheetQuery = useEventAttendance(isAdmin ? selectedEventId : undefined);
-  const searchQuery = useMemberSearch(searchTerm, isAdmin && Boolean(selectedEventId));
+  const sheetQuery = useEventAttendance(allowed ? selectedEventId : undefined);
+  const searchQuery = useMemberSearch(searchTerm, allowed && Boolean(selectedEventId));
   const checkInMutation = useCheckIn(selectedEventId);
   const undoMutation = useUndoCheckIn();
 
+  // Wait for a pause in typing before searching.
   React.useEffect(() => {
     const timer = setTimeout(() => setSearchTerm(searchInput), 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
+  React.useEffect(() => {
+    const timer = setTimeout(() => setEventSearch(eventSearchInput), 300);
+    return () => clearTimeout(timer);
+  }, [eventSearchInput]);
 
-  if (!user || !isAdmin) return null;
+  // The usher switch was turned off while this screen was open.
+  const lostAccess = isForbidden(eventsQuery.error) || isForbidden(sheetQuery.error);
+  React.useEffect(() => {
+    if (lostAccess) {
+      Alert.alert('You no longer have attendance access');
+      router.replace('/(tabs)/account' as never);
+    }
+  }, [lostAccess]);
+
+  if (!user) return null;
+
+  if (!isAdmin && profileQuery.isLoading) {
+    return (
+      <Screen>
+        <ScreenHeader back title="Take attendance" />
+        <LoadingList count={3} height={56} />
+      </Screen>
+    );
+  }
+
+  if (!allowed) {
+    return (
+      <Screen>
+        <ScreenHeader back title="Take attendance" />
+        <ErrorState title="You do not have attendance access" message="Ask an admin to turn on usher access for your account." />
+      </Screen>
+    );
+  }
 
   const busy = checkInMutation.isPending || undoMutation.isPending;
   const showError = (title: string) => (error: unknown) => Alert.alert(title, getApiErrorMessage(error, 'Please try again.'));
@@ -56,6 +101,13 @@ export default function AdminAttendanceScreen() {
     if (!name) return;
     checkInMutation.mutate({ guestName: name }, { onSuccess: () => setGuestName(''), onError: showError('Could not add guest') });
   };
+  const scanCard = (text: string) =>
+    checkInMutation.mutateAsync({ code: text }).then(
+      (result) => `${fullName(result.member)}${result.already ? ' was already checked in' : ' checked in'}`,
+      (error) => {
+        throw new Error(getApiErrorMessage(error, 'Could not check in'));
+      }
+    );
 
   const openEvent = (eventId: number) => {
     setSelectedEventId(eventId);
@@ -75,15 +127,23 @@ export default function AdminAttendanceScreen() {
   if (!selectedEventId) {
     const events = Array.isArray(eventsQuery.data) ? eventsQuery.data : [];
     const summary = Array.isArray(summaryQuery.data) ? summaryQuery.data : [];
+    const searching = eventSearch.trim().length >= 2;
 
     return (
-      <AdminShell activeTab="/admin-events">
-        <ScreenHeader back eyebrow="Admin" title="Attendance" subtitle="Choose an event to check people in" />
+      <Screen>
+        <ScreenHeader back eyebrow="Attendance" title="Take attendance" subtitle="Choose an event to check people in" />
+
+        <TextField
+          label="Find an older event"
+          value={eventSearchInput}
+          onChangeText={setEventSearchInput}
+          placeholder="Event name (at least 2 letters)"
+        />
 
         {eventsQuery.isLoading ? <LoadingList count={2} height={56} /> : null}
         {!eventsQuery.isLoading && events.length === 0 ? (
           <AppText variant="small" tone="muted">
-            No events in the last or next two weeks.
+            {searching ? 'No events match.' : 'No events in the last or next two weeks.'}
           </AppText>
         ) : null}
         {events.length > 0 ? (
@@ -100,15 +160,15 @@ export default function AdminAttendanceScreen() {
           </ListGroup>
         ) : null}
 
-        {summary.length > 0 ? (
+        {isAdmin && summary.length > 0 ? (
           <AppCard>
             <AppText variant="bodyStrong">Recent headcounts</AppText>
             {summary.map((row) =>
-              personRow(String(row.event_id), row.name, <AppBadge>{`${row.total} (${row.guests} guests)`}</AppBadge>)
+              personRow(String(row.event_id), row.name, <AppBadge>{`${row.total} (${row.named} named)`}</AppBadge>)
             )}
           </AppCard>
         ) : null}
-      </AdminShell>
+      </Screen>
     );
   }
 
@@ -121,7 +181,7 @@ export default function AdminAttendanceScreen() {
   const searchResults = Array.isArray(searchQuery.data) ? searchQuery.data : [];
 
   return (
-    <AdminShell activeTab="/admin-events">
+    <Screen>
       <ScreenHeader onBack={() => setSelectedEventId(undefined)} eyebrow="Check-in" title={sheet?.event.name || 'Check-in'} />
 
       {sheetQuery.isLoading ? (
@@ -132,11 +192,21 @@ export default function AdminAttendanceScreen() {
         <>
           <View style={styles.badges}>
             <AppBadge tone="success">{`${sheet.totals.total} present`}</AppBadge>
-            <AppBadge>{`${sheet.totals.checked_in_members} members`}</AppBadge>
-            <AppBadge>{`${sheet.totals.guests} guests`}</AppBadge>
-            <AppBadge>{`${sheet.totals.registered} registered`}</AppBadge>
+            <AppBadge>{`${sheet.totals.named} named`}</AppBadge>
+            <AppBadge>{`${sheet.totals.adults} adults`}</AppBadge>
+            <AppBadge>{`${sheet.totals.children} children`}</AppBadge>
           </View>
           {cancelled ? <FormMessage tone="danger">This event was cancelled; check-in is closed.</FormMessage> : null}
+
+          {!cancelled ? (
+            <AppButton
+              label="Scan cards"
+              icon={<Ionicons name="qr-code-outline" size={18} color={colors.onPrimary} />}
+              onPress={() => setScannerOpen(true)}
+            />
+          ) : null}
+
+          <HeadcountCard sheet={sheet} disabled={Boolean(cancelled)} />
 
           <AppCard>
             <AppText variant="bodyStrong">{`Registered (${sheet.registered.length})`}</AppText>
@@ -193,13 +263,7 @@ export default function AdminAttendanceScreen() {
                 )
               ) : null}
 
-              <TextField
-                label="Walk-in guest"
-                value={guestName}
-                onChangeText={setGuestName}
-                placeholder="Guest's name"
-                maxLength={255}
-              />
+              <TextField label="Walk-in guest" value={guestName} onChangeText={setGuestName} placeholder="Guest's name" maxLength={255} />
               <AppButton label="Add guest" variant="secondary" onPress={() => !busy && addGuest()} />
             </AppCard>
           ) : null}
@@ -221,9 +285,11 @@ export default function AdminAttendanceScreen() {
               )
             )}
           </AppCard>
+
+          <CardScanner visible={scannerOpen} onClose={() => setScannerOpen(false)} onScan={scanCard} />
         </>
       )}
-    </AdminShell>
+    </Screen>
   );
 }
 

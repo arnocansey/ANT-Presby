@@ -2,14 +2,16 @@
 
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowRight, CalendarDays, ClipboardList, Gift, Heart, User, UserRound } from 'lucide-react';
+import { ArrowRight, CalendarDays, ClipboardCheck, ClipboardList, Gift, Heart, User, UserRound } from 'lucide-react';
+import QrCode from '@/components/attendance/QrCode';
+import { canTakeAttendance } from '@/components/attendance/StaffGuard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import PageHeader from '@/components/ui/page-header';
 import Section from '@/components/ui/section';
 import { Skeleton } from '@/components/ui/skeleton';
 import Tile from '@/components/ui/tile';
-import { useDonations, usePrayerRequests, useProfile } from '@/hooks/useApi';
+import { useDonations, useMyCheckInCard, usePrayerRequests, useProfile } from '@/hooks/useApi';
 
 const quickActions = [
   { href: '/donate', label: 'Give Online', icon: Gift },
@@ -85,10 +87,16 @@ export default function DashboardPage() {
 
       <Section title="Quick actions">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {quickActions.map((action) => (
-            <Tile key={action.href} href={action.href} icon={action.icon} label={action.label} />
-          ))}
+          {[...quickActions, ...(canTakeAttendance(profile) ? [{ href: '/check-in', label: 'Take attendance', icon: ClipboardCheck }] : [])].map(
+            (action) => (
+              <Tile key={action.href} href={action.href} icon={action.icon} label={action.label} />
+            )
+          )}
         </div>
+      </Section>
+
+      <Section title="My check-in card">
+        <MyCheckInCard />
       </Section>
 
       <Section title="Stay connected">
@@ -109,6 +117,36 @@ export default function DashboardPage() {
         </Card>
       </Section>
     </div>
+  );
+}
+
+// The member's own QR card, scanned by ushers at the entrance.
+function MyCheckInCard() {
+  const { data: card, isLoading, isError, refetch } = useMyCheckInCard();
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col items-center gap-4 p-6 text-center sm:flex-row sm:text-left">
+        {isLoading ? (
+          <Skeleton className="h-[200px] w-[200px]" />
+        ) : isError || !card ? (
+          <div className="space-y-2">
+            <p className="text-sm text-muted">Your check-in card could not be loaded.</p>
+            <Button variant="secondary" size="sm" onClick={() => refetch()}>
+              Try again
+            </Button>
+          </div>
+        ) : (
+          <>
+            <QrCode text={card.qr_text} size={200} label="Your check-in card" />
+            <div className="space-y-2">
+              <p className="font-mono text-lg tracking-widest text-foreground">{card.code}</p>
+              <p className="text-sm text-muted">Show this at the entrance to be checked in.</p>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

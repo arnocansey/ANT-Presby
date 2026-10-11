@@ -161,7 +161,7 @@ export default function Header() {
     );
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md print:hidden">
       <nav
         aria-label="Main navigation"
         className="container-max flex h-16 items-center gap-4"

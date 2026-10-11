@@ -621,6 +621,27 @@ async function migrateFeatureUpdates() {
       ON album_photos(album_id, sort_order);
     `);
 
+    // Attendance operations: usher switch, member check-in cards, headcounts (attendance part A)
+    await client.query(`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS can_take_attendance BOOLEAN NOT NULL DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS check_in_code VARCHAR(16);
+    `);
+
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS users_check_in_code_key ON users(check_in_code);
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS event_headcounts (
+        event_id INTEGER PRIMARY KEY REFERENCES events(id) ON DELETE CASCADE,
+        adults INTEGER NOT NULL DEFAULT 0 CHECK (adults >= 0),
+        children INTEGER NOT NULL DEFAULT 0 CHECK (children >= 0),
+        updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     await client.query('COMMIT');
     console.log('Feature update migration completed successfully.');
     process.exit(0);

@@ -124,6 +124,8 @@ model User {
   emailVerifiedAt      DateTime?           @map("email_verified_at")
   role                 UserRole            @default(member)
   isActive             Boolean             @default(true) @map("is_active")
+  canTakeAttendance    Boolean             @default(false) @map("can_take_attendance")
+  checkInCode          String?             @unique @map("check_in_code") @db.VarChar(16)
   createdAt            DateTime            @default(now()) @map("created_at")
   updatedAt            DateTime            @updatedAt @map("updated_at")
   eventRegistrations   EventRegistration[]
@@ -147,6 +149,7 @@ model User {
   liveStreamUpdates    LiveStream[]        @relation("LiveStreamUpdater")
   authoredDevotionals  Devotional[]
   createdAlbums        PhotoAlbum[]        @relation("AlbumCreator")
+  headcountUpdates     EventHeadcount[]
 
   @@index([role], map: "idx_users_role")
   @@index([createdAt], map: "idx_users_created_at")
@@ -230,6 +233,7 @@ model Event {
   attendance       AttendanceRecord[]
   announcements    Announcement[]
   albums           PhotoAlbum[]
+  headcount        EventHeadcount?
 
   @@index([eventDate(sort: Desc)], map: "idx_events_date")
   @@index([status], map: "idx_events_status")
@@ -266,6 +270,18 @@ model AttendanceRecord {
 
   @@index([eventId], map: "idx_attendance_event")
   @@map("attendance_records")
+}
+
+model EventHeadcount {
+  eventId   Int      @id @map("event_id")
+  adults    Int      @default(0)
+  children  Int      @default(0)
+  updatedBy Int?     @map("updated_by")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  updater   User?    @relation(fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@map("event_headcounts")
 }
 
 model SmallGroup {

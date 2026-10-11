@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  ClipboardCheck,
   LayoutDashboard,
   LogIn,
   LogOut,
@@ -141,6 +142,7 @@ export default function Header() {
     (user as any)?.profileImageUrl || (user as any)?.profile_image_url || null,
   );
   const isAdmin = user?.role === "admin";
+  const canCheckIn = isAdmin || Boolean(user?.can_take_attendance);
 
   const navLinkClass = (href: string) =>
     cn(
@@ -241,6 +243,13 @@ export default function Header() {
                       <LayoutDashboard className="h-4 w-4" /> My dashboard
                     </Link>
                   </DropdownMenuItem>
+                  {canCheckIn && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/check-in" className="gap-2">
+                        <ClipboardCheck className="h-4 w-4" /> Take attendance
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem asChild>
                     <Link href="/profile" className="gap-2">
                       <Settings className="h-4 w-4" /> Profile
@@ -368,6 +377,11 @@ export default function Header() {
                       <LayoutDashboard className="h-5 w-5" aria-hidden="true" />{" "}
                       My dashboard
                     </Link>
+                    {canCheckIn && (
+                      <Link href="/check-in" className={menuLinkClass("/check-in")}>
+                        <ClipboardCheck className="h-5 w-5" aria-hidden="true" /> Take attendance
+                      </Link>
+                    )}
                     <Link href="/profile" className={menuLinkClass("/profile")}>
                       <User className="h-5 w-5" aria-hidden="true" /> Profile
                     </Link>
